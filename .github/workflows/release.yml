@@ -75,9 +75,10 @@ jobs:
           - platform: windows-latest
             tauri-target: x86_64-pc-windows-msvc
             label: "Windows (x86_64)"
-          - platform: ubuntu-latest
-            tauri-target: x86_64-unknown-linux-gnu
-            label: "Linux (x86_64)"
+        # Linux 暂不发布,需要时补回本行并恢复「Tauri Linux 系统依赖」步:
+        #   - platform: ubuntu-latest
+        #     tauri-target: x86_64-unknown-linux-gnu
+        #     label: "Linux (x86_64)"
 
     runs-on: ${{ matrix.platform }}
 
@@ -111,19 +112,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
-
-      # Linux runner 需要手动装 webkit2gtk;mac/win 由 tauri-action 内部处理。
-      - name: Tauri Linux 系统依赖
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libssl-dev \
-            pkg-config
 
       # macOS 代码签名 + 公证凭据注入:repo secrets 配齐才生效,缺任一即整组跳过。
       # 未注入时 tauri.conf 的 signingIdentity "-" 兜底为 ad-hoc 封签。所需 secrets:
