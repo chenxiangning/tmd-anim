@@ -46,7 +46,7 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
     );
   };
   return (
-    <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-2.5">
+    <header className="relative flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-2.5">
       <button className="btn btn-ghost" onClick={onExit} title="返回项目主页(已自动保存)">
         ← 主页
       </button>
@@ -68,7 +68,7 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
       </span>
       <div className="ml-auto flex items-center gap-2">
         {flash && (
-          <span className="max-w-96 truncate text-[11px] text-neutral-500" title={flash}>
+          <span className="absolute right-3 top-full z-10 mt-1 max-w-96 truncate rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[11px] text-neutral-500 shadow-sm" title={flash}>
             {flash}
           </span>
         )}
