@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    tmd-anim 应用图标源文件(缓动播放:播放三角 + 关键帧缓动曲线)。
+    改动后重新生成位图:
+      rsvg-convert -w 1024 -h 1024 icon.svg -o app-icon.png
+      rsvg-convert -w 512 -h 512 icon.svg -o ../../public/icon.png
+      pnpm tauri icon src-tauri/icons/app-icon.png
+  -->
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="512">
+      <stop offset="0" stop-color="#20242E"/>
+      <stop offset="1" stop-color="#101319"/>
+    </linearGradient>
+    <linearGradient id="acc" gradientUnits="userSpaceOnUse" x1="110" y1="400" x2="410" y2="150">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#818CF8"/>
+    </linearGradient>
+    <radialGradient id="sheen" gradientUnits="userSpaceOnUse" cx="150" cy="110" r="380">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.09"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="118" fill="url(#sheen)"/>
+  <rect x="5" y="5" width="502" height="502" rx="113" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="3"/>
+  <path d="M112 376 C226 376 218 136 344 136" fill="none" stroke="url(#acc)" stroke-width="15" stroke-linecap="round"/>
+  <circle cx="112" cy="376" r="18" fill="url(#acc)"/>
+  <circle cx="344" cy="136" r="18" fill="url(#acc)"/>
+  <path d="M216 166 L216 346 L360 256 Z" fill="url(#bg)" stroke="url(#bg)" stroke-width="62" stroke-linejoin="round"/>
+  <path d="M216 166 L216 346 L360 256 Z" fill="#ffffff" stroke="#ffffff" stroke-width="26" stroke-linejoin="round"/>
+</svg>

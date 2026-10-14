@@ -1,0 +1,41 @@
+{
+  "name": "tmd-anim",
+  "version": "0.1.0",
+  "description": "Technical animation video studio. Scene JSON in, deterministic video out.",
+  "author": "Chen Xiangning",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build:player": "node scripts/build-player.mjs",
+    "build": "pnpm build:player && tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check:file-size": "node scripts/check-file-size.mjs",
+    "check": "pnpm build:player && pnpm check:file-size && pnpm typecheck && pnpm test && pnpm build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.0",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "mediabunny": "^1.61.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2.12.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.2"
+  }
+}

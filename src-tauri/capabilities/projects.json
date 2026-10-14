@@ -1,0 +1,27 @@
+{
+  "identifier": "fs-projects",
+  "description": "tmd-anim 项目文件读写:仅限 $HOME/.tmd-anim/ 目录",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$HOME/.tmd-anim" }, { "path": "$HOME/.tmd-anim/projects" }]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "$HOME/.tmd-anim/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/.tmd-anim/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$HOME/.tmd-anim/projects" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$HOME/.tmd-anim/projects/**" }]
+    }
+  ]
+}

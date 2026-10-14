@@ -1,0 +1,156 @@
+import type { Anim, Project, Scene, SceneElement } from "./types";
+
+/**
+ * 宽容归一化:agent 产出的 JSON 允许缺字段/类型跑偏,这里补默认值、钳边界,
+ * 让 watch 模式下的半成品文件也能播放;结构性损坏(根/scenes/elements 形状)才抛错。
+ * 契约的权威描述在 docs/schema.md,两者必须同步改。
+ */
+
+const ANIM_TYPES = new Set<string>([
+  "pop",
+  "fade",
+  "riseUp",
+  "slideLeft",
+  "slideRight",
+  "dropDown",
+  "wipe",
+  "typewriter",
+  "zoomIn",
+  "spinIn",
+]);
+const EASINGS = new Set<string>(["linear", "easeOut", "easeInOut", "back"]);
+const ELEMENT_KINDS = new Set<string>([
+  "title",
+  "artText",
+  "text",
+  "shape",
+  "input",
+  "code",
+  "table",
+  "note",
+  "badge",
+  "arrayCells",
+  "connector",
+  "image",
+  "list",
+  "stepCard",
+  "terminal",
+  "progress",
+  "kbd",
+  "browser",
+]);
+
+export class ProjectParseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProjectParseError";
+  }
+}
+
+function asRecord(v: unknown, what: string): Record<string, unknown> {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) {
+    throw new ProjectParseError(`${what} 必须是对象`);
+  }
+  return v as Record<string, unknown>;
+}
+
+function num(v: unknown, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+function str(v: unknown, fallback: string): string {
+  return typeof v === "string" && v.length > 0 ? v : fallback;
+}
+
+export function normalizeProject(raw: unknown): Project {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new ProjectParseError("项目根必须是 JSON 对象");
+  }
+  const r = raw as Record<string, unknown>;
+  if (r.version !== 1) {
+    throw new ProjectParseError(`不支持的 version:${String(r.version)};当前协议为 version 1,见 docs/schema.md`);
+  }
+  if (!Array.isArray(r.scenes)) throw new ProjectParseError("scenes 必须是数组");
+  const canvas = typeof r.canvas === "object" && r.canvas !== null ? asRecord(r.canvas, "canvas") : {};
+  return {
+    version: 1,
+    name: str(r.name, "未命名项目"),
+    canvas: {
+      width: Math.max(1, num(canvas.width, 1920)),
+      height: Math.max(1, num(canvas.height, 1080)),
+      bg: str(canvas.bg, "#F4F4F1"),
+    },
+    scenes: r.scenes.map((s, i) => normalizeScene(asRecord(s, `scenes[${i}]`), i)),
+  };
+}
+
+function normalizeScene(raw: Record<string, unknown>, index: number): Scene {
+  if (!Array.isArray(raw.elements)) {
+    throw new ProjectParseError(`scenes[${index}].elements 必须是数组`);
+  }
+  return {
+    id: str(raw.id, `sc-${index + 1}`),
+    name: str(raw.name, `场景 ${index + 1}`),
+    dwell: Math.max(0, num(raw.dwell, 1.5)),
+    elements: raw.elements.flatMap((e, j) => {
+      if (typeof e !== "object" || e === null) return [];
+      const record = e as Record<string, unknown>;
+      // 未知元素类型跳过不崩,watch 模式下文件可能正处于半成品状态
+      if (typeof record.kind !== "string" || !ELEMENT_KINDS.has(record.kind)) return [];
+      return [normalizeElement(record, j)];
+    }),
+    audio: normalizeSceneAudio(raw.audio),
+  };
+}
+
+/** 配音宽容归一:src 非字符串视为无配音;volume 钳 0-2 */
+function normalizeSceneAudio(raw: unknown): { src: string; volume?: number } | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.src !== "string" || r.src.length === 0) return undefined;
+  return { src: r.src, volume: Math.min(2, Math.max(0, num(r.volume, 1))) };
+}
+
+function normalizeAnim(raw: Record<string, unknown>): Anim {
+  const type = typeof raw.type === "string" && ANIM_TYPES.has(raw.type) ? raw.type : "fade";
+  const easing = typeof raw.easing === "string" && EASINGS.has(raw.easing) ? raw.easing : undefined;
+  return {
+    type: type as Anim["type"],
+    start: Math.max(0, num(raw.start, 0)),
+    duration: Math.max(0.05, num(raw.duration, 0.5)),
+    ...(easing ? { easing: easing as Anim["easing"] } : {}),
+  };
+}
+
+function normalizeElement(raw: Record<string, unknown>, index: number): SceneElement {
+  const anim = typeof raw.anim === "object" && raw.anim !== null ? asRecord(raw.anim, "anim") : {};
+  const base = {
+    id: str(raw.id, `el-${index + 1}`),
+    x: num(raw.x, 0),
+    y: num(raw.y, 0),
+    w: Math.max(1, num(raw.w, 200)),
+    h: Math.max(1, num(raw.h, 80)),
+    anim: normalizeAnim(anim),
+  };
+  // 保留 kind 与各类型自有字段,仅用归一化后的基础字段覆盖
+  const el = { ...raw, ...base } as SceneElement;
+  // 连线绑定字段:非字符串一律丢弃,避免脏数据让渲染解析失败
+  const connector = el as unknown as Record<string, unknown>;
+  for (const key of ["fromEl", "toEl"] as const) {
+    if (connector[key] !== undefined && typeof connector[key] !== "string") delete connector[key];
+  }
+  // 连线路由:仅接受合法枚举,其余回落自动平滑
+  if (connector.route !== undefined && !["smooth", "elbow", "straight"].includes(String(connector.route))) {
+    delete connector.route;
+  }
+  // 列表条目:非字符串数组一律纠正为空数组,渲染按 0 条处理
+  if (el.kind === "list") {
+    const items = (el as unknown as Record<string, unknown>).items;
+    if (!Array.isArray(items) || items.some((v) => typeof v !== "string")) {
+      (el as unknown as Record<string, unknown>).items = Array.isArray(items)
+        ? items.map((v) => String(v))
+        : [];
+    }
+  }
+  return el;
+}
