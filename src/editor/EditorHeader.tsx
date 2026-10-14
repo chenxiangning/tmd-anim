@@ -1,4 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import type { Project } from "../core/types";
+import { GearButton } from "../app/GearButton";
+import { buildAiPrompt, copyText } from "./aiPrompt";
 
 interface EditorHeaderProps {
   project: Project;
@@ -12,20 +15,39 @@ interface EditorHeaderProps {
   onExport(): void;
   onExportHtml(): void;
   onExportVideo(): void;
+  /** 导出当前帧 PNG,resolve 为落盘路径(或浏览器下载文件名),reject 为失败原因 */
+  onExportFrame(): Promise<string>;
+  /** 项目文件绝对路径;local 后端为 null(AI 提示词改用导入指引) */
+  aiPromptPath: string | null;
+  onOpenSettings(): void;
 }
 
-const btn =
-  "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+const segBtn = "px-2.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50";
 
-/** 编辑器顶栏:返回 / 项目名 / 保存态 / 存储后端 / 重载(文件后端) / 导出(JSON/网页/视频) / 预览。 */
-export function EditorHeader({ project, saveState, backend, previewing, onRename, onExit, onTogglePreview, onReload, onExport, onExportHtml, onExportVideo }: EditorHeaderProps) {
+/** 编辑器顶栏:返回 / 项目名 / 保存态 / 存储后端 / 重载(文件后端) / 导出分段组 / AI 调整 / 预览 / 设置。 */
+export function EditorHeader({ project, saveState, backend, previewing, onRename, onExit, onTogglePreview, onReload, onExport, onExportHtml, onExportVideo, onExportFrame, aiPromptPath, onOpenSettings }: EditorHeaderProps) {
+  // 瞬时提示文案(导出帧落盘路径 / 复制结果),几秒后自动消失
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+  const showFlash = (message: string) => {
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 4000);
+    setFlash(message);
+  };
+  const handleExportFrame = () => {
+    onExportFrame()
+      .then((path) => showFlash(`帧已导出:${path}`))
+      .catch((e: unknown) => showFlash(`导出失败:${e instanceof Error ? e.message : String(e)}`));
+  };
+  const handleCopyAiPrompt = () => {
+    void copyText(buildAiPrompt(aiPromptPath)).then((ok) =>
+      showFlash(ok ? "AI 提示词已复制,粘贴给任意 coding agent 即可" : "复制失败,请手动复制"),
+    );
+  };
   return (
     <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-2.5">
-      <button
-        className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100"
-        onClick={onExit}
-        title="返回项目主页(已自动保存)"
-      >
+      <button className="btn btn-ghost" onClick={onExit} title="返回项目主页(已自动保存)">
         ← 主页
       </button>
       <input
@@ -34,32 +56,50 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
         onChange={(e) => onRename(e.target.value)}
         title="项目名"
       />
-      <span className={`text-[11px] ${saveState === "saved" ? "text-emerald-600" : "text-neutral-400"}`}>
+      <span
+        className={`flex items-center gap-1 text-[11px] ${saveState === "saved" ? "text-emerald-600" : "text-neutral-400"}`}
+        title={saveState === "saved" ? "所有修改已写入存储" : "正在写入存储…"}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${saveState === "saved" ? "bg-emerald-500" : "animate-pulse bg-amber-400"}`} />
         {saveState === "saved" ? "已保存" : "保存中…"}
       </span>
       <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-400" title={backend === "tauri" ? "项目文件落盘 ~/.tmd-anim/projects/,agent 可直接读写" : "浏览器 localStorage"}>
         {backend === "tauri" ? "文件存储 ~/.tmd-anim/projects/" : "浏览器存储"}
       </span>
       <div className="ml-auto flex items-center gap-2">
+        {flash && (
+          <span className="max-w-96 truncate text-[11px] text-neutral-500" title={flash}>
+            {flash}
+          </span>
+        )}
         {backend === "tauri" && (
-          <button className={`${btn} text-neutral-600 hover:bg-neutral-100`} onClick={onReload} title="磁盘文件可能被 agent 改过,点此重新载入">
+          <button className="btn btn-secondary" onClick={onReload} title="磁盘文件可能被 agent 改过,点此重新载入">
             重新载入
           </button>
         )}
-        {backend === "local" && (
-          <button className={`${btn} text-neutral-600 hover:bg-neutral-100`} onClick={onExport} title="下载项目 JSON">
-            导出 JSON
+        <button className="btn btn-secondary" onClick={handleExportFrame} title="把当前播放头这一帧渲染为 PNG,落盘 ~/.tmd-anim/frames/ 并下载">
+          导出帧
+        </button>
+        <div className="flex overflow-hidden rounded-lg border border-neutral-200 bg-white">
+          {backend === "local" && (
+            <button className={segBtn} onClick={onExport} title="下载项目 JSON">
+              JSON
+            </button>
+          )}
+          <button className={`${segBtn} border-l border-neutral-200 first:border-l-0`} onClick={onExportHtml} title="下载单文件 HTML,双击即可在浏览器播放动画">
+            网页
           </button>
-        )}
-        <button className={`${btn} text-neutral-600 hover:bg-neutral-100`} onClick={onExportHtml} title="下载单文件 HTML,双击即可在浏览器播放动画">
-          导出网页
+          <button className={`${segBtn} border-l border-neutral-200`} onClick={onExportVideo} title="逐帧渲染并编码为 mp4(WebCodecs)">
+            视频
+          </button>
+        </div>
+        <button className="btn btn-secondary" onClick={handleCopyAiPrompt} title="复制一段提示词到剪贴板:粘贴给 coding agent,让它按协议直接改项目 JSON">
+          AI 调整
         </button>
-        <button className={`${btn} text-neutral-600 hover:bg-neutral-100`} onClick={onExportVideo} title="逐帧渲染并编码为 mp4(WebCodecs)">
-          导出视频
-        </button>
-        <button className={`${btn} ${previewing ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-900 text-white hover:bg-slate-700"}`} onClick={onTogglePreview}>
+        <button className="btn btn-primary" onClick={onTogglePreview}>
           {previewing ? "退出预览" : "预览"}
         </button>
+        <GearButton onClick={onOpenSettings} />
       </div>
     </header>
   );

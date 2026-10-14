@@ -52,5 +52,8 @@ export function createLocalRepo(storage: KvStorage = window.localStorage): Proje
       storage.removeItem(PROJECT_PREFIX + id);
       storage.removeItem(META_PREFIX + id);
     },
+    async pathOf(_id: string): Promise<string | null> {
+      return null; // 浏览器无项目文件,watch 等文件面功能关闭
+    },
   };
 }

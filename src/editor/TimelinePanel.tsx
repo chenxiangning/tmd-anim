@@ -252,7 +252,7 @@ export function TimelinePanel({
             {scene.elements.map((el, i) => (
               <div
                 key={el.id}
-                className={`absolute cursor-grab rounded ${selIds.includes(el.id) ? "ring-2 ring-amber-400" : ""}`}
+                className={`absolute cursor-grab rounded-[5px] shadow-sm transition-[filter] hover:brightness-110 ${selIds.includes(el.id) ? "ring-2 ring-amber-400" : ""}`}
                 style={{
                   left: el.anim.start * pps,
                   width: Math.max(el.anim.duration * pps, 8),

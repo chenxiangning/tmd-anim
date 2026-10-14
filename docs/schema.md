@@ -80,9 +80,9 @@
 
 ## agent 工作流建议
 
-1. 复制 `src/samples/bpe.json` 为模板,改内容。
-2. 自查:`version===1`、每个元素有 `kind`、坐标在画布内、动画时间递增不重叠同元素。
-3. 交付:Tauri 桌面版把项目文件直接落在 `~/.tmd-anim/projects/<id>.json`,agent 改完后在编辑器顶栏点「重新载入」即可看到;浏览器版通过「导入 JSON」或拖拽载入。
+1. 复制 `src/samples/bpe.json` 为模板改内容;桌面版协议副本在 `~/.tmd-anim/protocol/`(schema.md 与 bpe-example.json,应用启动时自动投递)。
+2. 自查:运行 `pnpm anim validate <文件>` —— 退出码 2 = 结构错误必须修;警告(未知 kind、悬空绑定、坐标越界、负 start、空 text)建议顺手修。`--json` 输出结构化结果。
+3. 交付:Tauri 桌面版项目文件在 `~/.tmd-anim/projects/<id>.json`,应用 watch 该文件自动热重载,改完保存即生效(顶栏「重新载入」可手动兜底);浏览器版通过「导入 JSON」或拖拽载入。
 
 ## 导出
 

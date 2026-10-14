@@ -218,7 +218,7 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
       <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
         {GROUPS.map((group) => (
           <div key={group.label} className="mb-3">
-            <div className="mb-1.5 px-0.5 text-[10px] text-neutral-400">{group.label}</div>
+            <div className="mb-1.5 px-0.5 text-[10px] font-medium tracking-wide text-neutral-400">{group.label}</div>
             <div className="grid grid-cols-2 gap-2">
               {group.items.map((item) => (
                 <button
@@ -229,7 +229,7 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   onClick={() => onAdd(item.kind, item.variant)}
-                  className="flex cursor-grab flex-col items-start gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-left transition-colors hover:border-slate-300 hover:bg-neutral-50 active:cursor-grabbing"
+                  className="flex cursor-grab flex-col items-start gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-left transition-all hover:border-slate-300 hover:bg-neutral-50 hover:shadow-sm active:cursor-grabbing"
                   title={`${item.label ?? KIND_LABELS[item.kind]}:点击添加到画布中央,或直接拖到画布`}
                 >
                   <span style={{ color: kindColor(item.kind) }}>{ICONS[itemIconKey(item)]}</span>

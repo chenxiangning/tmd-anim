@@ -50,6 +50,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            # 同 tag 重跑会复用旧 release。tauri-action 对 latest.json 有
+            # "don't overwrite native builds" 守卫,残留的旧 latest.json 会让
+            # 新签名条目写不进去 → 应用内更新验签失败(tmd-cli v0.2.3 实证)。
+            # 先删 latest.json,本轮全平台条目重新生成。
+            if gh release delete-asset "$GITHUB_REF_NAME" latest.json \
+              --repo "$GITHUB_REPOSITORY" -y > /dev/null 2>&1; then
+              echo "已删除陈旧 latest.json"
+            else
+              echo "无 latest.json 或已删,继续"
+            fi
             # 同 tag 重跑会复用旧 release,正文刷成 CHANGELOG 小节(以 CHANGELOG 为唯一事实源)
             gh release edit "$GITHUB_REF_NAME" --notes-file release-notes.md \
               --repo "$GITHUB_REPOSITORY" > /dev/null
@@ -151,6 +161,10 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # updater 通道 minisign 私钥(与 tmd-cli 共用密钥对,空密码)。
+          # 注入后 tauri-action 自动产出 .sig 签名产物与 latest.json;
+          # secret 未配置时构建仍成功,仅更新通道无产物。
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('tmd-anim {0}', github.ref_name) || '' }}

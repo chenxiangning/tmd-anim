@@ -85,6 +85,13 @@ xattr -dr com.apple.quarantine /Applications/tmd-anim.app    # 清隔离标记
 也可走「系统设置 -> 隐私与安全性 -> 仍要打开」。彻底解除需配置 Apple Developer 签名与
 公证:`release.yml` 已预留 `APPLE_*` secrets 注入位,配置后 CI 产物自动签名公证。
 
+### 应用内自动更新
+
+桌面版「设置 -> 更新」一键 检查 -> 下载 -> 安装 -> 重启(tauri-plugin-updater,
+GitHub Releases `latest.json` 通道,minisign 验签,密钥对与 tmd-cli 共用)。
+CI 依赖 repo secret `TAURI_SIGNING_PRIVATE_KEY`(已配置);未注入时构建仍成功,
+仅更新通道无产物。浏览器版无应用内更新,设置页回落为 Releases 跳转。
+
 ## 路线图
 
 - **M0(已落地)**:场景 JSON v1 契约 + Canvas 2D 纯函数渲染器 + 播放器(浏览器 / 桌面壳)+ BPE 示例项目。验收:agent 写 JSON -> 播放器看得见。
@@ -112,6 +119,7 @@ src/store/       项目仓库双后端(localStorage / Tauri plugin-fs)
 src/samples/     示例项目(bpe.json 同时是 schema 活例)
 src-tauri/       Tauri 2 桌面壳(fs 能力仅限 ~/.tmd-anim/)
 docs/schema.md   场景 JSON 契约(agent 协议权威文档)
+docs/ai-workflow.md  AI 工作流(agent 制作/调整动画的闭环与 tmd-cli 联动)
 ```
 
 ## License

@@ -4,14 +4,14 @@ import { describeError, parseProjectText } from "../openProject";
 import sampleJson from "../../samples/bpe.json";
 import { newProjectId, type ProjectRepo } from "../../store/projects";
 import { ProjectCard, type Entry } from "./ProjectCard";
+import { GearButton } from "../GearButton";
 import { TIME_GROUPS, timeGroupOf, type TimeGroup } from "./timeGroups";
 
 interface HomeViewProps {
   repo: ProjectRepo;
   onOpen(id: string): void;
+  onOpenSettings(): void;
 }
-
-const btn = "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors";
 
 /** 按更新时间倒序 + 名称过滤,再折叠成时间线分组(组内保持倒序)。 */
 function useTimeline(entries: Entry[] | null, query: string) {
@@ -69,7 +69,7 @@ function SearchBox({ query, onChange }: { query: string; onChange(q: string): vo
 }
 
 /** 项目主页:新建(空白/示例)/导入 JSON/名称搜索 + 时间线分组的项目卡片列表。 */
-export function HomeView({ repo, onOpen }: HomeViewProps) {
+export function HomeView({ repo, onOpen, onOpenSettings }: HomeViewProps) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -149,18 +149,18 @@ export function HomeView({ repo, onOpen }: HomeViewProps) {
             </span>
           )}
           <SearchBox query={query} onChange={setQuery} />
-          <button className={`${btn} text-neutral-600 hover:bg-neutral-100`} onClick={() => fileRef.current?.click()}>
+          <button className={"btn btn-secondary"} onClick={() => fileRef.current?.click()}>
             导入 JSON
           </button>
           <button
-            className={`${btn} bg-neutral-100 text-neutral-700 hover:bg-neutral-200`}
+            className={"btn btn-secondary"}
             onClick={() => void createAndOpen(parseProjectText(JSON.stringify(sampleJson)))}
             title="用 BPE 分词示例建一份可编辑副本"
           >
             从示例新建
           </button>
           <button
-            className={`${btn} bg-slate-900 text-white hover:bg-slate-700`}
+            className={"btn btn-primary"}
             onClick={() =>
               void createAndOpen({
                 version: 1,
@@ -185,28 +185,57 @@ export function HomeView({ repo, onOpen }: HomeViewProps) {
               e.target.value = "";
             }}
           />
+          <GearButton onClick={onOpenSettings} />
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 p-6">
-        {entries === null && <div className="mt-24 text-center text-sm text-neutral-400">载入中…</div>}
+      <main className="min-h-0 flex-1 overflow-y-auto bg-neutral-50">
+        <div className="mx-auto w-full max-w-6xl p-6">
+        {entries === null && <div className="mt-32 text-center text-sm text-neutral-400">载入中…</div>}
         {entries !== null && entries.length === 0 && (
-          <div className="mt-24 text-center text-sm text-neutral-400">
-            还没有项目,点右上「新建项目」或「从示例新建」开始
+          <div className="mt-28 flex flex-col items-center text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-200 bg-white shadow-sm">
+              <svg viewBox="0 0 24 24" className="h-7 w-7 text-slate-900" fill="currentColor">
+                <path d="M8 5.5v13l11-6.5z" />
+              </svg>
+            </div>
+            <div className="mt-4 text-sm font-medium text-neutral-700">还没有项目</div>
+            <div className="mt-1 text-xs text-neutral-400">从一份可编辑的 BPE 分词示例开始,或新建空白动画</div>
+            <div className="mt-5 flex items-center gap-2">
+              <button
+                className={"btn btn-secondary"}
+                onClick={() => void createAndOpen(parseProjectText(JSON.stringify(sampleJson)))}
+              >
+                从示例新建
+              </button>
+              <button
+                className={"btn btn-primary"}
+                onClick={() =>
+                  void createAndOpen({
+                    version: 1,
+                    name: `未命名动画 ${Date.now() % 1000}`,
+                    canvas: { width: 1920, height: 1080, bg: "#F4F4F1" },
+                    scenes: [{ id: "sc_1", name: "场景 1", dwell: 1.5, elements: [] }],
+                  })
+                }
+              >
+                新建项目
+              </button>
+            </div>
           </div>
         )}
         {entries !== null && entries.length > 0 && total === 0 && (
-          <div className="mt-24 text-center text-sm text-neutral-400">没有匹配「{query.trim()}」的项目</div>
+          <div className="mt-32 text-center text-sm text-neutral-400">没有匹配「{query.trim()}」的项目</div>
         )}
         {groups.map(({ label, items }) => (
-          <section key={label} className="mt-5 first:mt-0">
-            <div className="mb-2.5 flex items-center gap-2">
+          <section key={label} className="mt-6 first:mt-0">
+            <div className="mb-3 flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-900" />
-              <span className="text-xs font-medium text-neutral-600">{label}</span>
+              <span className="text-xs font-semibold text-neutral-700">{label}</span>
               <span className="text-[11px] text-neutral-400">{items.length}</span>
               <span className="h-px flex-1 bg-neutral-200" />
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-4">
               {items.map((entry) => (
                 <ProjectCard
                   key={entry.meta.id}
@@ -223,6 +252,7 @@ export function HomeView({ repo, onOpen }: HomeViewProps) {
             </div>
           </section>
         ))}
+        </div>
       </main>
     </div>
   );

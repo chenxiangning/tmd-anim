@@ -19,26 +19,27 @@ const ANIM_TYPES = new Set<string>([
   "spinIn",
 ]);
 const EASINGS = new Set<string>(["linear", "easeOut", "easeInOut", "back"]);
-const ELEMENT_KINDS = new Set<string>([
-  "title",
-  "artText",
-  "text",
-  "shape",
-  "input",
-  "code",
-  "table",
-  "note",
-  "badge",
-  "arrayCells",
-  "connector",
-  "image",
-  "list",
-  "stepCard",
-  "terminal",
-  "progress",
-  "kbd",
-  "browser",
-]);
+/** 全部合法元素 kind 表:归一化据此跳过未知类型;CLI lint 也用它报「会被静默吞掉」的 kind */
+export const ELEMENT_KINDS: Record<string, true> = {
+  title: true,
+  artText: true,
+  text: true,
+  shape: true,
+  input: true,
+  code: true,
+  table: true,
+  note: true,
+  badge: true,
+  arrayCells: true,
+  connector: true,
+  image: true,
+  list: true,
+  stepCard: true,
+  terminal: true,
+  progress: true,
+  kbd: true,
+  browser: true,
+};
 
 export class ProjectParseError extends Error {
   constructor(message: string) {
@@ -96,7 +97,7 @@ function normalizeScene(raw: Record<string, unknown>, index: number): Scene {
       if (typeof e !== "object" || e === null) return [];
       const record = e as Record<string, unknown>;
       // 未知元素类型跳过不崩,watch 模式下文件可能正处于半成品状态
-      if (typeof record.kind !== "string" || !ELEMENT_KINDS.has(record.kind)) return [];
+      if (typeof record.kind !== "string" || ELEMENT_KINDS[record.kind] !== true) return [];
       return [normalizeElement(record, j)];
     }),
     audio: normalizeSceneAudio(raw.audio),

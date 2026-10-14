@@ -12,4 +12,56 @@ body {
   background: #f5f5f4;
   color-scheme: light;
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 选区与主题色(slate-900)呼应 */
+::selection {
+  background: rgb(15 23 42 / 0.14);
+}
+
+/* 键盘焦点环:鼠标点击不出现,Tab 导航可见 */
+:focus-visible {
+  outline: 2px solid rgb(15 23 42 / 0.55);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* 细滚动条:编辑器面板密集,默认滚动条太抢视线 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(212 212 216) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(212 212 216);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(163 163 163);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 按钮体系:primary 主操作 / secondary 描边次级 / ghost 工具栏 / danger 危险操作 */
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+}
+@utility btn-primary {
+  @apply btn bg-slate-900 text-white hover:bg-slate-700;
+}
+@utility btn-secondary {
+  @apply btn border border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50;
+}
+@utility btn-ghost {
+  @apply btn text-neutral-600 hover:bg-neutral-100;
+}
+@utility btn-danger {
+  @apply btn text-red-500 hover:bg-red-50;
 }

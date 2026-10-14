@@ -42,5 +42,8 @@ export async function createTauriRepo(): Promise<ProjectRepo> {
     async remove(id: string): Promise<void> {
       await fs.remove(await join(dir, fileOf(id)));
     },
+    async pathOf(id: string): Promise<string | null> {
+      return join(dir, fileOf(id));
+    },
   };
 }

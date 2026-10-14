@@ -158,7 +158,7 @@ export function ExportOverlay({ state }: { state: ExportState }) {
         <div className="max-w-md rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
           <div className="mb-2 text-sm font-semibold text-red-600">导出失败</div>
           <div className="mb-4 break-all text-xs text-neutral-600">{state.error}</div>
-          <button className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs text-white" onClick={state.dismiss}>
+          <button className="btn btn-primary" onClick={state.dismiss}>
             知道了
           </button>
         </div>
@@ -176,7 +176,7 @@ export function ExportOverlay({ state }: { state: ExportState }) {
           {state.busy.kind === "html" ? "正在生成 HTML 动画…" : "正在导出 JSON…"}
         </div>
         {state.busy.kind === "html" && (
-          <button className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-400" disabled>
+          <button className="btn btn-secondary w-full" disabled>
             生成中,稍候…
           </button>
         )}
@@ -205,13 +205,13 @@ function VideoConfirmDialog({ info, state }: { info: VideoExportConfirm; state: 
         </div>
         <div className="flex gap-2">
           <button
-            className="flex-1 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50"
+            className="btn btn-secondary flex-1"
             onClick={state.dismissConfirm}
           >
             暂不导出
           </button>
           <button
-            className="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs text-white hover:bg-slate-700"
+            className="btn btn-primary flex-1"
             onClick={state.startVideo}
           >
             开始导出
@@ -249,7 +249,7 @@ function VideoProgressOverlay({ state }: { state: ExportState }) {
         </div>
         <div className="mb-3 h-4 text-xs text-neutral-500">{eta ?? (stage === "encode" ? `${pct}%` : "")}</div>
         <button
-          className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+          className="btn btn-secondary w-full"
           disabled={state.cancelling}
           onClick={state.cancel}
         >

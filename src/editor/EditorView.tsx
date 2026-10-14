@@ -2,17 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Project, SceneElement } from "../core/types";
 import { locate, projectDuration, sceneStartTime } from "../core/timeline";
 import type { ProjectRepo } from "../store/projects";
-import {
-  addElement,
-  findElement,
-  removeElements,
-  updateScene,
-} from "./editOps";
+import { addElement, findElement, removeElements, updateScene } from "./editOps";
 import { createElement } from "./defaults";
 import { useSceneAudio } from "./sceneAudio";
 import { ExportOverlay, useExport } from "./useExport";
 import { useEditorKeyboard } from "./useEditorKeyboard";
 import { useEditorSave } from "./useEditorSave";
+import { useFileWatch } from "./useFileWatch";
+import { exportFrame } from "./exportFrame";
 import { useProjectHistory } from "./useProjectHistory";
 import { useSceneOps } from "./useSceneOps";
 import { PanelRail } from "./PanelRail";
@@ -26,6 +23,7 @@ interface EditorViewProps {
   repo: ProjectRepo;
   projectId: string;
   initialProject: Project;
+  onOpenSettings(): void;
   onExit(): void;
 }
 
@@ -36,14 +34,12 @@ function loadPanels(): PanelsState {
   try {
     const raw = localStorage.getItem(PANELS_KEY);
     if (raw) return { left: true, right: true, bottom: true, ...(JSON.parse(raw) as Partial<PanelsState>) };
-  } catch {
-    // 忽略坏数据,回落全开
-  }
+  } catch { /* 忽略坏数据,回落全开 */ }
   return { left: true, right: true, bottom: true };
 }
 
 /** 编辑器组装:状态中枢(撤销/自动保存/键盘/预览) + 四区布局(元素库/画布/属性/时间轴)。 */
-export function EditorView({ repo, projectId, initialProject, onExit }: EditorViewProps) {
+export function EditorView({ repo, projectId, initialProject, onOpenSettings, onExit }: EditorViewProps) {
   const { project, projectRef, setProject, commit, liveUpdate, beginGesture: beginHistory, endGesture, undo } =
     useProjectHistory(initialProject);
   const [t, setT] = useState(0);
@@ -52,15 +48,15 @@ export function EditorView({ repo, projectId, initialProject, onExit }: EditorVi
   const [previewing, setPreviewing] = useState(false);
   const [panels, setPanels] = useState<PanelsState>(loadPanels);
   const saveState = useEditorSave(repo, projectId, project, projectRef);
+  // agent 改盘上项目文件后自动热重载(reloadOp 同款替换语义,不进撤销栈);返回项目文件绝对路径
+  const projectPath = useFileWatch(repo, projectId, projectRef, setProject);
 
   const togglePanel = useCallback((key: keyof PanelsState) => {
     setPanels((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       try {
         localStorage.setItem(PANELS_KEY, JSON.stringify(next));
-      } catch {
-        // 忽略存储失败
-      }
+      } catch { /* 忽略存储失败 */ }
       return next;
     });
   }, []);
@@ -231,6 +227,9 @@ export function EditorView({ repo, projectId, initialProject, onExit }: EditorVi
         onExport={exportState.runJson}
         onExportHtml={exportState.runHtml}
         onExportVideo={exportState.beginVideo}
+        onExportFrame={() => exportFrame(project, t, scene?.name ?? `场景${sceneIdx + 1}`, projectId)}
+        aiPromptPath={projectPath}
+        onOpenSettings={onOpenSettings}
       />
       <div className="flex min-h-0 flex-1">
         {panels.left ? (

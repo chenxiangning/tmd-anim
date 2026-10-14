@@ -9,8 +9,6 @@ export interface Entry {
   project: Project;
 }
 
-const btn = "rounded-lg px-3 py-1 text-xs font-medium transition-colors";
-
 /** 项目卡片:封面 + 名称/元信息 + 编辑/导出/复制/删除,紧凑尺寸。 */
 export function ProjectCard({
   repo,
@@ -33,12 +31,16 @@ export function ProjectCard({
 }) {
   const cover = useMemo(() => renderCover(entry.project), [entry.project]);
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all hover:border-neutral-300 hover:shadow-md">
-      <button className="block w-full text-left" onClick={() => onOpen(entry.meta.id)} title="打开编辑">
+    <div className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all hover:border-neutral-300 hover:shadow-md">
+      <button className="block w-full cursor-pointer border-b border-neutral-100 text-left" onClick={() => onOpen(entry.meta.id)} title="打开编辑">
         {cover ? (
           <img src={cover} alt="" className="aspect-[2/1] w-full bg-neutral-100 object-cover" />
         ) : (
-          <div className="aspect-[2/1] w-full bg-neutral-100" />
+          <div className="flex aspect-[2/1] w-full items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100">
+            <svg viewBox="0 0 24 24" className="h-8 w-8 text-neutral-300" fill="currentColor">
+              <path d="M8 5.5v13l11-6.5z" />
+            </svg>
+          </div>
         )}
       </button>
       <div className="px-2.5 py-2">
@@ -47,19 +49,19 @@ export function ProjectCard({
           {entry.meta.sceneCount} 个场景 · {entry.meta.duration.toFixed(1)}s · {fmtTime(entry.meta.updatedAt)}
         </div>
         <div className="mt-2 flex items-center gap-1">
-          <button className={`${btn} flex-1 bg-slate-900 text-white hover:bg-slate-700`} onClick={() => onOpen(entry.meta.id)}>
+          <button className="btn btn-primary flex-1" onClick={() => onOpen(entry.meta.id)}>
             编辑
           </button>
           {repo.backend === "local" && (
-            <button className={`${btn} border border-neutral-200 text-neutral-600 hover:bg-neutral-100`} onClick={() => onExport(entry)}>
+            <button className="btn btn-secondary" onClick={() => onExport(entry)}>
               导出
             </button>
           )}
-          <button className={`${btn} border border-neutral-200 text-neutral-600 hover:bg-neutral-100`} onClick={() => onDuplicate(entry)}>
+          <button className="btn btn-secondary" onClick={() => onDuplicate(entry)}>
             复制
           </button>
           <button
-            className={`${btn} ${confirm ? "bg-red-500 text-white hover:bg-red-600" : "border border-neutral-200 text-neutral-500 hover:bg-red-50 hover:text-red-500"}`}
+            className={confirm ? "btn bg-red-500 text-white hover:bg-red-600" : "btn btn-danger"}
             onClick={() => (confirm ? onRemove(entry.meta.id) : onConfirmChange(entry.meta.id))}
             onBlur={() => onConfirmChange(null)}
           >

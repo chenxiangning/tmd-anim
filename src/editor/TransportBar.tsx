@@ -16,7 +16,7 @@ function fmt(sec: number): string {
 }
 
 const btn =
-  "flex h-6 items-center justify-center rounded-sm border border-neutral-200 text-neutral-600 transition-colors hover:bg-neutral-100";
+  "flex h-6 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 transition-colors hover:bg-neutral-100";
 
 /** 操作台工具组:折叠 / 场景跳转 / 播放暂停 / 全局时间 / 时间轴缩放;外框由 TimelinePanel 统一提供。 */
 export function TransportBar({ playing, t, total, pps, onZoom, onFit, onTogglePlay, onPrevScene, onNextScene, onToggleCollapse }: TransportBarProps) {
@@ -35,7 +35,7 @@ export function TransportBar({ playing, t, total, pps, onZoom, onFit, onTogglePl
         </svg>
       </button>
       <button
-        className="flex h-6 w-6 items-center justify-center rounded-sm bg-slate-900 text-white transition-colors hover:bg-slate-700"
+        className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white transition-colors hover:bg-slate-700"
         onClick={onTogglePlay}
         title={playing ? "暂停(空格)" : "播放(空格)"}
       >

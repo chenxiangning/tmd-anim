@@ -20,7 +20,7 @@ interface PropertyPanelProps {
 
 const labelCls = "mb-1 block text-[11px] font-medium text-neutral-500";
 const inputCls =
-  "w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-800 outline-none focus:border-slate-400";
+  "w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-800 outline-none transition-colors hover:border-neutral-300 focus:border-slate-500";
 
 /** 右栏属性面板:几何/层级 + schema 内容字段 + 入场动画区(与时间轴一一对应);多选时只提示数量;左缘可拖拽调宽。 */
 export function PropertyPanel({ project, sceneIdx, selected, selCount, onPatch, onDelete, onReplay, onCollapse }: PropertyPanelProps) {
@@ -42,7 +42,12 @@ export function PropertyPanel({ project, sceneIdx, selected, selCount, onPatch, 
           <span className="text-[11px] font-medium text-neutral-400">属性</span>
           <CollapseButton onClick={onCollapse} />
         </div>
-        <div className="mt-24 text-center text-xs text-neutral-400">
+        <div className="mt-24 flex flex-col items-center px-6 text-center">
+          <svg viewBox="0 0 24 24" className="mb-3 h-8 w-8 text-neutral-200" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span className="text-xs leading-relaxed text-neutral-400">
           {selCount > 1 ? (
             <>
               已选 {selCount} 个元素
@@ -56,6 +61,7 @@ export function PropertyPanel({ project, sceneIdx, selected, selCount, onPatch, 
               在画布中点击元素后可编辑属性
             </>
           )}
+          </span>
         </div>
       </aside>
     );

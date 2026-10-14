@@ -22,6 +22,8 @@ export interface ProjectRepo {
   load(id: string): Promise<Project>;
   save(id: string, project: Project): Promise<void>;
   remove(id: string): Promise<void>;
+  /** 项目文件绝对路径;local 后端无文件系统,返回 null(watch 等文件面功能据此关闭) */
+  pathOf(id: string): Promise<string | null>;
 }
 
 export function newProjectId(): string {

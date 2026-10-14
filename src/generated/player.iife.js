@@ -23,26 +23,27 @@
 		"easeInOut",
 		"back"
 	]);
-	var ELEMENT_KINDS = /* @__PURE__ */ new Set([
-		"title",
-		"artText",
-		"text",
-		"shape",
-		"input",
-		"code",
-		"table",
-		"note",
-		"badge",
-		"arrayCells",
-		"connector",
-		"image",
-		"list",
-		"stepCard",
-		"terminal",
-		"progress",
-		"kbd",
-		"browser"
-	]);
+	/** 全部合法元素 kind 表:归一化据此跳过未知类型;CLI lint 也用它报「会被静默吞掉」的 kind */
+	var ELEMENT_KINDS = {
+		title: true,
+		artText: true,
+		text: true,
+		shape: true,
+		input: true,
+		code: true,
+		table: true,
+		note: true,
+		badge: true,
+		arrayCells: true,
+		connector: true,
+		image: true,
+		list: true,
+		stepCard: true,
+		terminal: true,
+		progress: true,
+		kbd: true,
+		browser: true
+	};
 	var ProjectParseError = class extends Error {
 		constructor(message) {
 			super(message);
@@ -85,7 +86,7 @@
 			elements: raw.elements.flatMap((e, j) => {
 				if (typeof e !== "object" || e === null) return [];
 				const record = e;
-				if (typeof record.kind !== "string" || !ELEMENT_KINDS.has(record.kind)) return [];
+				if (typeof record.kind !== "string" || ELEMENT_KINDS[record.kind] !== true) return [];
 				return [normalizeElement(record, j)];
 			}),
 			audio: normalizeSceneAudio(raw.audio)

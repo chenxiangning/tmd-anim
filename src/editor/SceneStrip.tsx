@@ -31,7 +31,7 @@ export function SceneStrip({
   const scene = project.scenes[sceneIdx];
   const fileRef = useRef<HTMLInputElement>(null);
   const btn =
-    "shrink-0 whitespace-nowrap rounded-sm border border-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40";
+    "shrink-0 whitespace-nowrap rounded-md border border-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40";
 
   const pickAudio = (): void => {
     const input = fileRef.current;
@@ -54,7 +54,7 @@ export function SceneStrip({
         return active ? (
           <input
             key={s.id}
-            className="w-20 shrink-0 whitespace-nowrap rounded-sm bg-slate-900 px-2 py-0.5 text-[10px] text-white outline-none"
+            className="w-20 shrink-0 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] text-white outline-none"
             value={s.name}
             title="场景名,直接编辑"
             onChange={(e) => onRenameScene(e.target.value)}
@@ -63,7 +63,7 @@ export function SceneStrip({
           <button
             key={s.id}
             onClick={() => onSelectScene(i)}
-            className="shrink-0 whitespace-nowrap rounded-sm bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-200"
+            className="shrink-0 whitespace-nowrap rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-200"
           >
             {i + 1}. {s.name}
           </button>
@@ -102,7 +102,7 @@ export function SceneStrip({
             type="number"
             min={0}
             step={0.5}
-            className="w-12 rounded-sm border border-neutral-200 px-1.5 py-0.5 text-[10px] outline-none focus:border-slate-400"
+            className="w-12 rounded-md border border-neutral-200 px-1.5 py-0.5 text-[10px] outline-none focus:border-slate-400"
             value={scene.dwell ?? 1.5}
             onChange={(e) => onDwell(Number(e.target.value) || 0)}
           />

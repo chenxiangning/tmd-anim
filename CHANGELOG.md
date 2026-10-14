@@ -6,6 +6,23 @@
 
 ## [未发布]
 
+### 新增
+
+- 设置页(主页/编辑器顶栏齿轮进入):关于(版本/GitHub 仓库/问题反馈/文档链接)、应用内更新、界面(面板布局一键复位)、存储说明
+- 应用内自动更新(tauri-plugin-updater):GitHub Releases latest.json 通道,minisign 验签(与 tmd-cli 共用密钥对),设置页一键 检查→下载→安装→重启;浏览器版回落为 Releases 跳转
+
+### 优化
+
+- UI/UX 二轮:共享按钮体系(btn-primary/secondary/ghost/danger)全站落地;编辑器顶栏导出三连收拢为分段控件;主页/卡片/弹窗按钮统一换用共享类
+
+### CI
+
+- release.yml:tauri-action 注入 TAURI_SIGNING_PRIVATE_KEY 产出 .sig 与 latest.json;prep-release 复用旧 release 时先清陈旧 latest.json(tmd-cli v0.2.3 验签失败教训)
+
+### 优化
+
+- UI/UX 打磨:全局字体平滑/选区色/细滚动条/键盘焦点环;主页内容限宽居中、空状态带引导操作、卡片封面占位图与分隔线;编辑器顶栏保存态指示灯、次级按钮统一描边样式;操作台控件圆角统一、时间条投影与悬停提亮;属性面板空态图标与输入框悬停/焦点反馈
+
 ## [0.1.1] - 2026-10-14
 
 ### 修复

@@ -5,7 +5,12 @@
   "permissions": [
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$HOME/.tmd-anim" }, { "path": "$HOME/.tmd-anim/projects" }]
+      "allow": [
+        { "path": "$HOME/.tmd-anim" },
+        { "path": "$HOME/.tmd-anim/projects" },
+        { "path": "$HOME/.tmd-anim/frames" },
+        { "path": "$HOME/.tmd-anim/protocol" }
+      ]
     },
     {
       "identifier": "fs:allow-read-text-file",
@@ -13,6 +18,14 @@
     },
     {
       "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/.tmd-anim/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/.tmd-anim/**" }]
+    },
+    {
+      "identifier": "fs:allow-watch",
       "allow": [{ "path": "$HOME/.tmd-anim/**" }]
     },
     {
