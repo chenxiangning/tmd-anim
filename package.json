@@ -3,11 +3,20 @@
   "version": "0.1.0",
   "description": "Technical animation video studio. Scene JSON in, deterministic video out.",
   "author": "Chen Xiangning",
-  "private": true,
-  "type": "module",
+  "homepage": "https://github.com/chenxiangning/tmd-anim#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chenxiangning/tmd-anim.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chenxiangning/tmd-anim/issues"
+  },
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "pnpm@10.15.1",
+  "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build:player": "node scripts/build-player.mjs",

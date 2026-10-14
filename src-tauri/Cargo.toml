@@ -3,6 +3,10 @@ name = "tmd-anim"
 version = "0.1.0"
 description = "Technical animation video studio"
 authors = ["Chen Xiangning"]
+license = "MIT"
+repository = "https://github.com/chenxiangning/tmd-anim"
+homepage = "https://github.com/chenxiangning/tmd-anim"
+publish = false
 edition = "2021"
 
 [lib]
