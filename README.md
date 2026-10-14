@@ -68,8 +68,22 @@ pnpm tauri:dev  # 桌面壳(项目落盘 ~/.tmd-anim/projects/)
 
 版本号三处同步:`package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`。
 发版流程:在 [`CHANGELOG.md`](CHANGELOG.md) 追加 `## [x.y.z] - 日期` 小节 → 三处改版本号 →
-提交后推 tag(`git tag vX.Y.Z && git push --tags`)→ CI 自动构建四平台产物并建 Draft Release,
+提交后推 tag(`git tag vX.Y.Z && git push --tags`)→ CI 自动构建产物并建 Draft Release,
 正文自动抠取 CHANGELOG 对应小节。
+
+### macOS 首次打开提示「已损坏」
+
+文件没有损坏,是 Gatekeeper 拦截未签名产物:CI 构建没有 Apple 开发者证书,app 只带
+ad-hoc 封签,对带浏览器隔离标记(`com.apple.quarantine`)的下载包一律报「已损坏」。
+本机终端执行一次即可:
+
+```sh
+codesign --force --deep --sign - /Applications/tmd-anim.app  # 补 ad-hoc 封签
+xattr -dr com.apple.quarantine /Applications/tmd-anim.app    # 清隔离标记
+```
+
+也可走「系统设置 -> 隐私与安全性 -> 仍要打开」。彻底解除需配置 Apple Developer 签名与
+公证:`release.yml` 已预留 `APPLE_*` secrets 注入位,配置后 CI 产物自动签名公证。
 
 ## 路线图
 

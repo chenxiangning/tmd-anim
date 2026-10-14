@@ -4,6 +4,16 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
+## [未发布]
+
+### 修复
+
+- 补回 tauri.conf 的 `bundle.macOS.signingIdentity: "-"`(从 tmd-cli 对齐时遗漏):构建产物恢复 bundle 级 ad-hoc 封签,`codesign --verify` 可过;此前仅可执行文件带 linker 签名,v0.1.0 macOS 安装包已以修复后构建覆盖重发
+
+### 文档
+
+- README 新增「macOS 首次打开提示已损坏」:未签名产物的 Gatekeeper 拦截说明与本机解除步骤
+
 ## [0.1.0] - 2026-10-14
 
 首个公开版本:M0 + M1 + M2 三个里程碑全量落地,场景 JSON 进、确定性视频出的完整链路可用。
