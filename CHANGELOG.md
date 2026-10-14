@@ -6,6 +6,8 @@
 
 ## [未发布]
 
+## [0.1.1] - 2026-10-14
+
 ### 修复
 
 - 补回 tauri.conf 的 `bundle.macOS.signingIdentity: "-"`(从 tmd-cli 对齐时遗漏):构建产物恢复 bundle 级 ad-hoc 封签,`codesign --verify` 可过;此前仅可执行文件带 linker 签名,v0.1.0 macOS 安装包已以修复后构建覆盖重发
