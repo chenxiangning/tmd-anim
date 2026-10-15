@@ -11,7 +11,7 @@ import skillMd from "../../docs/skill.md?raw";
 export interface ProtocolPaths {
   dir: string;
   schemaMd: string;
-  bpeExample: string;
+  httpExample: string;
   xiaoheiStyleMd: string;
   xiaoheiExample: string;
   projectsDir: string;
@@ -21,7 +21,7 @@ export interface ProtocolPaths {
 export const FALLBACK_PROTOCOL_PATHS: ProtocolPaths = {
   dir: "~/.tmd-anim/protocol/",
   schemaMd: "~/.tmd-anim/protocol/schema.md",
-  bpeExample: "~/.tmd-anim/protocol/bpe-example.json",
+  httpExample: "~/.tmd-anim/protocol/http-example.json",
   xiaoheiStyleMd: "~/.tmd-anim/protocol/xiaohei-style.md",
   xiaoheiExample: "~/.tmd-anim/protocol/xiaohei-example.json",
   projectsDir: "~/.tmd-anim/projects/",
@@ -43,7 +43,7 @@ export async function protocolPaths(): Promise<ProtocolPaths> {
     return {
       dir: root + "protocol" + s,
       schemaMd: root + "protocol" + s + "schema.md",
-      bpeExample: root + "protocol" + s + "bpe-example.json",
+      httpExample: root + "protocol" + s + "http-example.json",
       xiaoheiStyleMd: root + "protocol" + s + "xiaohei-style.md",
       xiaoheiExample: root + "protocol" + s + "xiaohei-example.json",
       projectsDir: root + "projects" + s,
@@ -59,7 +59,7 @@ export function renderSkillMd(p: ProtocolPaths): string {
     .replaceAll("{{PROTOCOL_DIR}}", p.dir)
     .replaceAll("{{PROJECTS_DIR}}", p.projectsDir)
     .replaceAll("{{SCHEMA_MD}}", p.schemaMd)
-    .replaceAll("{{BPE_EXAMPLE_JSON}}", p.bpeExample)
+    .replaceAll("{{HTTP_EXAMPLE_JSON}}", p.httpExample)
     .replaceAll("{{XIAOHEI_STYLE_MD}}", p.xiaoheiStyleMd)
     .replaceAll("{{XIAOHEI_EXAMPLE_JSON}}", p.xiaoheiExample);
 }

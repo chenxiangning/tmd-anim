@@ -25,7 +25,7 @@ agent 读协议(~/.tmd-anim/protocol/)
 
 | 机制 | 行为 |
 |---|---|
-| 协议投递 | 桌面版启动时把 `docs/schema.md` 与 `src/samples/bpe.json` 同步到 `~/.tmd-anim/protocol/schema.md`、`bpe-example.json`(内容不同才覆写);agent 在任意目录可读 |
+| 协议投递 | 桌面版启动时把 `docs/schema.md`、`src/samples/http.json`、`docs/xiaohei-style.md`、`src/samples/xiaohei.json` 与 `docs/skill.md` 同步到 `~/.tmd-anim/protocol/` 下对应文件(`http-example.json`、`xiaohei-example.json` 等,内容不同才覆写);agent 在任意目录可读 |
 | watch 热重载 | 编辑器打开期间监听项目**所在目录**按文件名过滤(agent 用「临时文件+改名替换」的原子写,Windows 上单文件监听会静默失效,目录监听两种写法都收得到),外部变更 300ms 防抖后读原文、归一化比对,不同才重载(编辑器自己的保存因内容相同被闸掉);每次读到的原文都登记为保存守卫的观察基线;浏览器版无此机制 |
 | 保存守卫 | 自动保存/手动保存/退出落盘一律「读盘-比对-写」:盘上内容与上次观察(打开、watch 读取、上次写入)不同即判定外部修改,**拒写并保留盘上版本**,顶栏弹冲突横幅由用户二选一(载入盘上版本 / 用编辑器版本覆盖);防止编辑器拿内存旧内容覆盖 agent 的修改,Windows 上 watch 失效时此守卫兜底 |
 | 导出帧 | 编辑器「导出帧」按钮:当前播放头单帧 PNG,落 `~/.tmd-anim/frames/<id>-<秒>s.png` 并同时走浏览器下载 |
@@ -35,7 +35,7 @@ agent 读协议(~/.tmd-anim/protocol/)
 
 ## agent 工作流(推荐)
 
-1. 读 `~/.tmd-anim/protocol/schema.md` 与 `bpe-example.json`。
+1. 读 `~/.tmd-anim/protocol/schema.md` 与 `http-example.json`。
 2. 新建:`~/.tmd-anim/projects/` 下落一个 `<id>.json`(id 只要不重名即可,如
    `p_agent_<时间戳>`);修改:直接改目标项目文件。
 3. 自查:`pnpm anim validate <文件>`(需 tmd-anim 仓;警告逐条看,多为坐标越界)。

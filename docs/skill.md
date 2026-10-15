@@ -11,7 +11,7 @@ description: 制作与修改 tmd-anim 技术动画(场景 JSON 进,确定性视�
 `{{PROTOCOL_DIR}}`,以那里的文件为准,不要凭记忆生成字段。
 
 1. 读 `{{SCHEMA_MD}}`:场景 JSON v1 字段权威定义。
-2. 活例:`{{BPE_EXAMPLE_JSON}}`(协议全家福)、
+2. 活例:`{{HTTP_EXAMPLE_JSON}}`(协议全家福)、
    `{{XIAOHEI_EXAMPLE_JSON}}`(小黑风格)。
 3. 用户要「小黑 / 手绘 / 怪诞 / 正文配图」风格时,必读
    `{{XIAOHEI_STYLE_MD}}`(身体/腿臂坐标配方、部件语法表、

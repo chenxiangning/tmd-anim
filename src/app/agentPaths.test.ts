@@ -34,7 +34,7 @@ describe("renderSkillMd", () => {
     const p = {
       dir: "C:\\Users\\rei\\.tmd-anim\\protocol\\",
       schemaMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\schema.md",
-      bpeExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\bpe-example.json",
+      httpExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\http-example.json",
       xiaoheiStyleMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\xiaohei-style.md",
       xiaoheiExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\xiaohei-example.json",
       projectsDir: "C:\\Users\\rei\\.tmd-anim\\projects\\",
@@ -56,7 +56,7 @@ describe("renderSkillMd", () => {
     const rendered = renderSkillMd({
       dir: "X:\\p\\",
       schemaMd: "X:\\p\\schema.md",
-      bpeExample: "X:\\p\\bpe.json",
+      httpExample: "X:\\p\\http.json",
       xiaoheiStyleMd: "X:\\p\\xs.md",
       xiaoheiExample: "X:\\p\\xe.json",
       projectsDir: "X:\\pr\\",

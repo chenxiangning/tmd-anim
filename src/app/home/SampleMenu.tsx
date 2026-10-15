@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import bpeSample from "../../samples/bpe.json";
+import httpSample from "../../samples/http.json";
 import xiaoheiSample from "../../samples/xiaohei.json";
 
 interface SampleMenuProps {
@@ -22,7 +22,7 @@ export function SampleMenu({ onCreate }: SampleMenuProps) {
   }, [open]);
 
   const samples = [
-    { key: "bpe", label: "BPE 分词示例", hint: "协议元素全家福,改它起步最快", json: bpeSample },
+    { key: "http", label: "HTTP 请求的一生", hint: "协议元素全家福,改它起步最快", json: httpSample },
     { key: "xiaohei", label: "小黑插画示例", hint: "手绘怪诞风,配 docs/xiaohei-style.md", json: xiaoheiSample },
   ];
 

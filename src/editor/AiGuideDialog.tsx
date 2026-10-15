@@ -96,7 +96,7 @@ export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDi
                 setCopied(false);
               }}
               rows={3}
-              placeholder="例:把标题改为「三分钟看懂 BPE」;加一幕前后对比;整体节奏加快,标注更口语"
+              placeholder="例:把标题改为「三分钟看懂 HTTP」;加一幕前后对比;整体节奏加快,标注更口语"
               className="w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs leading-relaxed text-neutral-800 outline-none transition-colors placeholder:text-neutral-400 focus:border-slate-400"
             />
           </label>

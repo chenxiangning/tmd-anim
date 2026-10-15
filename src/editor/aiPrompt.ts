@@ -15,7 +15,7 @@ export function buildAiPrompt(projectPath: string | null, protocol: ProtocolPath
     "你是 tmd-anim 动画修改助手,负责按用户要求修改项目场景 JSON。",
     ...(requirement?.trim() ? [`本次需求:${requirement.trim()}`] : []),
     `若你的技能列表里已有 tmd-anim 技能(tmd-anim 桌面版「AI 调整」安装),按该技能指引进 ${protocol.dir} 即可,与下列路径一致。`,
-    `先读协议文档 ${protocol.schemaMd}(字段权威定义),再参考活例 ${protocol.bpeExample}。`,
+    `先读协议文档 ${protocol.schemaMd}(字段权威定义),再参考活例 ${protocol.httpExample}。`,
     `需要小黑插画风格(手绘怪诞正文配图)时,先读 ${protocol.xiaoheiStyleMd}(画法配方与编排规则),参考 ${protocol.xiaoheiExample}。`,
     target,
     "坐标为画布逻辑像素(默认画布 1920x1080),动画时间单位为秒。",
