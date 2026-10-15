@@ -27,7 +27,7 @@
     "check": "pnpm build:player && pnpm check:file-size && pnpm typecheck && pnpm test && pnpm build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
+    "tauri:build": "node scripts/re-local.mjs",
     "anim": "tsx scripts/anim.ts"
   },
   "dependencies": {

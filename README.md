@@ -73,7 +73,7 @@ pnpm tauri:dev  # 桌面壳(项目落盘 ~/.tmd-anim/projects/)
 | `pnpm check` | 交付前全链:300 行铁则 + typecheck + test + build |
 | `pnpm dev` | Vite 开发服务(端口 1431,避开 tmd-cli 的 1421) |
 | `pnpm tauri:dev` | Tauri 桌面窗口 |
-| `pnpm tauri:build` | 打桌面安装包 |
+| `pnpm tauri:build` | 打桌面安装包,产物收集到 `re-local/`(已 gitignore) |
 | `node scripts/gen-icon.mjs` | 重新生成图标母版(icns/ico 由 `pnpm tauri icon` 派生) |
 
 ## 版本与发布
