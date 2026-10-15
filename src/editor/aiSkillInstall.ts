@@ -1,11 +1,12 @@
-import skillMd from "../../docs/skill.md?raw";
+import { protocolPaths, renderSkillMd } from "../app/agentPaths";
 
 /**
- * tmd-anim 指路技能安装:把 docs/skill.md 写入各家 agent 的个人技能目录,
+ * tmd-anim 指路技能安装:把 docs/skill.md 渲染后的正文写入各家 agent 的个人技能目录,
  * 仅在用户于「AI 调整」弹窗显式点击时执行;技能本体是薄指路牌,权威内容
- * 永远以 ~/.tmd-anim/protocol/ 为准,应用升级后重装一次即刷新。
+ * 永远以 .tmd-anim/protocol/ 为准,应用升级后重装一次即刷新。
  * 目录一律相对用户主目录表达,经 @tauri-apps/api/path homeDir+join 取真值,
- * macOS/Linux 与 Windows、不同用户名均各自解析,不硬编码任何绝对路径。
+ * macOS/Linux 与 Windows、不同用户名均各自解析,不硬编码任何绝对路径;
+ * 正文里的协议路径按当前系统渲染为绝对路径(见 agentPaths),Windows 得 C:\Users\… 形态。
  */
 
 export interface SkillTarget {
@@ -95,12 +96,13 @@ export interface SkillCheckResult {
 export async function checkSkillTargets(): Promise<SkillCheckResult> {
   const resolved = await resolveTargets();
   if (!resolved) return { supported: false, targets: [] };
+  const latest = renderSkillMd(await protocolPaths());
   const targets: SkillTargetStatus[] = [];
   for (const t of resolved) {
     let installed = false;
     let upToDate = false;
     try {
-      upToDate = (await t.fs.readTextFile(t.file)) === skillMd;
+      upToDate = (await t.fs.readTextFile(t.file)) === latest;
       installed = true;
     } catch {
       // 未安装或无权限,按未安装呈现
@@ -146,6 +148,7 @@ export interface SkillInstallResult {
 export async function installAgentSkill(): Promise<SkillInstallResult> {
   const resolved = await resolveTargets();
   if (!resolved) return { installed: [], failed: [], unsupported: true };
+  const latest = renderSkillMd(await protocolPaths());
   const result: SkillInstallResult = { installed: [], failed: [], unsupported: false };
   for (const t of resolved) {
     try {
@@ -157,7 +160,7 @@ export async function installAgentSkill(): Promise<SkillInstallResult> {
         // 原无 SKILL.md,按新装记录
       }
       await t.fs.mkdir(t.dir, { recursive: true });
-      await t.fs.writeTextFile(t.file, skillMd);
+      await t.fs.writeTextFile(t.file, latest);
       result.installed.push({ label: t.label, path: t.file, overwritten });
     } catch (e) {
       result.failed.push({ label: t.label, reason: e instanceof Error ? e.message : String(e) });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { openExternal } from "../app/settings/updater";
+import { FALLBACK_PROTOCOL_PATHS, protocolPaths, type ProtocolPaths } from "../app/agentPaths";
 import { buildAiPrompt, copyText } from "./aiPrompt";
 import {
   checkSkillTargets,
@@ -35,6 +36,8 @@ export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDi
   const [installedNow, setInstalledNow] = useState<SkillInstallResult | null>(null);
   const [installing, setInstalling] = useState(false);
   const [check, setCheck] = useState<SkillCheckResult | null>(null);
+  /** 协议/项目目录真值:提示词与徽标按当前系统显示;浏览器版回落 ~ 写法 */
+  const [paths, setPaths] = useState<ProtocolPaths>(FALLBACK_PROTOCOL_PATHS);
 
   useEffect(() => {
     if (!open) return;
@@ -43,12 +46,13 @@ export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDi
     setInstalledNow(null);
     setInstalling(false);
     setCheck(null);
+    void protocolPaths().then(setPaths);
     if (backend === "tauri") void checkSkillTargets().then(setCheck);
   }, [open, backend]);
 
   if (!open) return null;
 
-  const fullPrompt = buildAiPrompt(projectPath, requirement);
+  const fullPrompt = buildAiPrompt(projectPath, paths, requirement);
 
   const handleInstall = () => {
     setInstalling(true);
@@ -112,7 +116,7 @@ export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDi
             :把一份指路技能写入下方技能目录(macOS 与 Windows 均按当前用户主目录解析实际安装位置),
             支持的 AI 听到「做动画 / 小黑配图」会自动按协议执行,无需再粘贴提示词。默认
             <b>不动你已有的任何技能</b>,只新建 tmd-anim 子目录;技能内容指向
-            <code className="mx-1 rounded bg-white px-1 py-0.5 text-[10px]">~/.tmd-anim/protocol/</code>
+            <code className="mx-1 rounded bg-white px-1 py-0.5 text-[10px]">{paths.dir}</code>
             ,应用升级后重装一次即刷新。
           </div>
           {backend === "tauri" && check && check.targets.length > 0 && (
@@ -164,7 +168,7 @@ export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDi
 
         <section className="text-xs leading-relaxed text-neutral-500">
           <span className="font-semibold text-neutral-700">闭环说明</span>:agent 改
-          <code className="mx-1 rounded bg-neutral-100 px-1 py-0.5 text-[10px]">~/.tmd-anim/projects/&lt;id&gt;.json</code>
+          <code className="mx-1 rounded bg-neutral-100 px-1 py-0.5 text-[10px]">{paths.projectsDir}&lt;id&gt;.json</code>
           → 本窗口自动热重载;「导出帧」出 PNG 给 agent 或你自己回看;自查命令
           <code className="mx-1 rounded bg-neutral-100 px-1 py-0.5 text-[10px]">pnpm anim validate</code>
           需要 tmd-anim 仓克隆。

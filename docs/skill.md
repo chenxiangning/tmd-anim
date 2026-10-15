@@ -5,16 +5,18 @@ description: 制作与修改 tmd-anim 技术动画(场景 JSON 进,确定性视�
 
 # tmd-anim 动画制作
 
-本文件是 tmd-anim 桌面版安装的指路牌:权威协议与风格包已由应用投递到
-`~/.tmd-anim/protocol/`,以那里的文件为准,不要凭记忆生成字段。
+<!-- 本文件是模板:双花括号占位符由 tmd-anim 桌面版安装时替换为当前系统绝对路径(mac 得 /Users/…,Windows 得 C:\Users\…) -->
 
-1. 读 `~/.tmd-anim/protocol/schema.md`:场景 JSON v1 字段权威定义。
-2. 活例:`~/.tmd-anim/protocol/bpe-example.json`(协议全家福)、
-   `~/.tmd-anim/protocol/xiaohei-example.json`(小黑风格)。
+本文件是 tmd-anim 桌面版安装的指路牌:权威协议与风格包已由应用投递到
+`{{PROTOCOL_DIR}}`,以那里的文件为准,不要凭记忆生成字段。
+
+1. 读 `{{SCHEMA_MD}}`:场景 JSON v1 字段权威定义。
+2. 活例:`{{BPE_EXAMPLE_JSON}}`(协议全家福)、
+   `{{XIAOHEI_EXAMPLE_JSON}}`(小黑风格)。
 3. 用户要「小黑 / 手绘 / 怪诞 / 正文配图」风格时,必读
-   `~/.tmd-anim/protocol/xiaohei-style.md`(身体/腿臂坐标配方、部件语法表、
+   `{{XIAOHEI_STYLE_MD}}`(身体/腿臂坐标配方、部件语法表、
    入场编排节奏、构图模式、自查清单)。
-4. 新建项目:在 `~/.tmd-anim/projects/` 落一个不重名的 `<id>.json`,保存后
+4. 新建项目:在 `{{PROJECTS_DIR}}` 落一个不重名的 `<id>.json`,保存后
    tmd-anim 桌面版自动热重载;修改现有项目直接改目标文件。
 5. 自查:在 tmd-anim 仓目录运行 `pnpm anim validate <文件>`(exit 2 = 必须修);
    无仓时靠应用内「导出帧」出 PNG 回看。
