@@ -189,3 +189,37 @@ jobs:
         with:
           name: tmd-anim-bundle-${{ matrix.tauri-target }}
           path: src-tauri/target/${{ matrix.tauri-target }}/release/bundle/
+
+  # latest.json 由 tauri-action 生成,资产 URL 默认指向 api.github.com/releases/assets/<id>:
+  # 该端点匿名配额仅 60 次/小时/IP,超限后更新器下载一律 403(v0.1.4 发布日实证)。
+  # 此 job 把全部资产 URL 改写为 github.com/releases/download 直链(CDN 承载,无此配额);
+  # 签名不受影响——minisign 签名内嵌在 latest.json 的 signature 字段,与下载 URL 无关。
+  patch-latest:
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 改写 latest.json 资产 URL 为 github.com 直链
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release download "$TAG" --repo "$REPO" --pattern 'latest.json' --output latest.json
+          gh api "repos/$REPO/releases/tags/$TAG" > release.json
+          REPO="$REPO" TAG="$TAG" python3 - <<'PY'
+          import json, os
+          repo, tag = os.environ["REPO"], os.environ["TAG"]
+          rel = json.load(open("release.json"))
+          id2name = {a["id"]: a["name"] for a in rel["assets"]}
+          m = json.load(open("latest.json"))
+          for plat in m["platforms"].values():
+              url = plat.get("url", "")
+              marker = "/releases/assets/"
+              if marker in url:
+                  aid = int(url.rsplit("/", 1)[1])
+                  plat["url"] = f"https://github.com/{repo}/releases/download/{tag}/{id2name[aid]}"
+          json.dump(m, open("latest.json", "w"), ensure_ascii=False, indent=2)
+          print("latest.json 资产 URL 已全部改为 github.com 直链")
+          PY
+          gh release upload "$TAG" latest.json --repo "$REPO" --clobber
