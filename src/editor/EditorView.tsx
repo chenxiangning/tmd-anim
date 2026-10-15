@@ -10,6 +10,8 @@ import { ExportOverlay, useExport } from "./useExport";
 import { useEditorKeyboard } from "./useEditorKeyboard";
 import { useEditorSave } from "./useEditorSave";
 import { useFileWatch } from "./useFileWatch";
+import { usePanels } from "./panelsState";
+import { SaveConflictBar } from "./SaveConflictBar";
 import { exportFrame } from "./exportFrame";
 import { useProjectHistory } from "./useProjectHistory";
 import { useSceneOps } from "./useSceneOps";
@@ -29,17 +31,6 @@ interface EditorViewProps {
   onExit(): void;
 }
 
-type PanelsState = { left: boolean; right: boolean; bottom: boolean };
-const PANELS_KEY = "tmd-anim:panels";
-
-function loadPanels(): PanelsState {
-  try {
-    const raw = localStorage.getItem(PANELS_KEY);
-    if (raw) return { left: true, right: true, bottom: true, ...(JSON.parse(raw) as Partial<PanelsState>) };
-  } catch { /* 忽略坏数据,回落全开 */ }
-  return { left: true, right: true, bottom: true };
-}
-
 /** 编辑器组装:状态中枢(撤销/自动保存/键盘/预览) + 四区布局(元素库/画布/属性/时间轴)。 */
 export function EditorView({ repo, projectId, initialProject, onOpenSettings, onExit }: EditorViewProps) {
   const { project, projectRef, setProject, commit, liveUpdate, beginGesture: beginHistory, endGesture, undo } =
@@ -48,20 +39,15 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
   const [selIds, setSelIds] = useState<string[]>([]);
   const [playing, setPlaying] = useState(true); // 打开即循环预览,元素随动画出现;拖拽手势自动暂停
   const [previewing, setPreviewing] = useState(false);
-  const [panels, setPanels] = useState<PanelsState>(loadPanels);
-  const saveState = useEditorSave(repo, projectId, project, projectRef);
+  const { panels, togglePanel } = usePanels();
+  const { saveState, conflict, saveNow, overwriteWithEditor, dismissConflict } = useEditorSave(
+    repo,
+    projectId,
+    project,
+    projectRef,
+  );
   // agent 改盘上项目文件后自动热重载(reloadOp 同款替换语义,不进撤销栈);返回项目文件绝对路径
   const projectPath = useFileWatch(repo, projectId, projectRef, setProject);
-
-  const togglePanel = useCallback((key: keyof PanelsState) => {
-    setPanels((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      try {
-        localStorage.setItem(PANELS_KEY, JSON.stringify(next));
-      } catch { /* 忽略存储失败 */ }
-      return next;
-    });
-  }, []);
 
   const tRef = useRef(t);
   tRef.current = t;
@@ -91,10 +77,9 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
 
   // 自动保存与卸载 flush 在 useEditorSave 内
 
-  // 键盘交互集中在一个 hook(删除/复制剪切粘贴/撤销/保存/播放/方向键)
+  // 键盘交互集中在一个 hook(删除/复制剪切粘贴/撤销/保存/播放/方向键);Ctrl+S 走守卫保存
   useEditorKeyboard({
-    repo,
-    projectId,
+    onSave: () => void saveNow(),
     getProject: () => projectRef.current,
     getSelIds: () => selRef.current,
     getIdx: () => idxRef.current,
@@ -228,6 +213,15 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
         aiPromptPath={projectPath}
         onOpenSettings={onOpenSettings}
       />
+      {conflict && (
+        <SaveConflictBar
+          onAdoptDisk={() => {
+            dismissConflict();
+            reloadOp();
+          }}
+          onKeepMine={overwriteWithEditor}
+        />
+      )}
       <div className="flex min-h-0 flex-1">
         {panels.left ? (
           <ElementLibrary onAdd={(kind, variant) => addElementAt(kind, undefined, undefined, variant)} onCollapse={() => togglePanel("left")} />

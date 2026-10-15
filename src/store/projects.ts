@@ -21,7 +21,16 @@ export interface ProjectRepo {
   backend: "local" | "tauri";
   list(): Promise<ProjectMeta[]>;
   load(id: string): Promise<Project>;
+  /** 无条件写(显式覆盖,仅用于用户明确选择的场景) */
   save(id: string, project: Project): Promise<void>;
+  /**
+   * 守卫写:盘上内容与仓库「上次观察到」的不一致(被外部如 coding agent 改过)时
+   * 拒写并返回 "conflict",盘上外部内容得以保留;一致则写入返回 "saved"。
+   * 观察(读原文)与写入都会刷新「上次观察到」的基线。
+   */
+  saveIfUnchanged(id: string, project: Project): Promise<"saved" | "conflict">;
+  /** 读项目文件原文并登记为最新观察基线;local 后端返回 null(无外部写入者) */
+  readRaw(id: string): Promise<string | null>;
   remove(id: string): Promise<void>;
   /** 项目文件绝对路径;local 后端无文件系统,返回 null(watch 等文件面功能据此关闭) */
   pathOf(id: string): Promise<string | null>;

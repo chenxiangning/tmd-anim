@@ -52,6 +52,15 @@ describe("localRepo", () => {
     await expect(repo.load("p1")).rejects.toThrow(/项目不存在/);
   });
 
+  it("saveIfUnchanged 守卫直通(local 无外部写入者),readRaw 返回原文", async () => {
+    const storage = fakeStorage();
+    const repo = createLocalRepo(storage);
+    await repo.save("p1", demo);
+    expect(await repo.saveIfUnchanged("p1", { ...demo, name: "改" })).toBe("saved");
+    expect(await repo.readRaw("p1")).toBe(JSON.stringify({ ...demo, name: "改" }));
+    expect(await repo.readRaw("missing")).toBeNull();
+  });
+
   it("list 跳过损坏数据", async () => {
     const storage = fakeStorage();
     storage.setItem("tmd-anim:project:bad", "{oops");

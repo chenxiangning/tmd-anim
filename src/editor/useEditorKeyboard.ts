@@ -4,11 +4,10 @@ import { projectDuration, sceneStartTime } from "../core/timeline";
 import { addElements, findElement, removeElements, updateElement } from "./editOps";
 import { copyElements, pasteElements } from "./clipboard";
 import { AUDIO_SEL } from "./sceneAudio";
-import type { ProjectRepo } from "../store/projects";
 
 interface KeyboardOptions {
-  repo: ProjectRepo;
-  projectId: string;
+  /** Ctrl+S/Cmd+S:注入守卫保存,保存冲突的决策交由编辑器横幅 */
+  onSave(): void;
   getProject(): Project;
   getSelIds(): string[];
   getIdx(): number;
@@ -38,7 +37,7 @@ export function useEditorKeyboard(opts: KeyboardOptions): void {
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        void opts.repo.save(opts.projectId, opts.getProject());
+        opts.onSave();
         return;
       }
       if (inInput) return;
@@ -116,6 +115,6 @@ export function useEditorKeyboard(opts: KeyboardOptions): void {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // 状态经 getter 读取,监听只随仓库/回调变化重挂
-  }, [opts.repo, opts.projectId, opts.commit, opts.undo]);
+    // 状态经 getter 读取,监听只随回调变化重挂
+  }, [opts.onSave, opts.commit, opts.undo]);
 }

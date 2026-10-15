@@ -49,6 +49,13 @@ export function createLocalRepo(storage: KvStorage = window.localStorage): Proje
       storage.setItem(PROJECT_PREFIX + id, JSON.stringify(project));
       storage.setItem(META_PREFIX + id, String(Date.now()));
     },
+    async saveIfUnchanged(id: string, project: Project): Promise<"saved" | "conflict"> {
+      await this.save(id, project); // 浏览器存储无外部写入者,守卫直通
+      return "saved";
+    },
+    async readRaw(id: string): Promise<string | null> {
+      return storage.getItem(PROJECT_PREFIX + id);
+    },
     async remove(id: string): Promise<void> {
       storage.removeItem(PROJECT_PREFIX + id);
       storage.removeItem(META_PREFIX + id);
