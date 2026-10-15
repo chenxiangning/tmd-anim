@@ -1,4 +1,5 @@
 import type { Project } from "../core/types";
+import { normalizeProject } from "../core/normalize";
 import { metaOf, type ProjectMeta, type ProjectRepo } from "./projects";
 
 /**
@@ -34,7 +35,7 @@ export async function createTauriRepo(): Promise<ProjectRepo> {
     },
     async load(id: string): Promise<Project> {
       const raw = await fs.readTextFile(await join(dir, fileOf(id)));
-      return JSON.parse(raw) as Project;
+      return normalizeProject(JSON.parse(raw));
     },
     async save(id: string, project: Project): Promise<void> {
       await fs.writeTextFile(await join(dir, fileOf(id)), JSON.stringify(project, null, 2));

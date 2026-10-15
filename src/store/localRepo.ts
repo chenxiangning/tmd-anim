@@ -1,4 +1,5 @@
 import type { Project } from "../core/types";
+import { normalizeProject } from "../core/normalize";
 import { metaOf, type ProjectMeta, type ProjectRepo } from "./projects";
 
 /** localStorage 后端:项目 JSON 与更新时间分键存放,存储面可注入便于单测。 */
@@ -42,7 +43,7 @@ export function createLocalRepo(storage: KvStorage = window.localStorage): Proje
     async load(id: string): Promise<Project> {
       const raw = storage.getItem(PROJECT_PREFIX + id);
       if (!raw) throw new Error(`项目不存在:${id}`);
-      return JSON.parse(raw) as Project;
+      return normalizeProject(JSON.parse(raw));
     },
     async save(id: string, project: Project): Promise<void> {
       storage.setItem(PROJECT_PREFIX + id, JSON.stringify(project));

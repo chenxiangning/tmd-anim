@@ -28,7 +28,8 @@ describe("localRepo", () => {
     const repo = createLocalRepo(storage);
     await repo.save("p1", demo);
     expect(JSON.parse(storage.dump()["tmd-anim:project:p1"])).toEqual(demo);
-    expect(await repo.load("p1")).toEqual(demo);
+    // load 走归一化:缺省 canvas 等字段补默认值
+    expect(await repo.load("p1")).toEqual({ ...demo, canvas: { width: 1920, height: 1080, bg: "#F4F4F1" } });
   });
 
   it("list 返回元信息并按更新时间倒序", async () => {
@@ -56,5 +57,29 @@ describe("localRepo", () => {
     storage.setItem("tmd-anim:project:bad", "{oops");
     const repo = createLocalRepo(storage);
     expect(await repo.list()).toEqual([]);
+  });
+
+  it("load/list 归一化缺省字段:缺 anim.start 不产生 NaN 时长", async () => {
+    const storage = fakeStorage();
+    storage.setItem(
+      "tmd-anim:project:sparse",
+      JSON.stringify({
+        version: 1,
+        name: "稀疏",
+        scenes: [
+          {
+            id: "sc",
+            name: "s",
+            dwell: 1,
+            elements: [{ kind: "text", text: "hi", anim: { type: "fade", duration: 0.5 } }],
+          },
+        ],
+      }),
+    );
+    const repo = createLocalRepo(storage);
+    const loaded = await repo.load("sparse");
+    expect(loaded.scenes[0].elements[0].anim.start).toBe(0);
+    const metas = await repo.list();
+    expect(metas[0]).toMatchObject({ id: "sparse", duration: 1.5 });
   });
 });

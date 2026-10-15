@@ -1,4 +1,5 @@
 import type { Project } from "../core/types";
+import { normalizeProject } from "../core/normalize";
 import { projectDuration } from "../core/timeline";
 
 /**
@@ -31,12 +32,14 @@ export function newProjectId(): string {
 }
 
 export function metaOf(id: string, project: Project, updatedAt: number): ProjectMeta {
+  // 列表元信息直接读原始文件:必须先归一化,否则缺省字段(如 anim.start)会算出 NaN 时长
+  const p = normalizeProject(project);
   return {
     id,
-    name: project.name,
+    name: p.name,
     updatedAt,
-    sceneCount: project.scenes.length,
-    duration: projectDuration(project),
+    sceneCount: p.scenes.length,
+    duration: projectDuration(p),
   };
 }
 
