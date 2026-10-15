@@ -194,6 +194,9 @@ jobs:
   # 该端点匿名配额仅 60 次/小时/IP,超限后更新器下载一律 403(v0.1.4 发布日实证)。
   # 此 job 把全部资产 URL 改写为 github.com/releases/download 直链(CDN 承载,无此配额);
   # 签名不受影响——minisign 签名内嵌在 latest.json 的 signature 字段,与下载 URL 无关。
+  # 注意:此刻 release 仍是草稿,按 tag 的 /releases/tags/<tag> 端点看不见草稿(v0.1.5 实证
+  # 404),全程按 release ID 操作;资产上传必须走 uploads.github.com 裸二进制体,
+  # gh api -F 的 multipart 会被 404。
   patch-latest:
     needs: build
     if: ${{ startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success' }}
@@ -205,8 +208,19 @@ jobs:
           REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release download "$TAG" --repo "$REPO" --pattern 'latest.json' --output latest.json
-          gh api "repos/$REPO/releases/tags/$TAG" > release.json
+          gh api "repos/$REPO/releases?per_page=100" > releases.json
+          REL_ID=$(TAG="$TAG" python3 -c '
+          import json, os, sys
+          tag = os.environ["TAG"]
+          rels = json.load(open("releases.json"))
+          rel = next((r for r in rels if r["tag_name"] == tag), None)
+          if rel is None:
+              sys.exit(f"找不到 tag 为 {tag} 的 release(含草稿)")
+          print(rel["id"])
+          ')
+          gh api "repos/$REPO/releases/$REL_ID" > release.json
+          LATEST_ID=$(python3 -c "import json;rel=json.load(open('release.json'));print(next(a['id'] for a in rel['assets'] if a['name']=='latest.json'))")
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$LATEST_ID" > latest.json
           REPO="$REPO" TAG="$TAG" python3 - <<'PY'
           import json, os
           repo, tag = os.environ["REPO"], os.environ["TAG"]
@@ -220,6 +234,14 @@ jobs:
                   aid = int(url.rsplit("/", 1)[1])
                   plat["url"] = f"https://github.com/{repo}/releases/download/{tag}/{id2name[aid]}"
           json.dump(m, open("latest.json", "w"), ensure_ascii=False, indent=2)
+          left = [p["url"] for p in m["platforms"].values() if "api.github.com" in p["url"]]
+          assert not left, f"仍有 api.github.com 地址: {left}"
           print("latest.json 资产 URL 已全部改为 github.com 直链")
           PY
-          gh release upload "$TAG" latest.json --repo "$REPO" --clobber
+          gh api -X DELETE "repos/$REPO/releases/assets/$LATEST_ID" > /dev/null
+          curl -sf -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @latest.json \
+            "https://uploads.github.com/repos/$REPO/releases/$REL_ID/assets?name=latest.json" > /dev/null
+          echo "已回传改写后的 latest.json"
