@@ -10,7 +10,7 @@
 
 - 小黑插画风格包:`docs/xiaohei-style.md` agent 绘画规范(身体/腿臂坐标配方、手绘意图到协议元素对照表、入场编排节奏、六种构图模式、交付自查;改编自 Ian 的开源技能 Ian Xiaohei Illustrations,按 NOTICE 署名)+ `src/samples/xiaohei.json` 三幕 37 元素示例;首页「从示例新建」升级为下拉菜单(BPE 分词 / 小黑插画)
 - 桌面版协议投递扩为五件:`schema.md`、`bpe-example.json`、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,agent 任意目录可读
-- 「AI 调整」升级为引导弹窗:需求输入框(内容拼进提示词最前,粘贴即用)、完整提示词块一键复制;支持一键安装 tmd-anim 指路技能到 `~/.claude/skills/tmd-anim/` 与 `~/.agents/skills/tmd-anim/`(显式点按才写入,只新建自己的子目录,不动用户已有技能;技能内容指向协议目录,升级后重装即刷新),装过的 AI 听到「做动画 / 小黑配图」自动按协议执行
+- 「AI 调整」升级为引导弹窗:需求输入框(内容拼进提示词最前,粘贴即用)、完整提示词块一键复制;支持一键安装 tmd-anim 指路技能到 `~/.claude/skills/tmd-anim/` 与 `~/.agents/skills/tmd-anim/`(显式点按才写入,只新建自己的子目录,不动用户已有技能;技能内容指向协议目录,升级后重装即刷新),装过的 AI 听到「做动画 / 小黑配图」自动按协议执行;弹窗打开即逐目标检查安装状态,展示按当前用户与系统(macOS/Windows)解析的实际路径,已装提示「已是最新 / 有新版可覆盖」,按钮文案随状态切换(安装 / 覆盖更新 / 重新安装),安装结果区分新建与覆盖更新
 - AI 提示词补充小黑风格引用与已装技能关联说明;`docs/ai-workflow.md` 与 `docs/schema.md` 同步
 
 ### 修复

@@ -47,7 +47,8 @@ tmd-anim 是 tmd-cli 的姊妹项目(2026-10-13 立项),做一个「技术讲解
 - **小黑插画风格包**:「小黑」手绘怪诞配图风的 agent 绘画规范([`docs/xiaohei-style.md`](docs/xiaohei-style.md),
   改编自 Ian 的开源技能 Ian Xiaohei Illustrations,MIT)+ 同风格示例项目;桌面版随协议投递到 `~/.tmd-anim/protocol/`,
   agent 读风格包即可用原生元素拼出小黑并逐部件编排入场动画;「AI 调整」弹窗可把指路技能一键安装到
-  `~/.claude/skills/` 与 `~/.agents/skills/`(显式点按,不动用户已有技能),装过的 AI 听到「做动画 / 小黑配图」自动按协议执行
+  `~/.claude/skills/` 与 `~/.agents/skills/`(显式点按,不动用户已有技能;macOS/Windows 均按当前用户主目录
+  解析实际路径,弹窗内逐目标检查安装状态,已装提示可覆盖更新),装过的 AI 听到「做动画 / 小黑配图」自动按协议执行
 - **Canvas 2D 纯函数渲染器**:零 UI 依赖,可在 node 侧复用;连线三路由(smooth / elbow / straight)与元素绑定跟随
 - **完整编辑器**:画布选中 / 拖拽 / 缩放 / 多选框选、schema 驱动属性面板、时间轴拖拽调时与擦洗、
   双击行内改文本、⌘C/⌘V、撤销重做、三面板折叠、自动保存(600ms 防抖)
