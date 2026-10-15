@@ -9,12 +9,22 @@ export interface SceneSpan {
   name: string;
 }
 
+/** 配音有效时长(秒)= 原始时长 / 速率;无配音或未探测到时长返回 null */
+export function sceneAudioSeconds(scene: Scene): number | null {
+  const a = scene.audio;
+  if (!a || !a.duration || a.duration <= 0) return null;
+  const rate = Math.min(4, Math.max(0.25, a.rate ?? 1));
+  return a.duration / rate;
+}
+
 export function sceneDuration(scene: Scene): number {
   let end = 0;
   for (const el of scene.elements) {
     end = Math.max(end, el.anim.start + el.anim.duration);
   }
-  return Math.max(end, 0.1) + Math.max(0, scene.dwell ?? 0);
+  const base = Math.max(end, 0.1) + Math.max(0, scene.dwell ?? 0);
+  // 配音未播完不切幕:场景自动延长到配音有效时长
+  return Math.max(base, sceneAudioSeconds(scene) ?? 0);
 }
 
 export function sceneSpans(project: Project): SceneSpan[] {

@@ -79,6 +79,14 @@ function main(): void {
     } else if (e.code === "ArrowLeft") seek(-5);
     else if (e.code === "ArrowRight") seek(5);
   });
+  // 隐藏页时 rAF 停走而配音继续,恢复后时间轴对不上:切后台统一暂停
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      playing = false;
+      pauseSceneAudio(audioPool);
+      if (playIcon) playIcon.style.opacity = "1";
+    }
+  });
 
   let last = performance.now();
   const loop = (now: number): void => {

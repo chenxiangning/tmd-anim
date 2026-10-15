@@ -14,15 +14,15 @@ interface SceneStripProps {
   onMoveScene: (delta: -1 | 1) => void;
   onRenameScene: (name: string) => void;
   onDwell: (seconds: number) => void;
-  onSetAudio: (audio: { src: string; volume?: number } | undefined) => void;
+  onSetAudio: (audio: Scene["audio"] | undefined) => void;
 }
 
 const btn =
   "shrink-0 whitespace-nowrap rounded-md border border-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 场景配音控件:未设置 = 「＋ 配音」;已设置 = 替换 + 音量滑杆(0–2)+
- *  时长对齐提示(音频超场景时长截断,染警色)+ 显式移除。
- *  时长经 metadata 级探测(useAudioDuration),设置/替换保留原音量。
+ *  有效时长提示(原始时长/语速)+ 显式移除。配音比画面长时场景自动延长(见 timeline),
+ *  时长经 metadata 级探测(useAudioDuration),设置/替换保留原音量与语速。
  *  「TTS」入口走 TtsDialog 文字合成,产物同为 dataURL。 */
 function SceneAudioControl({
   scene,
@@ -33,10 +33,15 @@ function SceneAudioControl({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [ttsOpen, setTtsOpen] = useState(false);
-  const src = scene.audio?.src;
-  const volume = scene.audio?.volume ?? 1;
-  const duration = useAudioDuration(src);
+  const audio = scene.audio;
+  const src = audio?.src;
+  const volume = audio?.volume ?? 1;
+  const probed = useAudioDuration(src);
   const sceneSec = sceneDuration(scene);
+  // 画面够长的部分:元素动画+停留;被配音顶长的部分显示为「配音延长」
+  const contentEnd = scene.elements.reduce((m, el) => Math.max(m, el.anim.start + el.anim.duration), 0);
+  const baseSec = Math.max(contentEnd, 0.1) + Math.max(0, scene.dwell ?? 0);
+  const extended = sceneSec - baseSec;
 
   const pick = (): void => {
     const input = fileRef.current;
@@ -46,7 +51,8 @@ function SceneAudioControl({
       const file = input.files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => onSet({ src: String(reader.result), volume });
+      // 新文件 duration 未知,置空待探测回填;volume/rate 沿用
+      reader.onload = () => onSet({ src: String(reader.result), volume, rate: audio?.rate });
       reader.readAsDataURL(file);
     };
     input.click();
@@ -66,7 +72,10 @@ function SceneAudioControl({
       </>
     );
   }
-  const over = duration !== null && duration > sceneSec + 0.05;
+  const rate = audio?.rate ?? 1;
+  const raw = audio?.duration ?? probed;
+  const eff = raw !== null ? raw / rate : null;
+  const over = eff !== null && eff > sceneSec + 0.05;
   return (
     <>
       <button className={`${btn} !border-emerald-300 !text-emerald-700`} onClick={pick} title="替换本场景配音文件">
@@ -82,16 +91,22 @@ function SceneAudioControl({
         step={0.1}
         value={volume}
         title={`配音音量 ${volume.toFixed(1)}x(0–2)`}
-        onChange={(e) => onSet({ src, volume: Number(e.target.value) })}
+        onChange={(e) => onSet({ ...audio, volume: Number(e.target.value) })}
         className="h-1 w-14 shrink-0 cursor-pointer accent-emerald-600"
       />
       <span className="w-7 shrink-0 font-mono text-neutral-500">{volume.toFixed(1)}x</span>
       <span
         className={`shrink-0 whitespace-nowrap font-mono ${over ? "text-amber-600" : "text-neutral-400"}`}
-        title={over ? "配音比场景长,超出部分在场景切换处截断" : "配音时长 / 本幕时长"}
+        title="配音有效时长(原始时长/语速)/ 本幕时长;配音更长时本幕自动延长到播完"
       >
-        ♪{duration !== null ? `${duration.toFixed(1)}s` : "?"}/{sceneSec.toFixed(1)}s
+        ♪{eff !== null ? `${eff.toFixed(1)}s` : "?"}
+        {rate !== 1 && raw !== null ? `(原始${raw.toFixed(1)}s×${rate.toFixed(2)})` : ""}/{sceneSec.toFixed(1)}s
       </span>
+      {extended > 0.05 && (
+        <span className="shrink-0 whitespace-nowrap font-mono text-emerald-600" title="配音未播完的部分自动延长本幕,播完才切下一幕">
+          延长 +{extended.toFixed(1)}s
+        </span>
+      )}
       <button className={btn} onClick={() => onSet(undefined)} title="移除本场景配音">
         ✕
       </button>

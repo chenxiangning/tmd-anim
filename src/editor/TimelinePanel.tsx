@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import type { Project, SceneElement } from "../core/types";
+import type { Project, Scene, SceneElement } from "../core/types";
 import { projectDuration, sceneDuration } from "../core/timeline";
 import { AUDIO_ROW_H, AudioLaneLabel, AudioLaneTrack } from "./AudioLane";
+import { AUDIO_SEL } from "./sceneAudio";
 import { animTypeLabel } from "./animMeta";
 import { elementLabel, kindColor } from "./defaults";
 import { updateElement } from "./editOps";
@@ -39,7 +40,7 @@ interface TimelinePanelProps {
   onMoveScene(delta: -1 | 1): void;
   onRenameScene(name: string): void;
   onDwell(seconds: number): void;
-  onSetAudio(audio: { src: string; volume?: number } | undefined): void;
+  onSetAudio(audio: Scene["audio"] | undefined): void;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -216,7 +217,11 @@ export function TimelinePanel({
                 <span className="truncate">{elementLabel(el)}</span>
               </button>
             ))}
-            <AudioLaneLabel hasAudio={!!scene.audio?.src} />
+            <AudioLaneLabel
+              hasAudio={!!scene.audio?.src}
+              selected={selIds.includes(AUDIO_SEL)}
+              onSelect={() => onSelect(AUDIO_SEL)}
+            />
           </div>
         </div>
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto" onScroll={() => syncScroll("right")}>
@@ -273,10 +278,12 @@ export function TimelinePanel({
               </div>
             ))}
             <AudioLaneTrack
-              src={scene.audio?.src}
+              audio={scene.audio}
               sceneDur={duration}
               pps={pps}
               top={RULER_H + scene.elements.length * ROW_H + (ROW_H - 18) / 2}
+              selected={selIds.includes(AUDIO_SEL)}
+              onSelect={() => onSelect(AUDIO_SEL)}
             />
             <div className="pointer-events-none absolute bottom-0 top-0 z-20 w-[2px] bg-red-500" style={{ left: localT * pps }}>
               <div className="absolute -left-[5px] top-0 h-3.5 w-3.5 rounded-sm bg-red-500" />

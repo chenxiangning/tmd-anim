@@ -104,12 +104,18 @@ function normalizeScene(raw: Record<string, unknown>, index: number): Scene {
   };
 }
 
-/** 配音宽容归一:src 非字符串视为无配音;volume 钳 0-2 */
-function normalizeSceneAudio(raw: unknown): { src: string; volume?: number } | undefined {
+/** 配音宽容归一:src 非字符串视为无配音;volume 钳 0-2;rate 钳 0.25-4;duration 仅收正数 */
+function normalizeSceneAudio(raw: unknown): { src: string; volume: number; rate: number; duration?: number } | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const r = raw as Record<string, unknown>;
   if (typeof r.src !== "string" || r.src.length === 0) return undefined;
-  return { src: r.src, volume: Math.min(2, Math.max(0, num(r.volume, 1))) };
+  const duration = num(r.duration, 0);
+  return {
+    src: r.src,
+    volume: Math.min(2, Math.max(0, num(r.volume, 1))),
+    rate: Math.min(4, Math.max(0.25, num(r.rate, 1))),
+    ...(duration > 0 ? { duration } : {}),
+  };
 }
 
 function normalizeAnim(raw: Record<string, unknown>): Anim {

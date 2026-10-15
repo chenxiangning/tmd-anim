@@ -1,10 +1,6 @@
 /**
- * tmd-anim 场景数据模型 v1。
- *
- * 这是面向 coding agent 的协议(契约文档见 docs/schema.md):
- * - 一个项目 = 一个自包含 JSON 文件,纯数据、无逻辑、字段可枚举;
- * - 渲染是 (project, t) 的纯函数,预览与导出走同一条绘制路径;
- * - 字段变更必须同步 docs/schema.md 与 normalize.ts。
+ * tmd-anim 场景数据模型 v1:一个项目 = 一个自包含 JSON 文件,纯数据、字段可枚举(协议文档见 docs/schema.md);
+ * 渲染是 (project, t) 的纯函数,预览与导出走同一条绘制路径;字段变更必须同步 docs/schema.md 与 normalize.ts。
  */
 
 export type ElementKind =
@@ -283,8 +279,10 @@ export interface Scene {
   /** 末元素结束后的停留秒数(默认 1.5) */
   dwell?: number;
   elements: SceneElement[];
-  /** 场景配音:src 为 dataURL 或本地路径,volume 0-2(默认 1),随场景起点播放 */
-  audio?: { src: string; volume?: number };
+  /** 场景配音:src 为 dataURL 或本地路径,volume 0-2(默认 1);rate 播放速率 0.25-4(默认 1,
+   *  >1 压缩 / <1 拉伸,变速不变调);duration 为探测的原始时长(秒,编辑器自动回填)。
+   *  配音有效时长(duration/rate)超过画面时场景自动延长,保证播完再切幕。 */
+  audio?: { src: string; volume?: number; rate?: number; duration?: number };
 }
 
 export interface Project {

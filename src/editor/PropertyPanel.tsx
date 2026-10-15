@@ -1,7 +1,9 @@
 import { useRef } from "react";
-import type { Project, SceneElement } from "../core/types";
+import type { Project, Scene, SceneElement } from "../core/types";
+import { sceneDuration } from "../core/timeline";
 import { moveElement, updateElement } from "./editOps";
 import { ANIM_TYPE_OPTIONS, EASING_OPTIONS, parseEasing } from "./animMeta";
+import { AudioPropsCard } from "./AudioPropsCard";
 import { SCHEMAS } from "./propertySchema";
 import { PanelResizeHandle } from "./PanelResizeHandle";
 import { usePanelResize } from "./usePanelResize";
@@ -12,7 +14,11 @@ interface PropertyPanelProps {
   selected: SceneElement | null;
   /** 画布当前多选总数(单选时为 1) */
   selCount: number;
+  /** 当前场景配音;audioSelected 时面板切到配音编辑卡 */
+  audio?: Scene["audio"];
+  audioSelected?: boolean;
   onPatch: (next: Project, coalesceKey?: string) => void;
+  onPatchAudio?(next: Scene["audio"], coalesceKey?: string): void;
   onDelete: () => void;
   onReplay: () => void;
   onCollapse: () => void;
@@ -22,8 +28,11 @@ const labelCls = "mb-1 block text-[11px] font-medium text-neutral-500";
 const inputCls =
   "w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-800 outline-none transition-colors hover:border-neutral-300 focus:border-slate-500";
 
-/** 右栏属性面板:几何/层级 + schema 内容字段 + 入场动画区(与时间轴一一对应);多选时只提示数量;左缘可拖拽调宽。 */
-export function PropertyPanel({ project, sceneIdx, selected, selCount, onPatch, onDelete, onReplay, onCollapse }: PropertyPanelProps) {
+/** 右栏属性面板:几何/层级 + schema 内容字段 + 入场动画区(与时间轴一一对应);
+ *  选中配音条时切到配音编辑卡;多选时只提示数量;左缘可拖拽调宽。 */
+export function PropertyPanel({
+  project, sceneIdx, selected, selCount, audio, audioSelected, onPatch, onPatchAudio, onDelete, onReplay, onCollapse,
+}: PropertyPanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const { size: width, startResize, resetSize } = usePanelResize({
     axis: "x",
@@ -34,6 +43,32 @@ export function PropertyPanel({ project, sceneIdx, selected, selCount, onPatch, 
     dir: -1,
   });
   const asideCls = "relative flex shrink-0 flex-col border-l border-neutral-200 bg-white";
+  if (audioSelected && onPatchAudio) {
+    return (
+      <aside className={asideCls} style={{ width }}>
+        <PanelResizeHandle side="left" onStart={startResize} onReset={resetSize} />
+        <div className="flex h-9 shrink-0 items-center justify-between border-b border-neutral-100 px-3">
+          <span className="text-sm font-semibold text-neutral-800">配音</span>
+          <CollapseButton onClick={onCollapse} />
+        </div>
+        {audio ? (
+          <AudioPropsCard
+            audio={audio}
+            sceneSec={sceneDuration(project.scenes[sceneIdx])}
+            onPatch={(next, key) => onPatchAudio(next, key)}
+            onRemove={() => onPatchAudio(undefined, "sceneAudio")}
+          />
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4">
+            <p className="text-[11px] leading-relaxed text-neutral-400">
+              本场景未设置配音。用操作台右上「＋ 配音」选择音频文件,或「TTS」文字合成;
+              配音随场景起点播放,播完才切下一幕。
+            </p>
+          </div>
+        )}
+      </aside>
+    );
+  }
   if (!selected) {
     return (
       <aside className={asideCls} style={{ width }}>

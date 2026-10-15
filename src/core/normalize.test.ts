@@ -141,9 +141,23 @@ describe("normalizeProject", () => {
         { elements: [], audio: "narration.mp3" },
       ],
     });
-    expect(p.scenes[0].audio).toEqual({ src: "data:audio/mp3;base64,AA", volume: 2 });
+    expect(p.scenes[0].audio).toEqual({ src: "data:audio/mp3;base64,AA", volume: 2, rate: 1 });
     expect(p.scenes[1].audio).toBeUndefined();
     expect(p.scenes[2].audio).toBeUndefined();
+  });
+
+  it("场景配音:rate 钳 0.25-4,duration 仅收正数", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [
+        { elements: [], audio: { src: "a", rate: 99, duration: -3 } },
+        { elements: [], audio: { src: "b", rate: 0.1, duration: 12.5 } },
+        { elements: [], audio: { src: "c", duration: "6" } },
+      ],
+    });
+    expect(p.scenes[0].audio).toEqual({ src: "a", volume: 1, rate: 4 });
+    expect(p.scenes[1].audio).toEqual({ src: "b", volume: 1, rate: 0.25, duration: 12.5 });
+    expect(p.scenes[2].audio).toEqual({ src: "c", volume: 1, rate: 1 });
   });
 
   it("结构损坏抛 ProjectParseError", () => {

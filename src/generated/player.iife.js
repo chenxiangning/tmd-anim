@@ -1,9 +1,17 @@
 (function() {
 	//#region src/core/timeline.ts
+	/** 配音有效时长(秒)= 原始时长 / 速率;无配音或未探测到时长返回 null */
+	function sceneAudioSeconds(scene) {
+		const a = scene.audio;
+		if (!a || !a.duration || a.duration <= 0) return null;
+		const rate = Math.min(4, Math.max(.25, a.rate ?? 1));
+		return a.duration / rate;
+	}
 	function sceneDuration(scene) {
 		let end = 0;
 		for (const el of scene.elements) end = Math.max(end, el.anim.start + el.anim.duration);
-		return Math.max(end, .1) + Math.max(0, scene.dwell ?? 0);
+		const base = Math.max(end, .1) + Math.max(0, scene.dwell ?? 0);
+		return Math.max(base, sceneAudioSeconds(scene) ?? 0);
 	}
 	function sceneSpans(project) {
 		const spans = [];
@@ -22,9 +30,6 @@
 	}
 	function projectDuration(project) {
 		return sceneSpans(project).reduce((sum, span) => sum + span.duration, 0);
-	}
-	function sceneStartTime(project, index) {
-		return sceneSpans(project).slice(0, index).reduce((sum, span) => sum + span.duration, 0);
 	}
 	/** 全局时刻 t 定位到场景与场景内局部时刻,t 越界时钳到 [0, 总时长] */
 	function locate(project, t) {
@@ -64,8 +69,12 @@
 	}
 	//#endregion
 	//#region src/core/audioSync.ts
-	/** 每元素上一帧的场景内时刻,用于区分「播完后继续前进」与「播放头回跳」 */
+	/** 每元素上一帧的场景内时刻,用于识别「播放头跳变」 */
 	var lastLocal = /* @__PURE__ */ new WeakMap();
+	/** 上次检查时的墙钟与音频时钟:判「真停走」必须以跨帧的墙钟间隔为基准 */
+	var lastBeat = /* @__PURE__ */ new WeakMap();
+	/** 起播进行中:play() 未落地前不再反复 seek+play(否则互相打断,听感断续) */
+	var starting = /* @__PURE__ */ new WeakSet();
 	/**
 	* 池增量维护:src 未变的元素复用,变化的重建,不再引用的暂停后移除。
 	* 编辑器每次 commit 都产生新 project 对象,必须复用未变的 audio 元素。
@@ -81,6 +90,7 @@
 			existing?.pause();
 			const audio = new Audio(src);
 			audio.preload = "auto";
+			audio.preservesPitch = true;
 			audio.dataset.src = src;
 			pool.set(scene.id, audio);
 		}
@@ -90,27 +100,54 @@
 		}
 	}
 	/**
-	* 逐帧同步(编辑器预览与导出 HTML 播放器共用):起播对齐场景起点,漂移 > 0.35s 拉回。
-	* 配音通常比场景短,自然播完(ended)后若仍留在场景内绝不能再 seek+play 重启——
-	* 否则每帧一次音频管线重启,听感断续(旧实现 bug)。
-	* 播放头在场景内回跳(拖进度条/循环回到本场景)时重新起播。
+	* 逐帧同步(编辑器预览与导出 HTML 播放器共用)。对齐策略:
+	* 只在起播、播放头跳变(拖拽/回跳/循环)、音频时钟连续停走时 seek 对齐;
+	* 稳态播放以音频自身时钟为准——按墙钟稳态回拉会在渲染掉帧或变速(rate≠1)时
+	* 反复把音频往回拽,听感断续(旧实现 bug)。配音自然播完(ended)后若仍在
+	* 场景内保持静默,绝不重启音频管线。
 	*/
 	function syncSceneAudio(pool, project, t, playing) {
+		const spans = sceneSpans(project);
 		project.scenes.forEach((scene, i) => {
 			const audio = pool.get(scene.id);
 			if (!audio) return;
-			const local = t - sceneStartTime(project, i);
+			const local = t - spans[i].start;
 			if (playing && local >= 0 && local < sceneDuration(scene)) {
+				if (audio.error) return;
 				const prev = lastLocal.get(audio);
 				lastLocal.set(audio, local);
 				if (audio.ended && prev !== void 0 && local >= prev) return;
+				if (audio.seeking) return;
 				audio.volume = Math.min(1, Math.max(0, scene.audio?.volume ?? 1));
+				const rate = scene.audio?.rate ?? 1;
+				if (audio.playbackRate !== rate) audio.playbackRate = rate;
 				if (audio.paused) {
-					audio.currentTime = Math.max(0, local);
-					audio.play().catch(() => void 0);
-				} else if (Math.abs(audio.currentTime - local) > .35) audio.currentTime = local;
+					if (!starting.has(audio)) {
+						starting.add(audio);
+						audio.currentTime = Math.max(0, local);
+						audio.play().catch(() => void 0).finally(() => starting.delete(audio));
+					}
+					return;
+				}
+				const prevAudio = lastBeat.get(audio);
+				const nowMs = performance.now();
+				lastBeat.set(audio, {
+					at: nowMs,
+					t: audio.currentTime
+				});
+				const jumped = prev !== void 0 && Math.abs(local - prev) > .15;
+				const stalled = prevAudio !== void 0 && nowMs - prevAudio.at >= 50 && audio.currentTime - prevAudio.t < .001;
+				if (jumped || stalled) {
+					audio.currentTime = local;
+					lastBeat.set(audio, {
+						at: nowMs,
+						t: local
+					});
+				}
 			} else {
 				lastLocal.delete(audio);
+				lastBeat.delete(audio);
+				starting.delete(audio);
 				if (!audio.paused) audio.pause();
 			}
 		});
@@ -213,14 +250,17 @@
 			audio: normalizeSceneAudio(raw.audio)
 		};
 	}
-	/** 配音宽容归一:src 非字符串视为无配音;volume 钳 0-2 */
+	/** 配音宽容归一:src 非字符串视为无配音;volume 钳 0-2;rate 钳 0.25-4;duration 仅收正数 */
 	function normalizeSceneAudio(raw) {
 		if (typeof raw !== "object" || raw === null) return void 0;
 		const r = raw;
 		if (typeof r.src !== "string" || r.src.length === 0) return void 0;
+		const duration = num(r.duration, 0);
 		return {
 			src: r.src,
-			volume: Math.min(2, Math.max(0, num(r.volume, 1)))
+			volume: Math.min(2, Math.max(0, num(r.volume, 1))),
+			rate: Math.min(4, Math.max(.25, num(r.rate, 1))),
+			...duration > 0 ? { duration } : {}
 		};
 	}
 	function normalizeAnim(raw) {
@@ -1755,6 +1795,13 @@
 				toggle();
 			} else if (e.code === "ArrowLeft") seek(-5);
 			else if (e.code === "ArrowRight") seek(5);
+		});
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "hidden") {
+				playing = false;
+				pauseSceneAudio(audioPool);
+				if (playIcon) playIcon.style.opacity = "1";
+			}
 		});
 		let last = performance.now();
 		const loop = (now) => {

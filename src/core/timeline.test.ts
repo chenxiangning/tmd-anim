@@ -49,6 +49,29 @@ describe("sceneDuration", () => {
   it("空场景保底 0.1 秒", () => {
     expect(sceneDuration({ id: "s", name: "s", elements: [] })).toBeCloseTo(0.1);
   });
+
+  it("配音有效时长超过元素+dwell 时,场景延长到配音结束(未播完不切幕)", () => {
+    const scene: Scene = {
+      id: "sc",
+      name: "s",
+      dwell: 1,
+      elements: [{ id: "a", kind: "badge", x: 0, y: 0, w: 1, h: 1, anim: { type: "fade", start: 0, duration: 2 }, text: "x" }],
+      audio: { src: "a", duration: 6 },
+    };
+    expect(sceneDuration(scene)).toBe(6);
+  });
+
+  it("配音有效时长按 rate 换算:压缩变短、拉伸变长", () => {
+    const base: Scene = {
+      id: "sc",
+      name: "s",
+      elements: [{ id: "a", kind: "badge", x: 0, y: 0, w: 1, h: 1, anim: { type: "fade", start: 0, duration: 2 }, text: "x" }],
+    };
+    expect(sceneDuration({ ...base, audio: { src: "a", duration: 8, rate: 2 } })).toBe(4);
+    expect(sceneDuration({ ...base, audio: { src: "a", duration: 4, rate: 0.5 } })).toBe(8);
+    // 配音比画面短时不缩短场景
+    expect(sceneDuration({ ...base, dwell: 1, audio: { src: "a", duration: 1 } })).toBe(3);
+  });
 });
 
 describe("spans 与 locate", () => {

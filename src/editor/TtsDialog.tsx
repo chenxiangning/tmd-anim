@@ -16,7 +16,7 @@ import {
 
 interface TtsDialogProps {
   scene: Scene;
-  onSet: (audio: { src: string; volume?: number } | undefined) => void;
+  onSet: (audio: Scene["audio"] | undefined) => void;
   onClose: () => void;
 }
 
@@ -85,7 +85,8 @@ export function TtsDialog({ scene, onSet, onClose }: TtsDialogProps) {
       if (embed) {
         const src = await wavToDataUrl(bytes);
         saveTtsDraft(scene.id, trimmed, voice, rate);
-        onSet({ src, volume: scene.audio?.volume ?? 1 });
+        // duration 留空待探测回填;volume/rate 沿用场景现值
+        onSet({ src, volume: scene.audio?.volume ?? 1, rate: scene.audio?.rate });
         onClose();
         return;
       }

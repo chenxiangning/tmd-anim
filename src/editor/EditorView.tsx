@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Project, SceneElement } from "../core/types";
+import { useCallback, useRef, useState } from "react";
+import type { Project, Scene, SceneElement } from "../core/types";
 import { locate, projectDuration, sceneStartTime } from "../core/timeline";
 import type { ProjectRepo } from "../store/projects";
 import { addElement, findElement, removeElements, updateScene } from "./editOps";
 import { createElement } from "./defaults";
-import { useSceneAudio } from "./sceneAudio";
+import { AUDIO_SEL, useBackfillAudioDuration, useSceneAudio } from "./sceneAudio";
+import { usePlaybackClock } from "./usePlaybackClock";
 import { ExportOverlay, useExport } from "./useExport";
 import { useEditorKeyboard } from "./useEditorKeyboard";
 import { useEditorSave } from "./useEditorSave";
@@ -16,6 +17,7 @@ import { PanelRail } from "./PanelRail";
 import { CanvasStage } from "./CanvasStage";
 import { EditorHeader } from "./EditorHeader";
 import { ElementLibrary } from "./ElementLibrary";
+import { PreviewMode } from "./PreviewMode";
 import { PropertyPanel } from "./PropertyPanel";
 import { TimelinePanel } from "./TimelinePanel";
 
@@ -79,25 +81,12 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
     setPlaying(false);
   }, [beginHistory]);
 
-  // 播放循环:预览/播放共用,播完循环
-  useEffect(() => {
-    if (!playing) return;
-    let raf = 0;
-    let last = performance.now();
-    const loop = (now: number) => {
-      raf = requestAnimationFrame(loop);
-      const dt = Math.min(0.1, (now - last) / 1000);
-      last = now;
-      const total = projectDuration(projectRef.current);
-      const next = tRef.current + dt;
-      setT(total > 0 && next >= total ? 0 : next);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [playing]);
+  // 播放循环:预览/播放共用,播完循环(函数式累计,渲染掉帧不拖慢播放头;切后台自动暂停)
+  usePlaybackClock(playing, projectRef, setT, setPlaying);
 
-  // 场景配音随播放头同步
+  // 场景配音随播放头同步;存量配音缺 duration 时探测回填(场景时长据此把配音算进去)
   useSceneAudio(project, tRef, playing);
+  useBackfillAudioDuration(project, commit);
   const exportState = useExport(projectRef, { pausePlayback: () => setPlaying(false) });
 
   // 自动保存与卸载 flush 在 useEditorSave 内
@@ -116,6 +105,8 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
     setPreviewing,
     commit,
     undo,
+    onRemoveAudio: () =>
+      commit(updateScene(projectRef.current, audioSceneIdxRef.current, { audio: undefined }), "sceneAudio"),
   });
 
   function clampT(v: number): number {
@@ -156,6 +147,21 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
   );
 
   const sceneOps = useSceneOps(projectRef, idxRef, commit, (id) => setSelIds(id ? [id] : []), setT);
+
+  // 配音选中锚定「选择时」的场景:播放头随后跨幕,面板显示与编辑的仍是选中那幕的配音
+  const audioSceneIdxRef = useRef(idxRef.current);
+  const selectOne = useCallback((id: string) => {
+    if (id === AUDIO_SEL) audioSceneIdxRef.current = idxRef.current;
+    setSelIds([id]);
+  }, []);
+  const audioSelected = selIds.includes(AUDIO_SEL);
+
+  /** 场景配音补丁:undefined = 移除;缺省作用于播放头所在场景(操作台),选中态由调用方显式传 idx */
+  const patchAudio = useCallback(
+    (next: Scene["audio"], key?: string, sceneIdx = idxRef.current) =>
+      commit(updateScene(projectRef.current, sceneIdx, { audio: next }), key ?? "sceneAudio"),
+    [commit],
+  );
 
   const deleteSelected = useCallback(() => {
     const ids = selRef.current;
@@ -199,17 +205,8 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
 
   if (previewing) {
     return (
-      <div className="flex h-full flex-col bg-neutral-900">
-        <CanvasStage project={project} t={t} selIds={[]} previewing onSelectIds={() => undefined} onLivePatch={liveUpdate} onGestureBegin={beginGesture} onGestureEnd={endGesture} onDropCreate={dropCreate} />
-        <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-xs text-neutral-400">
-            {project.name} · {locate(project, t).index + 1}/{project.scenes.length} · {t.toFixed(1)}s
-          </span>
-          <button className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white transition-colors hover:bg-white/20" onClick={togglePreview}>
-            退出预览(Esc)
-          </button>
-        </div>
-      </div>
+      <PreviewMode project={project} t={t} liveUpdate={liveUpdate} onGestureBegin={beginGesture}
+        onGestureEnd={endGesture} onDropCreate={dropCreate} onExit={togglePreview} />
     );
   }
 
@@ -251,10 +248,13 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
         {panels.right ? (
           <PropertyPanel
             project={project}
-            sceneIdx={sceneIdx}
+            sceneIdx={audioSelected ? audioSceneIdxRef.current : sceneIdx}
             selected={selected}
             selCount={selIds.length}
+            audio={audioSelected ? project.scenes[audioSceneIdxRef.current]?.audio : undefined}
+            audioSelected={audioSelected}
             onPatch={commit}
+            onPatchAudio={(next, key) => patchAudio(next, key, audioSceneIdxRef.current)}
             onDelete={deleteSelected}
             onReplay={replaySelection}
             onCollapse={() => togglePanel("right")}
@@ -271,7 +271,7 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
           localT={localT}
           selIds={selIds}
           playing={playing}
-          onSelect={(id) => setSelIds([id])}
+          onSelect={selectOne}
           onSeekLocal={(local) => setT(clampT(sceneStartTime(projectRef.current, sceneIdx) + local))}
           onLivePatch={liveUpdate}
           onGestureBegin={beginGesture}
@@ -287,7 +287,7 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
           onMoveScene={sceneOps.move}
           onRenameScene={sceneOps.rename}
           onDwell={sceneOps.setDwell}
-          onSetAudio={(audio) => commit(updateScene(projectRef.current, idxRef.current, { audio }), "sceneAudio")}
+          onSetAudio={patchAudio}
         />
       ) : (
         <PanelRail side="bottom" label="动画操作台" onExpand={() => togglePanel("bottom")} />

@@ -23,6 +23,8 @@ interface DecodedAudio {
   sceneIndex: number;
   buffer: AudioBuffer;
   volume: number;
+  /** 播放速率:与 timeline.sceneAudioSeconds 同一钳制,导出与预览时长一致 */
+  rate: number;
 }
 
 export async function decodeSceneAudio(
@@ -41,7 +43,12 @@ export async function decodeSceneAudio(
     try {
       const res = await fetch(scene.audio?.src as string);
       const raw = await decoder.decodeAudioData(await res.arrayBuffer());
-      out.push({ sceneIndex: i, buffer: raw, volume: Math.min(1, Math.max(0, scene.audio?.volume ?? 1)) });
+      out.push({
+        sceneIndex: i,
+        buffer: raw,
+        volume: Math.min(1, Math.max(0, scene.audio?.volume ?? 1)),
+        rate: Math.min(4, Math.max(0.25, scene.audio?.rate ?? 1)),
+      });
     } catch {
       // 单条配音解码失败不阻塞导出,仅跳过该段
     }
@@ -58,6 +65,7 @@ export async function mixSceneAudio(project: Project, duration: number, decoded:
   for (const item of decoded) {
     const node = offline.createBufferSource();
     node.buffer = item.buffer;
+    node.playbackRate.value = item.rate;
     const gain = offline.createGain();
     gain.gain.value = item.volume;
     node.connect(gain).connect(offline.destination);

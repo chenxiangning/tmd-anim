@@ -3,6 +3,7 @@ import type { Project } from "../core/types";
 import { projectDuration, sceneStartTime } from "../core/timeline";
 import { addElements, findElement, removeElements, updateElement } from "./editOps";
 import { copyElements, pasteElements } from "./clipboard";
+import { AUDIO_SEL } from "./sceneAudio";
 import type { ProjectRepo } from "../store/projects";
 
 interface KeyboardOptions {
@@ -18,6 +19,8 @@ interface KeyboardOptions {
   setPreviewing(v: boolean): void;
   commit(next: Project, coalesceKey?: string): void;
   undo(): void;
+  /** 配音条选中时按 Delete:移除本场景配音 */
+  onRemoveAudio?(): void;
 }
 
 /** 编辑器全局键盘:删除/复制剪切粘贴/撤销/保存/播放暂停/方向键(有选中微移元素,无选中擦洗时间)。 */
@@ -75,7 +78,15 @@ export function useEditorKeyboard(opts: KeyboardOptions): void {
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selIds.length > 0) {
         e.preventDefault();
-        opts.commit(removeElements(opts.getProject(), idx, selIds));
+        // 配音条是哨兵选中(@audio),不是元素:转交移除配音,避免对元素列表做无效提交
+        if (selIds.length === 1 && selIds[0] === AUDIO_SEL) {
+          opts.onRemoveAudio?.();
+          opts.clearSel();
+          return;
+        }
+        const ids = selIds.filter((id) => findElement(opts.getProject(), idx, id) !== null);
+        if (ids.length === 0) return;
+        opts.commit(removeElements(opts.getProject(), idx, ids));
         opts.clearSel();
         return;
       }
@@ -86,11 +97,16 @@ export function useEditorKeyboard(opts: KeyboardOptions): void {
           const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
           const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
           let next = opts.getProject();
+          let moved = false;
           for (const id of selIds) {
             const cur = findElement(next, idx, id);
-            if (cur) next = updateElement(next, idx, id, { x: cur.x + dx, y: cur.y + dy });
+            if (cur) {
+              next = updateElement(next, idx, id, { x: cur.x + dx, y: cur.y + dy });
+              moved = true;
+            }
           }
-          opts.commit(next, `nudge:${[...selIds].sort().join(",")}`);
+          // 配音条等哨兵选中没有可微移元素:不产生空撤销记录
+          if (moved) opts.commit(next, `nudge:${[...selIds].sort().join(",")}`);
         } else {
           const step = e.shiftKey ? 1 : 0.2;
           const total = projectDuration(opts.getProject());

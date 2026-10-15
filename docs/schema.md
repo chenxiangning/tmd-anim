@@ -27,9 +27,9 @@
 | `name` | string | 否 | 场景名,默认「场景 N」 |
 | `dwell` | number | 否 | 末元素结束后的停留秒数,默认 1.5,负值归 0 |
 | `elements` | Element[] | 是 | 元素列表,数组顺序即绘制顺序(后者在上) |
-| `audio` | object | 否 | 场景配音 `{ src, volume? }`:src 为 dataURL 或本地音频路径,volume 0-2 默认 1;编辑器播放、导出 HTML 与导出 MP4 均随场景起点对齐,超出场景时长自动停止;src 非字符串视为无配音 |
+| `audio` | object | 否 | 场景配音 `{ src, volume?, rate?, duration? }`:src 为 dataURL 或本地音频路径,volume 0-2 默认 1;rate 播放速率 0.25-4 默认 1(>1 压缩 / <1 拉伸,变速不变调);duration 为原始媒体时长(秒,编辑器探测后自动回填,可省)。编辑器播放、导出 HTML 与导出 MP4 均随场景起点对齐;配音有效时长(duration/rate)超过元素+dwell 时场景自动延长到配音结束,不会中途截断;src 非字符串视为无配音 |
 
-时间模型:`场景时长 = max(元素 anim.start + anim.duration) + dwell`(空场景保底 0.1s);
+时间模型:`场景时长 = max(max(元素 anim.start + anim.duration) + dwell, 配音有效时长 duration/rate)`(空场景保底 0.1s,无配音或未探测 duration 时退化为前者);
 全局时间轴 = 场景顺序拼接。
 
 ## Anim(所有元素共有)
