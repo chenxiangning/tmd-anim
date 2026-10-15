@@ -30,6 +30,15 @@ tmd-anim 是 tmd-cli 的姊妹项目(2026-10-13 立项),做一个「技术讲解
 
 立项决策与竞品调研见 tmd-cli 仓:`../tmd-cli/docs/research/tech-animation-video-tool.md`。
 
+## 效果演示
+
+<p align="center">
+  <video src="docs/demo.mp4" controls muted loop width="720"></video>
+</p>
+
+一段 28 秒的白板风格示例动画(Agent · Skill · Rule · Hook 备齐零件、进机组装、
+整机下线),场景 JSON 进、mp4 出,即本工具的完整产出形态。
+
 ## 功能一览
 
 - **场景 JSON v1 协议**:10 种元素(标题 / 艺术字 / 正文 / 形状 / 代码块 / 终端 / 表格 / 数组格 / 连线 / 图片)、
@@ -122,6 +131,7 @@ src/samples/     示例项目(bpe.json 同时是 schema 活例)
 src-tauri/       Tauri 2 桌面壳(fs 能力仅限 ~/.tmd-anim/)
 docs/schema.md   场景 JSON 契约(agent 协议权威文档)
 docs/ai-workflow.md  AI 工作流(agent 制作/调整动画的闭环与 tmd-cli 联动)
+docs/demo.mp4    首页效果演示视频(README「效果演示」引用)
 ```
 
 ## License
