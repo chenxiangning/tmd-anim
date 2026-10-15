@@ -4,7 +4,14 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
-## [未发布]
+## [0.1.4] - 2026-10-15
+
+### 新增
+
+- 小黑插画风格包:`docs/xiaohei-style.md` agent 绘画规范(身体/腿臂坐标配方、手绘意图到协议元素对照表、入场编排节奏、六种构图模式、交付自查;改编自 Ian 的开源技能 Ian Xiaohei Illustrations,按 NOTICE 署名)+ `src/samples/xiaohei.json` 三幕 37 元素示例;首页「从示例新建」升级为下拉菜单(BPE 分词 / 小黑插画)
+- 桌面版协议投递扩为五件:`schema.md`、`bpe-example.json`、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,agent 任意目录可读
+- 「AI 调整」升级为引导弹窗:需求输入框(内容拼进提示词最前,粘贴即用)、完整提示词块一键复制;支持一键安装 tmd-anim 指路技能到 `~/.claude/skills/tmd-anim/` 与 `~/.agents/skills/tmd-anim/`(显式点按才写入,只新建自己的子目录,不动用户已有技能;技能内容指向协议目录,升级后重装即刷新),装过的 AI 听到「做动画 / 小黑配图」自动按协议执行
+- AI 提示词补充小黑风格引用与已装技能关联说明;`docs/ai-workflow.md` 与 `docs/schema.md` 同步
 
 ### 修复
 
