@@ -25,9 +25,11 @@ export interface UpdateState {
   progress: number | null;
   /** stage=error 的人话原因 */
   error: string | null;
+  /** 最近一次检查完成的时间;latest 态提示 GitHub 清单的传播延迟用 */
+  checkedAt: number | null;
 }
 
-const initial: UpdateState = { stage: "idle", version: null, progress: null, error: null };
+const initial: UpdateState = { stage: "idle", version: null, progress: null, error: null, checkedAt: null };
 let state = initial;
 const listeners = new Set<() => void>();
 
@@ -53,14 +55,16 @@ let running = false;
 export async function runUpdate(): Promise<void> {
   if (running || !isDesktop) return;
   running = true;
-  patch({ stage: "checking", version: null, progress: null, error: null });
+  patch({ stage: "checking", version: null, progress: null, error: null, checkedAt: null });
   try {
     const update = await check();
     if (!update) {
-      patch({ stage: "latest" });
+      // 「无更新」可能是服务端确实没有新版,也可能是刚发布、GitHub 清单还在
+      // 传播窗口内;checkedAt 供 UI 展示检查时间,避免把延迟误读成故障。
+      patch({ stage: "latest", checkedAt: Date.now() });
       return;
     }
-    patch({ stage: "available", version: update.version });
+    patch({ stage: "available", version: update.version, checkedAt: Date.now() });
     let total: number | null = null;
     let downloaded = 0;
     patch({ stage: "downloading", progress: null });

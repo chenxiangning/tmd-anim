@@ -70,6 +70,11 @@ function UpdateCard() {
           更新失败:{s.error}
         </p>
       )}
+      {s.stage === "latest" && s.checkedAt !== null && (
+        <p className="mb-3 text-[11px] leading-relaxed text-neutral-400">
+          检查于 {new Date(s.checkedAt).toLocaleTimeString()}。GitHub 更新清单传播可能有几分钟延迟:刚发的新版本若未提示,稍后再查,或点下方「前往 Releases」手动下载。
+        </p>
+      )}
       <div className="flex items-center gap-2">
         {s.stage === "ready" ? (
           <button className="btn btn-primary" onClick={() => void relaunchApp()}>
