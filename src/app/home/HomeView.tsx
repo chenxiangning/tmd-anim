@@ -74,10 +74,12 @@ export function HomeView({ repo, onOpen, onOpenSettings }: HomeViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { groups, total } = useTimeline(entries, query);
 
   const refresh = useCallback(async () => {
+    setRefreshing(true);
     try {
       const metas = await repo.list();
       const loaded = await Promise.all(metas.map(async (meta) => ({ meta, project: await repo.load(meta.id) })));
@@ -86,6 +88,8 @@ export function HomeView({ repo, onOpen, onOpenSettings }: HomeViewProps) {
     } catch (e) {
       setError(describeError(e));
       setEntries([]);
+    } finally {
+      setRefreshing(false);
     }
   }, [repo]);
 
@@ -148,6 +152,26 @@ export function HomeView({ repo, onOpen, onOpenSettings }: HomeViewProps) {
               {error}
             </span>
           )}
+          <button
+            className="btn btn-secondary !px-2"
+            onClick={() => void refresh()}
+            disabled={refreshing}
+            title="刷新项目列表"
+            aria-label="刷新项目列表"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v6h-6" />
+            </svg>
+          </button>
           <SearchBox query={query} onChange={setQuery} />
           <button className={"btn btn-secondary"} onClick={() => fileRef.current?.click()}>
             导入 JSON
