@@ -287,7 +287,7 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
           onMoveScene={sceneOps.move}
           onRenameScene={sceneOps.rename}
           onDwell={sceneOps.setDwell}
-          onSetAudio={(audio) => commit(updateScene(projectRef.current, idxRef.current, { audio }))}
+          onSetAudio={(audio) => commit(updateScene(projectRef.current, idxRef.current, { audio }), "sceneAudio")}
         />
       ) : (
         <PanelRail side="bottom" label="动画操作台" onExpand={() => togglePanel("bottom")} />

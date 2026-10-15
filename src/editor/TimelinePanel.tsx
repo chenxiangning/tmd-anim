@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { Project, SceneElement } from "../core/types";
 import { projectDuration, sceneDuration } from "../core/timeline";
+import { AUDIO_ROW_H, AudioLaneLabel, AudioLaneTrack } from "./AudioLane";
 import { animTypeLabel } from "./animMeta";
 import { elementLabel, kindColor } from "./defaults";
 import { updateElement } from "./editOps";
@@ -81,7 +82,7 @@ export function TimelinePanel({
   const total = projectDuration(project);
   const contentEnd = scene.elements.reduce((m, el) => Math.max(m, el.anim.start + el.anim.duration), 0);
   const trackWidth = Math.max(duration * pps + 40, 360);
-  const rowsHeight = RULER_H + scene.elements.length * ROW_H + 8;
+  const rowsHeight = RULER_H + scene.elements.length * ROW_H + AUDIO_ROW_H + 8;
 
   const localAt = (clientX: number): number => {
     const rect = innerRef.current?.getBoundingClientRect();
@@ -215,6 +216,7 @@ export function TimelinePanel({
                 <span className="truncate">{elementLabel(el)}</span>
               </button>
             ))}
+            <AudioLaneLabel hasAudio={!!scene.audio?.src} />
           </div>
         </div>
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto" onScroll={() => syncScroll("right")}>
@@ -270,6 +272,12 @@ export function TimelinePanel({
                 <div className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize" onPointerDown={(e) => startBarDrag(e, el, "resize-end")} />
               </div>
             ))}
+            <AudioLaneTrack
+              src={scene.audio?.src}
+              sceneDur={duration}
+              pps={pps}
+              top={RULER_H + scene.elements.length * ROW_H + (ROW_H - 18) / 2}
+            />
             <div className="pointer-events-none absolute bottom-0 top-0 z-20 w-[2px] bg-red-500" style={{ left: localT * pps }}>
               <div className="absolute -left-[5px] top-0 h-3.5 w-3.5 rounded-sm bg-red-500" />
             </div>

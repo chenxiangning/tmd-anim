@@ -1,6 +1,7 @@
+import { pauseSceneAudio, syncSceneAudio, upsertSceneAudioPool, type SceneAudioPool } from "./audioSync";
 import { normalizeProject } from "./normalize";
 import { drawFrame } from "./render/index";
-import { projectDuration, sceneDuration, sceneStartTime } from "./timeline";
+import { projectDuration } from "./timeline";
 import type { Project } from "./types";
 
 /**
@@ -54,48 +55,20 @@ function main(): void {
   window.addEventListener("resize", fit);
   fit();
 
-  // 配音池:每场一个 audio 元素,按场景起点同步
-  const pool = new Map<string, HTMLAudioElement>();
-  project.scenes.forEach((scene) => {
-    if (!scene.audio?.src) return;
-    const audio = new Audio(scene.audio.src);
-    audio.preload = "auto";
-    pool.set(scene.id, audio);
-  });
-  const pauseAll = (): void => {
-    pool.forEach((audio) => audio.pause());
-  };
-
+  // 配音池:每场一个 audio 元素,按场景起点同步(播完静默,详见 syncSceneAudio)
+  const audioPool: SceneAudioPool = new Map();
+  upsertSceneAudioPool(audioPool, project);
   let t = 0;
   let playing = true;
-  const syncAudio = (): void => {
-    project.scenes.forEach((scene, i) => {
-      const audio = pool.get(scene.id);
-      if (!audio) return;
-      const local = t - sceneStartTime(project, i);
-      const active = playing && local >= 0 && local < sceneDuration(scene);
-      if (active) {
-        audio.volume = Math.min(1, Math.max(0, scene.audio?.volume ?? 1));
-        if (audio.paused) {
-          audio.currentTime = Math.max(0, local);
-          void audio.play().catch(() => undefined);
-        } else if (Math.abs(audio.currentTime - local) > 0.35) {
-          audio.currentTime = local;
-        }
-      } else if (!audio.paused) {
-        audio.pause();
-      }
-    });
-  };
 
   const toggle = (): void => {
     playing = !playing;
-    if (!playing) pauseAll();
+    if (!playing) pauseSceneAudio(audioPool);
     if (playIcon) playIcon.style.opacity = playing ? "0" : "1";
   };
   const seek = (delta: number): void => {
     t = Math.min(Math.max(0, t + delta), Math.max(duration - 0.01, 0));
-    pauseAll();
+    pauseSceneAudio(audioPool);
   };
 
   canvas.addEventListener("click", toggle);
@@ -116,13 +89,13 @@ function main(): void {
       const next = t + dt;
       if (duration > 0 && next >= duration) {
         t = 0;
-        pauseAll();
+        pauseSceneAudio(audioPool);
       } else {
         t = next;
       }
     }
     drawFrame(ctx, project, t);
-    syncAudio();
+    syncSceneAudio(audioPool, project, t, playing);
     if (bar) bar.style.width = `${duration > 0 ? (t / duration) * 100 : 0}%`;
     if (timeLabel) timeLabel.textContent = `${t.toFixed(1)}s / ${duration.toFixed(1)}s`;
   };

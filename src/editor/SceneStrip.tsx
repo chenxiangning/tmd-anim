@@ -1,6 +1,8 @@
-import { useRef } from "react";
-import type { Project } from "../core/types";
+import { useRef, useState } from "react";
+import type { Project, Scene } from "../core/types";
 import { sceneDuration } from "../core/timeline";
+import { useAudioDuration } from "./sceneAudio";
+import { TtsDialog } from "./TtsDialog";
 
 interface SceneStripProps {
   project: Project;
@@ -13,6 +15,90 @@ interface SceneStripProps {
   onRenameScene: (name: string) => void;
   onDwell: (seconds: number) => void;
   onSetAudio: (audio: { src: string; volume?: number } | undefined) => void;
+}
+
+const btn =
+  "shrink-0 whitespace-nowrap rounded-md border border-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40";
+
+/** 场景配音控件:未设置 = 「＋ 配音」;已设置 = 替换 + 音量滑杆(0–2)+
+ *  时长对齐提示(音频超场景时长截断,染警色)+ 显式移除。
+ *  时长经 metadata 级探测(useAudioDuration),设置/替换保留原音量。
+ *  「TTS」入口走 TtsDialog 文字合成,产物同为 dataURL。 */
+function SceneAudioControl({
+  scene,
+  onSet,
+}: {
+  scene: Scene;
+  onSet: SceneStripProps["onSetAudio"];
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [ttsOpen, setTtsOpen] = useState(false);
+  const src = scene.audio?.src;
+  const volume = scene.audio?.volume ?? 1;
+  const duration = useAudioDuration(src);
+  const sceneSec = sceneDuration(scene);
+
+  const pick = (): void => {
+    const input = fileRef.current;
+    if (!input) return;
+    input.value = "";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => onSet({ src: String(reader.result), volume });
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  if (!src) {
+    return (
+      <>
+        <button className={`${btn} !border-emerald-300 !text-emerald-700`} onClick={pick} title="给本场景添加配音:选音频文件,随场景起点播放;MP4/HTML 导出一并包含">
+          ＋ 配音
+        </button>
+        <button className={`${btn} !border-emerald-300 !text-emerald-700`} onClick={() => setTtsOpen(true)} title="文字配音:输入文字,系统嗓音本机合成并嵌入本场景">
+          TTS
+        </button>
+        <input ref={fileRef} type="file" accept="audio/*" className="hidden" />
+        {ttsOpen && <TtsDialog scene={scene} onSet={onSet} onClose={() => setTtsOpen(false)} />}
+      </>
+    );
+  }
+  const over = duration !== null && duration > sceneSec + 0.05;
+  return (
+    <>
+      <button className={`${btn} !border-emerald-300 !text-emerald-700`} onClick={pick} title="替换本场景配音文件">
+        ♪ 配音
+      </button>
+      <button className={`${btn} !border-emerald-300 !text-emerald-700`} onClick={() => setTtsOpen(true)} title="文字配音:输入文字,系统嗓音本机合成并替换本场景配音">
+        TTS
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={2}
+        step={0.1}
+        value={volume}
+        title={`配音音量 ${volume.toFixed(1)}x(0–2)`}
+        onChange={(e) => onSet({ src, volume: Number(e.target.value) })}
+        className="h-1 w-14 shrink-0 cursor-pointer accent-emerald-600"
+      />
+      <span className="w-7 shrink-0 font-mono text-neutral-500">{volume.toFixed(1)}x</span>
+      <span
+        className={`shrink-0 whitespace-nowrap font-mono ${over ? "text-amber-600" : "text-neutral-400"}`}
+        title={over ? "配音比场景长,超出部分在场景切换处截断" : "配音时长 / 本幕时长"}
+      >
+        ♪{duration !== null ? `${duration.toFixed(1)}s` : "?"}/{sceneSec.toFixed(1)}s
+      </span>
+      <button className={btn} onClick={() => onSet(undefined)} title="移除本场景配音">
+        ✕
+      </button>
+      <input ref={fileRef} type="file" accept="audio/*" className="hidden" />
+      {ttsOpen && <TtsDialog scene={scene} onSet={onSet} onClose={() => setTtsOpen(false)} />}
+    </>
+  );
 }
 
 /** 操作台场景组:场景芯片 + 管理 + 停留秒数 + 场景配音;外框由 TimelinePanel 统一提供。 */
@@ -29,23 +115,6 @@ export function SceneStrip({
   onSetAudio,
 }: SceneStripProps) {
   const scene = project.scenes[sceneIdx];
-  const fileRef = useRef<HTMLInputElement>(null);
-  const btn =
-    "shrink-0 whitespace-nowrap rounded-md border border-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40";
-
-  const pickAudio = (): void => {
-    const input = fileRef.current;
-    if (!input) return;
-    input.value = "";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => onSetAudio({ src: String(reader.result), volume: 1 });
-      reader.readAsDataURL(file);
-    };
-    input.click();
-  };
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
       <span className="shrink-0 text-[10px] text-neutral-400">场景</span>
@@ -87,16 +156,7 @@ export function SceneStrip({
       </button>
       {scene && (
         <label className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-neutral-500">
-          {scene.audio?.src ? (
-            <button className={`${btn} !text-emerald-600`} onClick={() => onSetAudio(undefined)} title="点击移除当前场景配音">
-              配音 ✓
-            </button>
-          ) : (
-            <button className={btn} onClick={pickAudio} title="选择音频文件作为本场景配音,随场景起点播放">
-              配音
-            </button>
-          )}
-          <input ref={fileRef} type="file" accept="audio/*" className="hidden" />
+          <SceneAudioControl scene={scene} onSet={onSetAudio} />
           停留
           <input
             type="number"

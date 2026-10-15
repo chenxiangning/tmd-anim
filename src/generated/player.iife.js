@@ -1,4 +1,125 @@
 (function() {
+	//#region src/core/timeline.ts
+	function sceneDuration(scene) {
+		let end = 0;
+		for (const el of scene.elements) end = Math.max(end, el.anim.start + el.anim.duration);
+		return Math.max(end, .1) + Math.max(0, scene.dwell ?? 0);
+	}
+	function sceneSpans(project) {
+		const spans = [];
+		let cursor = 0;
+		project.scenes.forEach((scene, index) => {
+			const duration = sceneDuration(scene);
+			spans.push({
+				index,
+				start: cursor,
+				duration,
+				name: scene.name
+			});
+			cursor += duration;
+		});
+		return spans;
+	}
+	function projectDuration(project) {
+		return sceneSpans(project).reduce((sum, span) => sum + span.duration, 0);
+	}
+	function sceneStartTime(project, index) {
+		return sceneSpans(project).slice(0, index).reduce((sum, span) => sum + span.duration, 0);
+	}
+	/** 全局时刻 t 定位到场景与场景内局部时刻,t 越界时钳到 [0, 总时长] */
+	function locate(project, t) {
+		const spans = sceneSpans(project);
+		if (spans.length === 0) return {
+			index: 0,
+			localT: 0
+		};
+		const clamped = Math.min(Math.max(t, 0), projectDuration(project));
+		for (const span of spans) if (clamped < span.start + span.duration) return {
+			index: span.index,
+			localT: clamped - span.start
+		};
+		const last = spans[spans.length - 1];
+		return {
+			index: last.index,
+			localT: last.duration
+		};
+	}
+	function clamp01(v) {
+		return Math.min(1, Math.max(0, v));
+	}
+	function easeOutCubic(p) {
+		const q = 1 - clamp01(p);
+		return 1 - q * q * q;
+	}
+	function easeInOutCubic(p) {
+		const x = clamp01(p);
+		return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+	}
+	/** 回弹缓动:终点恰为 1,中途允许超过 1(用于 pop 的过冲缩放) */
+	function easeOutBack(p) {
+		const c1 = 1.70158;
+		const c3 = 2.70158;
+		const x = clamp01(p) - 1;
+		return 1 + c3 * x * x * x + c1 * x * x;
+	}
+	//#endregion
+	//#region src/core/audioSync.ts
+	/** 每元素上一帧的场景内时刻,用于区分「播完后继续前进」与「播放头回跳」 */
+	var lastLocal = /* @__PURE__ */ new WeakMap();
+	/**
+	* 池增量维护:src 未变的元素复用,变化的重建,不再引用的暂停后移除。
+	* 编辑器每次 commit 都产生新 project 对象,必须复用未变的 audio 元素。
+	*/
+	function upsertSceneAudioPool(pool, project) {
+		const alive = /* @__PURE__ */ new Set();
+		for (const scene of project.scenes) {
+			const src = scene.audio?.src;
+			if (!src) continue;
+			alive.add(scene.id);
+			const existing = pool.get(scene.id);
+			if (existing && existing.dataset.src === src) continue;
+			existing?.pause();
+			const audio = new Audio(src);
+			audio.preload = "auto";
+			audio.dataset.src = src;
+			pool.set(scene.id, audio);
+		}
+		for (const [id, audio] of pool) if (!alive.has(id)) {
+			audio.pause();
+			pool.delete(id);
+		}
+	}
+	/**
+	* 逐帧同步(编辑器预览与导出 HTML 播放器共用):起播对齐场景起点,漂移 > 0.35s 拉回。
+	* 配音通常比场景短,自然播完(ended)后若仍留在场景内绝不能再 seek+play 重启——
+	* 否则每帧一次音频管线重启,听感断续(旧实现 bug)。
+	* 播放头在场景内回跳(拖进度条/循环回到本场景)时重新起播。
+	*/
+	function syncSceneAudio(pool, project, t, playing) {
+		project.scenes.forEach((scene, i) => {
+			const audio = pool.get(scene.id);
+			if (!audio) return;
+			const local = t - sceneStartTime(project, i);
+			if (playing && local >= 0 && local < sceneDuration(scene)) {
+				const prev = lastLocal.get(audio);
+				lastLocal.set(audio, local);
+				if (audio.ended && prev !== void 0 && local >= prev) return;
+				audio.volume = Math.min(1, Math.max(0, scene.audio?.volume ?? 1));
+				if (audio.paused) {
+					audio.currentTime = Math.max(0, local);
+					audio.play().catch(() => void 0);
+				} else if (Math.abs(audio.currentTime - local) > .35) audio.currentTime = local;
+			} else {
+				lastLocal.delete(audio);
+				if (!audio.paused) audio.pause();
+			}
+		});
+	}
+	/** 暂停全部配音(pause 对 ended 元素会回卷到起点,循环重进场景可重新起播) */
+	function pauseSceneAudio(pool) {
+		pool.forEach((audio) => audio.pause());
+	}
+	//#endregion
 	//#region src/core/normalize.ts
 	/**
 	* 宽容归一化:agent 产出的 JSON 允许缺字段/类型跑偏,这里补默认值、钳边界,
@@ -138,70 +259,6 @@
 			if (!Array.isArray(items) || items.some((v) => typeof v !== "string")) el.items = Array.isArray(items) ? items.map((v) => String(v)) : [];
 		}
 		return el;
-	}
-	//#endregion
-	//#region src/core/timeline.ts
-	function sceneDuration(scene) {
-		let end = 0;
-		for (const el of scene.elements) end = Math.max(end, el.anim.start + el.anim.duration);
-		return Math.max(end, .1) + Math.max(0, scene.dwell ?? 0);
-	}
-	function sceneSpans(project) {
-		const spans = [];
-		let cursor = 0;
-		project.scenes.forEach((scene, index) => {
-			const duration = sceneDuration(scene);
-			spans.push({
-				index,
-				start: cursor,
-				duration,
-				name: scene.name
-			});
-			cursor += duration;
-		});
-		return spans;
-	}
-	function projectDuration(project) {
-		return sceneSpans(project).reduce((sum, span) => sum + span.duration, 0);
-	}
-	function sceneStartTime(project, index) {
-		return sceneSpans(project).slice(0, index).reduce((sum, span) => sum + span.duration, 0);
-	}
-	/** 全局时刻 t 定位到场景与场景内局部时刻,t 越界时钳到 [0, 总时长] */
-	function locate(project, t) {
-		const spans = sceneSpans(project);
-		if (spans.length === 0) return {
-			index: 0,
-			localT: 0
-		};
-		const clamped = Math.min(Math.max(t, 0), projectDuration(project));
-		for (const span of spans) if (clamped < span.start + span.duration) return {
-			index: span.index,
-			localT: clamped - span.start
-		};
-		const last = spans[spans.length - 1];
-		return {
-			index: last.index,
-			localT: last.duration
-		};
-	}
-	function clamp01(v) {
-		return Math.min(1, Math.max(0, v));
-	}
-	function easeOutCubic(p) {
-		const q = 1 - clamp01(p);
-		return 1 - q * q * q;
-	}
-	function easeInOutCubic(p) {
-		const x = clamp01(p);
-		return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-	}
-	/** 回弹缓动:终点恰为 1,中途允许超过 1(用于 pop 的过冲缩放) */
-	function easeOutBack(p) {
-		const c1 = 1.70158;
-		const c3 = 2.70158;
-		const x = clamp01(p) - 1;
-		return 1 + c3 * x * x * x + c1 * x * x;
 	}
 	//#endregion
 	//#region src/core/render/anim.ts
@@ -1678,40 +1735,18 @@
 		};
 		window.addEventListener("resize", fit);
 		fit();
-		const pool = /* @__PURE__ */ new Map();
-		project.scenes.forEach((scene) => {
-			if (!scene.audio?.src) return;
-			const audio = new Audio(scene.audio.src);
-			audio.preload = "auto";
-			pool.set(scene.id, audio);
-		});
-		const pauseAll = () => {
-			pool.forEach((audio) => audio.pause());
-		};
+		const audioPool = /* @__PURE__ */ new Map();
+		upsertSceneAudioPool(audioPool, project);
 		let t = 0;
 		let playing = true;
-		const syncAudio = () => {
-			project.scenes.forEach((scene, i) => {
-				const audio = pool.get(scene.id);
-				if (!audio) return;
-				const local = t - sceneStartTime(project, i);
-				if (playing && local >= 0 && local < sceneDuration(scene)) {
-					audio.volume = Math.min(1, Math.max(0, scene.audio?.volume ?? 1));
-					if (audio.paused) {
-						audio.currentTime = Math.max(0, local);
-						audio.play().catch(() => void 0);
-					} else if (Math.abs(audio.currentTime - local) > .35) audio.currentTime = local;
-				} else if (!audio.paused) audio.pause();
-			});
-		};
 		const toggle = () => {
 			playing = !playing;
-			if (!playing) pauseAll();
+			if (!playing) pauseSceneAudio(audioPool);
 			if (playIcon) playIcon.style.opacity = playing ? "0" : "1";
 		};
 		const seek = (delta) => {
 			t = Math.min(Math.max(0, t + delta), Math.max(duration - .01, 0));
-			pauseAll();
+			pauseSceneAudio(audioPool);
 		};
 		canvas.addEventListener("click", toggle);
 		window.addEventListener("keydown", (e) => {
@@ -1730,11 +1765,11 @@
 				const next = t + dt;
 				if (duration > 0 && next >= duration) {
 					t = 0;
-					pauseAll();
+					pauseSceneAudio(audioPool);
 				} else t = next;
 			}
 			drawFrame(ctx, project, t);
-			syncAudio();
+			syncSceneAudio(audioPool, project, t, playing);
 			if (bar) bar.style.width = `${duration > 0 ? t / duration * 100 : 0}%`;
 			if (timeLabel) timeLabel.textContent = `${t.toFixed(1)}s / ${duration.toFixed(1)}s`;
 		};

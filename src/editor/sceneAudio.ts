@@ -1,40 +1,21 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { pauseSceneAudio, syncSceneAudio, upsertSceneAudioPool } from "../core/audioSync";
 import type { Project } from "../core/types";
-import { sceneDuration, sceneStartTime } from "../core/timeline";
 
 /**
- * 编辑器配音同步:project 变化时重建音频池,播放期间随播放头逐帧对齐
- * (起播对齐场景起点,漂移超 0.35s 拉回);暂停/退出场景即暂停音频。
+ * 编辑器配音同步:project 变化时增量维护音频池(src 未变即复用),播放期间随播放头
+ * 逐帧对齐(起播对齐场景起点,漂移超 0.35s 拉回,自然播完后静默);暂停即全部暂停。
  */
 export function useSceneAudio(project: Project, tRef: RefObject<number>, playing: boolean): void {
   const poolRef = useRef(new Map<string, HTMLAudioElement>());
 
   useEffect(() => {
-    const pool = poolRef.current;
-    const alive = new Set<string>();
-    for (const scene of project.scenes) {
-      const src = scene.audio?.src;
-      if (!src) continue;
-      alive.add(scene.id);
-      const existing = pool.get(scene.id);
-      if (existing && existing.dataset.src === src) continue;
-      existing?.pause();
-      const audio = new Audio(src);
-      audio.preload = "auto";
-      audio.dataset.src = src;
-      pool.set(scene.id, audio);
-    }
-    for (const [id, audio] of pool) {
-      if (!alive.has(id)) {
-        audio.pause();
-        pool.delete(id);
-      }
-    }
+    upsertSceneAudioPool(poolRef.current, project);
   }, [project]);
 
   useEffect(() => {
     if (playing) return;
-    poolRef.current.forEach((audio) => audio.pause());
+    pauseSceneAudio(poolRef.current);
   }, [playing]);
 
   useEffect(() => {
@@ -42,26 +23,50 @@ export function useSceneAudio(project: Project, tRef: RefObject<number>, playing
     let raf = 0;
     const tick = (): void => {
       raf = requestAnimationFrame(tick);
-      const t = tRef.current;
-      project.scenes.forEach((scene, i) => {
-        const audio = poolRef.current.get(scene.id);
-        if (!audio) return;
-        const local = t - sceneStartTime(project, i);
-        const active = local >= 0 && local < sceneDuration(scene);
-        if (active) {
-          audio.volume = Math.min(1, Math.max(0, scene.audio?.volume ?? 1));
-          if (audio.paused) {
-            audio.currentTime = Math.max(0, local);
-            void audio.play().catch(() => undefined);
-          } else if (Math.abs(audio.currentTime - local) > 0.35) {
-            audio.currentTime = local;
-          }
-        } else if (!audio.paused) {
-          audio.pause();
-        }
-      });
+      syncSceneAudio(poolRef.current, project, tRef.current, true);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [project, playing, tRef]);
+}
+
+/* ── 配音时长探测(操作台对齐提示用)────────────────────────────── */
+
+/** src → 时长(秒)模块级缓存:null = 探测失败。替换文件即换 src,缓存自然分键。 */
+const durationCache = new Map<string, number | null>();
+
+/** 音频时长(秒);src 缺失/探测失败返回 null。metadata 级探测,不整体解码。 */
+export function useAudioDuration(src: string | undefined): number | null {
+  const [duration, setDuration] = useState<number | null>(() =>
+    src ? (durationCache.get(src) ?? null) : null,
+  );
+  useEffect(() => {
+    if (!src) {
+      setDuration(null);
+      return;
+    }
+    const cached = durationCache.get(src);
+    if (cached !== undefined) {
+      setDuration(cached);
+      return;
+    }
+    let alive = true;
+    const probe = new Audio();
+    probe.preload = "metadata";
+    probe.onloadedmetadata = () => {
+      durationCache.set(src, probe.duration);
+      if (alive) setDuration(probe.duration);
+    };
+    probe.onerror = () => {
+      durationCache.set(src, null);
+      if (alive) setDuration(null);
+    };
+    probe.src = src;
+    return () => {
+      alive = false;
+      probe.onloadedmetadata = null;
+      probe.onerror = null;
+    };
+  }, [src]);
+  return duration;
 }

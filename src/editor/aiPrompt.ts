@@ -12,6 +12,9 @@ export function buildAiPrompt(projectPath: string | null): string {
     "先读协议文档 ~/.tmd-anim/protocol/schema.md(字段权威定义),再参考活例 ~/.tmd-anim/protocol/bpe-example.json。",
     target,
     "坐标为画布逻辑像素(默认画布 1920x1080),动画时间单位为秒。",
+    "需要配音时给场景加 audio 字段(src=音频文件 dataURL);音频一律本机生成,不要联网下载:",
+    "macOS 用 `say -o /tmp/tmd-tts.aiff \"台词\"` 合成语音,`afconvert -f m4af -d aac` 转成 m4a(aiff 浏览器不解码),",
+    "提示音/简单旋律用 python3 合成 WAV;最后把文件 base64 拼成 dataURL 写入。",
     "改完运行 `pnpm anim validate <文件路径>` 自查:退出码 2 = 结构错误必须修;警告可按需处理。",
   ].join("\n");
 }
