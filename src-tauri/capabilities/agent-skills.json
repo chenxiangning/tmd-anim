@@ -1,0 +1,29 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "agent-skills",
+  "description": "AI 技能安装:仅当用户在「AI 调整」弹窗显式点击安装时,写入各宿主技能目录下的 tmd-anim 子目录;不触及用户其他技能",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        { "path": "$HOME/.claude/skills/tmd-anim" },
+        { "path": "$HOME/.agents/skills/tmd-anim" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$HOME/.claude/skills/tmd-anim/**" },
+        { "path": "$HOME/.agents/skills/tmd-anim/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$HOME/.claude/skills/tmd-anim/**" },
+        { "path": "$HOME/.agents/skills/tmd-anim/**" }
+      ]
+    }
+  ]
+}

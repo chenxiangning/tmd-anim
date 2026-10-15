@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Project } from "../core/types";
 import { GearButton } from "../app/GearButton";
-import { buildAiPrompt, copyText } from "./aiPrompt";
+import { AiGuideDialog } from "./AiGuideDialog";
 
 interface EditorHeaderProps {
   project: Project;
@@ -26,8 +26,9 @@ const segBtn = "px-2.5 py-1.5 text-xs font-medium text-neutral-600 transition-co
 
 /** 编辑器顶栏:返回 / 项目名 / 保存态 / 存储后端 / 重载(文件后端) / 导出分段组 / AI 调整 / 预览 / 设置。 */
 export function EditorHeader({ project, saveState, backend, previewing, onRename, onExit, onTogglePreview, onReload, onExport, onExportHtml, onExportVideo, onExportFrame, aiPromptPath, onOpenSettings }: EditorHeaderProps) {
-  // 瞬时提示文案(导出帧落盘路径 / 复制结果),几秒后自动消失
+  // 瞬时提示文案(导出帧落盘路径),几秒后自动消失
   const [flash, setFlash] = useState<string | null>(null);
+  const [aiGuideOpen, setAiGuideOpen] = useState(false);
   const flashTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(flashTimer.current), []);
   const showFlash = (message: string) => {
@@ -39,11 +40,6 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
     onExportFrame()
       .then((path) => showFlash(`帧已导出:${path}`))
       .catch((e: unknown) => showFlash(`导出失败:${e instanceof Error ? e.message : String(e)}`));
-  };
-  const handleCopyAiPrompt = () => {
-    void copyText(buildAiPrompt(aiPromptPath)).then((ok) =>
-      showFlash(ok ? "AI 提示词已复制,粘贴给任意 coding agent 即可" : "复制失败,请手动复制"),
-    );
   };
   return (
     <header className="relative flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-2.5">
@@ -93,7 +89,7 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
             视频
           </button>
         </div>
-        <button className="btn btn-secondary" onClick={handleCopyAiPrompt} title="复制一段提示词到剪贴板:粘贴给 coding agent,让它按协议直接改项目 JSON">
+        <button className="btn btn-secondary" onClick={() => setAiGuideOpen(true)} title="弹出引导:复制提示词给 coding agent,或一键安装小黑技能到本机 AI">
           AI 调整
         </button>
         <button className="btn btn-primary" onClick={onTogglePreview}>
@@ -101,6 +97,12 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
         </button>
         <GearButton onClick={onOpenSettings} />
       </div>
+      <AiGuideDialog
+        open={aiGuideOpen}
+        onClose={() => setAiGuideOpen(false)}
+        projectPath={aiPromptPath}
+        backend={backend}
+      />
     </header>
   );
 }

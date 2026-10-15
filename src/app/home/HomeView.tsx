@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/types";
 import { describeError, parseProjectText } from "../openProject";
-import sampleJson from "../../samples/bpe.json";
 import { newProjectId, type ProjectRepo } from "../../store/projects";
 import { ProjectCard, type Entry } from "./ProjectCard";
 import { GearButton } from "../GearButton";
+import { SampleMenu } from "./SampleMenu";
 import { TIME_GROUPS, timeGroupOf, type TimeGroup } from "./timeGroups";
 
 interface HomeViewProps {
@@ -152,13 +152,7 @@ export function HomeView({ repo, onOpen, onOpenSettings }: HomeViewProps) {
           <button className={"btn btn-secondary"} onClick={() => fileRef.current?.click()}>
             导入 JSON
           </button>
-          <button
-            className={"btn btn-secondary"}
-            onClick={() => void createAndOpen(parseProjectText(JSON.stringify(sampleJson)))}
-            title="用 BPE 分词示例建一份可编辑副本"
-          >
-            从示例新建
-          </button>
+          <SampleMenu onCreate={(text) => void createAndOpen(parseProjectText(text))} />
           <button
             className={"btn btn-primary"}
             onClick={() =>
@@ -200,14 +194,9 @@ export function HomeView({ repo, onOpen, onOpenSettings }: HomeViewProps) {
               </svg>
             </div>
             <div className="mt-4 text-sm font-medium text-neutral-700">还没有项目</div>
-            <div className="mt-1 text-xs text-neutral-400">从一份可编辑的 BPE 分词示例开始,或新建空白动画</div>
+            <div className="mt-1 text-xs text-neutral-400">选一个内置示例开始,或新建空白动画</div>
             <div className="mt-5 flex items-center gap-2">
-              <button
-                className={"btn btn-secondary"}
-                onClick={() => void createAndOpen(parseProjectText(JSON.stringify(sampleJson)))}
-              >
-                从示例新建
-              </button>
+              <SampleMenu onCreate={(text) => void createAndOpen(parseProjectText(text))} />
               <button
                 className={"btn btn-primary"}
                 onClick={() =>

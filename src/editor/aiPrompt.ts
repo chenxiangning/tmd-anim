@@ -3,13 +3,16 @@
  * 剪贴板回落 textarea + execCommand:Tauri WKWebView 无剪贴板插件,且禁加新依赖。
  */
 
-export function buildAiPrompt(projectPath: string | null): string {
+export function buildAiPrompt(projectPath: string | null, requirement?: string): string {
   const target = projectPath
     ? `目标项目文件:${projectPath}(直接编辑并保存,应用会自动热重载)`
     : "目标项目:浏览器版没有本地文件路径,请让用户在编辑器导出 JSON,改完再导入回来";
   return [
     "你是 tmd-anim 动画修改助手,负责按用户要求修改项目场景 JSON。",
+    ...(requirement?.trim() ? [`本次需求:${requirement.trim()}`] : []),
+    "若你的技能列表里已有 tmd-anim 技能(tmd-anim 桌面版「AI 调整」安装),按该技能指引进 ~/.tmd-anim/protocol/ 即可,与下列路径一致。",
     "先读协议文档 ~/.tmd-anim/protocol/schema.md(字段权威定义),再参考活例 ~/.tmd-anim/protocol/bpe-example.json。",
+    "需要小黑插画风格(手绘怪诞正文配图)时,先读 ~/.tmd-anim/protocol/xiaohei-style.md(画法配方与编排规则),参考 xiaohei-example.json。",
     target,
     "坐标为画布逻辑像素(默认画布 1920x1080),动画时间单位为秒。",
     "需要配音时给场景加 audio 字段(src=音频文件 dataURL);音频一律本机生成,不要联网下载:",

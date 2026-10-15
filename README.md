@@ -44,6 +44,10 @@ tmd-anim 是 tmd-cli 的姊妹项目(2026-10-13 立项),做一个「技术讲解
 
 - **场景 JSON v1 协议**:10 种元素(标题 / 艺术字 / 正文 / 形状 / 代码块 / 终端 / 表格 / 数组格 / 连线 / 图片)、
   10 种入场动画 + 缓动、多场景时间轴拼接;契约见 [`docs/schema.md`](docs/schema.md),活例见 `src/samples/bpe.json`
+- **小黑插画风格包**:「小黑」手绘怪诞配图风的 agent 绘画规范([`docs/xiaohei-style.md`](docs/xiaohei-style.md),
+  改编自 Ian 的开源技能 Ian Xiaohei Illustrations,MIT)+ 同风格示例项目;桌面版随协议投递到 `~/.tmd-anim/protocol/`,
+  agent 读风格包即可用原生元素拼出小黑并逐部件编排入场动画;「AI 调整」弹窗可把指路技能一键安装到
+  `~/.claude/skills/` 与 `~/.agents/skills/`(显式点按,不动用户已有技能),装过的 AI 听到「做动画 / 小黑配图」自动按协议执行
 - **Canvas 2D 纯函数渲染器**:零 UI 依赖,可在 node 侧复用;连线三路由(smooth / elbow / straight)与元素绑定跟随
 - **完整编辑器**:画布选中 / 拖拽 / 缩放 / 多选框选、schema 驱动属性面板、时间轴拖拽调时与擦洗、
   双击行内改文本、⌘C/⌘V、撤销重做、三面板折叠、自动保存(600ms 防抖)
@@ -128,7 +132,7 @@ src/editor/      编辑器(画布交互/属性面板/时间轴/场景条/撤销/
 src/export/      导出链路(JSON/HTML/MP4;MP4 = Worker 渲染编码 + 主线程回退)
 src/app/         主页(项目管理)与视图路由
 src/store/       项目仓库双后端(localStorage / Tauri plugin-fs)
-src/samples/     示例项目(bpe.json 同时是 schema 活例)
+src/samples/     示例项目(bpe.json 是 schema 活例,xiaohei.json 是小黑风格活例)
 src-tauri/       Tauri 2 桌面壳(fs 能力仅限 ~/.tmd-anim/)
 docs/schema.md   场景 JSON 契约(agent 协议权威文档)
 docs/ai-workflow.md  AI 工作流(agent 制作/调整动画的闭环与 tmd-cli 联动)
