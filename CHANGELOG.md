@@ -28,6 +28,7 @@
 ### CI
 
 - release.yml:tauri-action 注入 TAURI_SIGNING_PRIVATE_KEY 产出 .sig 与 latest.json;prep-release 复用旧 release 时先清陈旧 latest.json(tmd-cli v0.2.3 验签失败教训)
+- 补 `bundle.createUpdaterArtifacts: true`(对齐 tmd-cli):tauri v2 缺此配置时即使注入签名私钥也不产出更新产物,v0.1.2 首次 CI 即因此无 .sig/latest.json,删草稿重打 tag 重发
 
 ## [0.1.1] - 2026-10-14
 
