@@ -4,6 +4,12 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
+## [0.1.6] - 2026-10-16
+
+### 新增
+
+- 「HTTP 请求的一生」示例全场景内置配音:六幕各配婷婷(TTS)口播 dataURL 音频,总时长约 47 秒,顺带演示配音超长自动延长场景的行为;场景时长 28s → 47s
+
 ## [0.1.5] - 2026-10-16
 
 ### 修复
