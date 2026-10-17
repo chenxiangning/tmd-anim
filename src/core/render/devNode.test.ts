@@ -53,6 +53,12 @@ describe("drawDevNode 开发组件节点", () => {
     expect(ctx.texts[0].text).toBe(DEV_META.server.name);
   });
 
+  it("窄节点(w ≤ h+26)只画图标不画字,不出负 maxWidth", () => {
+    const ctx = mockCtx();
+    drawDevNode(ctx, node({ w: 120, h: 96 }));
+    expect(ctx.texts).toEqual([]);
+  });
+
   it("DEV_META 八个变体齐全且各有主色", () => {
     for (const v of ["database", "redis", "obs", "cloud", "server", "api", "queue", "container"] as const) {
       expect(DEV_META[v].color).toMatch(/^#/);

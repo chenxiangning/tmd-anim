@@ -45,7 +45,8 @@ function noise(seed: number, i: number): number {
  *  种子优先取 sketchSeed(点击/粘贴时随机生成),缺省按 id 稳定展开——渲染仍是纯函数 */
 function wobble(el: ShapeElement, pts: Array<[number, number]>, salt = 0): Array<[number, number]> {
   const amp = Math.min(10, Math.max(1.5, (Math.min(el.w, el.h) * 5) / 100));
-  const seed = Math.round(el.sketchSeed ?? hashSeed(el.id)) + salt;
+  // 种子钳 ±1e9:极大有限数会让 sin 哈希溢出成 NaN 抹掉整条路径
+  const seed = Math.max(-1e9, Math.min(1e9, Math.round(el.sketchSeed ?? hashSeed(el.id)))) + salt;
   return pts.map(([px, py], i) => [
     px + (noise(seed, i * 2) - 0.5) * 2 * amp,
     py + (noise(seed, i * 2 + 1) - 0.5) * 2 * amp,

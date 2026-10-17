@@ -133,7 +133,9 @@ function drawGlyph(ctx: Ctx, dev: DevNodeVariant, ox: number, oy: number, s: num
 }
 
 export function drawDevNode(ctx: Ctx, el: DevNodeElement): void {
-  const meta = DEV_META[el.dev] ?? DEV_META.server;
+  // 未知/缺失 dev 统一回落 server:meta 与图标走同一变体,不会画出空图标块
+  const dev: DevNodeVariant = el.dev in DEV_META ? el.dev : "server";
+  const meta = DEV_META[dev];
   const { x, y, w, h } = el;
   ctx.save();
   // 节点体:白底圆角 + 主色描边
@@ -152,25 +154,27 @@ export function drawDevNode(ctx: Ctx, el: DevNodeElement): void {
   ctx.fillStyle = meta.color;
   ctx.fill();
   ctx.globalAlpha = 1;
-  drawGlyph(ctx, el.dev, x + inset, y + inset, h - inset * 2, meta.color);
-  // 右侧文字:主名称 + 可选副标题,垂直居中
+  drawGlyph(ctx, dev, x + inset, y + inset, h - inset * 2, meta.color);
+  // 右侧文字:主名称 + 可选副标题,垂直居中;窄节点(w ≤ h+26)没有文字区,只画图标不画字
   const fs = el.fontSize ?? 26;
   const tx = x + h + 14;
-  const tw = w - h - 14 - 12;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  const label = el.label ?? meta.name;
-  if (el.sub) {
-    ctx.font = `600 ${fs}px ${SANS}`;
-    ctx.fillStyle = "#1F2937";
-    ctx.fillText(label, tx, y + h / 2 - fs * 0.36, tw);
-    ctx.font = `400 ${Math.round(fs * 0.72)}px ${SANS}`;
-    ctx.fillStyle = "#64748B";
-    ctx.fillText(el.sub, tx, y + h / 2 + fs * 0.52, tw);
-  } else {
-    ctx.font = `600 ${fs}px ${SANS}`;
-    ctx.fillStyle = "#1F2937";
-    ctx.fillText(label, tx, y + h / 2 + 1, tw);
+  const tw = w - h - 26;
+  if (tw > 0) {
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const label = el.label ?? meta.name;
+    if (el.sub) {
+      ctx.font = `600 ${fs}px ${SANS}`;
+      ctx.fillStyle = "#1F2937";
+      ctx.fillText(label, tx, y + h / 2 - fs * 0.36, tw);
+      ctx.font = `400 ${Math.round(fs * 0.72)}px ${SANS}`;
+      ctx.fillStyle = "#64748B";
+      ctx.fillText(el.sub, tx, y + h / 2 + fs * 0.52, tw);
+    } else {
+      ctx.font = `600 ${fs}px ${SANS}`;
+      ctx.fillStyle = "#1F2937";
+      ctx.fillText(label, tx, y + h / 2 + 1, tw);
+    }
   }
   ctx.restore();
 }

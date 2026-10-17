@@ -925,7 +925,7 @@
 	*  种子优先取 sketchSeed(点击/粘贴时随机生成),缺省按 id 稳定展开——渲染仍是纯函数 */
 	function wobble(el, pts, salt = 0) {
 		const amp = Math.min(10, Math.max(1.5, Math.min(el.w, el.h) * 5 / 100));
-		const seed = Math.round(el.sketchSeed ?? hashSeed(el.id)) + salt;
+		const seed = Math.max(-1e9, Math.min(1e9, Math.round(el.sketchSeed ?? hashSeed(el.id)))) + salt;
 		return pts.map(([px, py], i) => [px + (noise(seed, i * 2) - .5) * 2 * amp, py + (noise(seed, i * 2 + 1) - .5) * 2 * amp]);
 	}
 	/** 椭圆/圆弧采样点(角度 from..to 均分 n 段) */
@@ -1383,7 +1383,8 @@
 		ctx.stroke();
 	}
 	function drawDevNode(ctx, el) {
-		const meta = DEV_META[el.dev] ?? DEV_META.server;
+		const dev = el.dev in DEV_META ? el.dev : "server";
+		const meta = DEV_META[dev];
 		const { x, y, w, h } = el;
 		ctx.save();
 		ctx.beginPath();
@@ -1400,24 +1401,26 @@
 		ctx.fillStyle = meta.color;
 		ctx.fill();
 		ctx.globalAlpha = 1;
-		drawGlyph(ctx, el.dev, x + inset, y + inset, h - inset * 2, meta.color);
+		drawGlyph(ctx, dev, x + inset, y + inset, h - inset * 2, meta.color);
 		const fs = el.fontSize ?? 26;
 		const tx = x + h + 14;
-		const tw = w - h - 14 - 12;
-		ctx.textAlign = "left";
-		ctx.textBaseline = "middle";
-		const label = el.label ?? meta.name;
-		if (el.sub) {
-			ctx.font = `600 ${fs}px ${SANS}`;
-			ctx.fillStyle = "#1F2937";
-			ctx.fillText(label, tx, y + h / 2 - fs * .36, tw);
-			ctx.font = `400 ${Math.round(fs * .72)}px ${SANS}`;
-			ctx.fillStyle = "#64748B";
-			ctx.fillText(el.sub, tx, y + h / 2 + fs * .52, tw);
-		} else {
-			ctx.font = `600 ${fs}px ${SANS}`;
-			ctx.fillStyle = "#1F2937";
-			ctx.fillText(label, tx, y + h / 2 + 1, tw);
+		const tw = w - h - 26;
+		if (tw > 0) {
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			const label = el.label ?? meta.name;
+			if (el.sub) {
+				ctx.font = `600 ${fs}px ${SANS}`;
+				ctx.fillStyle = "#1F2937";
+				ctx.fillText(label, tx, y + h / 2 - fs * .36, tw);
+				ctx.font = `400 ${Math.round(fs * .72)}px ${SANS}`;
+				ctx.fillStyle = "#64748B";
+				ctx.fillText(el.sub, tx, y + h / 2 + fs * .52, tw);
+			} else {
+				ctx.font = `600 ${fs}px ${SANS}`;
+				ctx.fillStyle = "#1F2937";
+				ctx.fillText(label, tx, y + h / 2 + 1, tw);
+			}
 		}
 		ctx.restore();
 	}

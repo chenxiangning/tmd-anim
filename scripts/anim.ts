@@ -8,6 +8,7 @@
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { ELEMENT_KINDS, ProjectParseError, normalizeProject } from "../src/core/normalize";
+import { DEV_META } from "../src/core/render/devNode";
 import { projectDuration } from "../src/core/timeline";
 import type { Project } from "../src/core/types";
 
@@ -94,6 +95,9 @@ export function lintProject(raw: unknown): LintIssue[] {
       }
       if (typeof e.text === "string" && e.text.trim().length === 0) {
         issues.push({ ...at, message: "text 为空(或仅空白),渲染为空内容" });
+      }
+      if (e.kind === "devNode" && typeof e.dev === "string" && !(e.dev in DEV_META)) {
+        issues.push({ ...at, message: `未知开发组件 dev ${JSON.stringify(e.dev)},渲染回落为服务器机架` });
       }
     });
   });

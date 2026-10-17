@@ -97,4 +97,16 @@ describe("traceShape 手绘(sketch)模式", () => {
     expect(a.pts).toEqual(b.pts);
     expect(a.pts).not.toEqual(c.pts);
   });
+
+  it("极端 sketchSeed(1e15/负值)钳制后仍有界,坐标不出 NaN", () => {
+    for (const seed of [1e15, -1e15, Number.MAX_SAFE_INTEGER]) {
+      const ctx = mockCtx();
+      traceShape(ctx, shape({ sketch: true, sketchSeed: seed }));
+      expect(ctx.pts.length).toBeGreaterThan(0);
+      for (const [px, py] of ctx.pts) {
+        expect(Number.isFinite(px)).toBe(true);
+        expect(Number.isFinite(py)).toBe(true);
+      }
+    }
+  });
 });

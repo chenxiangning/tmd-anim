@@ -100,7 +100,8 @@ function resolveTextTargetInner(el: SceneElement, px: number, py: number, elemen
       const fontSize = el.fontSize ?? 26;
       return {
         field: "label", value: el.label ?? DEV_META[el.dev]?.name ?? "", multiline: false, mono: false, fontSize,
-        rect: box(el.x + el.h + 14, el.y, el.w - el.h - 26, el.h), lineHeight: el.h, padLeft: 0,
+        // 窄节点(w ≤ h+26)画布上没有文字区;编辑框至少给 1 宽避免负尺寸
+        rect: box(el.x + el.h + 14, el.y, Math.max(1, el.w - el.h - 26), el.h), lineHeight: el.h, padLeft: 0,
         bg: "#FFFFFF", color: "#1F2937", align: "left",
         patch: (v) => ({ label: v }),
       };
