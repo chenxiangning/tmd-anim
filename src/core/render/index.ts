@@ -1,7 +1,7 @@
 import type { Project, SceneElement } from "../types";
 import { locate } from "../timeline";
 import { animState, animVisual } from "./anim";
-import { drawBrowser, drawStepCard, drawTerminal } from "./cards";
+import { drawAiChat, drawBrowser, drawPhone, drawStepCard, drawTerminal } from "./cards";
 import { drawArrayCells } from "./cells";
 import { drawCode } from "./code";
 import { drawArtText, drawBadge, drawInput, drawNote, drawShape, drawText, drawTitle } from "./elements";
@@ -117,6 +117,12 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
       break;
     case "devNode":
       drawDevNode(ctx, el);
+      break;
+    case "phone":
+      drawPhone(ctx, el);
+      break;
+    case "aiChat":
+      drawAiChat(ctx, el, progress);
       break;
   }
   ctx.restore();

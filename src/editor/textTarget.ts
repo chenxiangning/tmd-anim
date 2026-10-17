@@ -96,6 +96,16 @@ function resolveTextTargetInner(el: SceneElement, px: number, py: number, elemen
         patch: (v) => ({ text: v }),
       };
     }
+    case "aiChat": {
+      const fontSize = el.fontSize ?? 26;
+      return {
+        field: "text", value: el.reply ?? "", multiline: true, mono: false, fontSize,
+        rect: box(el.x + fontSize * 0.9, el.y + fontSize * 3.4, el.w - fontSize * 1.8, el.h - fontSize * 4.2),
+        lineHeight: fontSize * 1.6, padLeft: 0,
+        bg: el.dark ? "#0F172A" : "#FFFFFF", color: el.dark ? "#E2E8F0" : "#1F2937", align: "left",
+        patch: (v) => ({ reply: v }),
+      };
+    }
     case "devNode": {
       const fontSize = el.fontSize ?? 26;
       return {

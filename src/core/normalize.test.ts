@@ -235,4 +235,21 @@ describe("normalizeProject", () => {
     expect("label" in els[1]).toBe(false);
     expect("sub" in els[1]).toBe(false);
   });
+
+  it("phone 与 aiChat 合法透传,aiChat 文本字段非字符串丢弃", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [{ elements: [
+        { kind: "phone", body: "#FFFFFF", frame: "#0F172A" },
+        { kind: "aiChat", title: "AI 助手", prompt: "总结", reply: "好的" },
+        { kind: "aiChat", title: 7, prompt: true, reply: {} },
+      ] }],
+    });
+    const els = p.scenes[0].elements as Array<{ kind: string; title?: unknown; prompt?: unknown; reply?: unknown }>;
+    expect(els[0].kind).toBe("phone");
+    expect(els[1].title).toBe("AI 助手");
+    for (const key of ["title", "prompt", "reply"] as const) {
+      expect(key in els[2]).toBe(false);
+    }
+  });
 });

@@ -1,4 +1,5 @@
 import type { BrowserElement, StepCardElement, TerminalElement } from "../types";
+import type { AiChatElement, PhoneElement } from "../types";
 import { drawWindowDots } from "./code";
 import { drawRichText, monoFont, roundRect, sansFont } from "./text";
 
@@ -125,5 +126,111 @@ export function drawBrowser(ctx: CanvasRenderingContext2D, el: BrowserElement): 
   ctx.moveTo(el.x, el.y + headerH);
   ctx.lineTo(el.x + el.w, el.y + headerH);
   ctx.stroke();
+  ctx.restore();
+}
+
+/** 手机 mock:圆角机身(带屏框) + 顶部刘海胶囊 + 底部 home 条;屏幕区留给后绘制元素叠加内容 */
+export function drawPhone(ctx: CanvasRenderingContext2D, el: PhoneElement): void {
+  ctx.save();
+  roundRect(ctx, el.x, el.y, el.w, el.h, Math.min(44, el.w * 0.14));
+  ctx.fillStyle = el.frame ?? "#0F172A";
+  ctx.fill();
+  const bezel = Math.max(10, el.w * 0.035);
+  const sx = el.x + bezel;
+  const sy = el.y + bezel;
+  const sw = el.w - bezel * 2;
+  const sh = el.h - bezel * 2;
+  roundRect(ctx, sx, sy, sw, sh, Math.min(32, sw * 0.1));
+  ctx.fillStyle = el.body ?? "#FFFFFF";
+  ctx.fill();
+  // 刘海胶囊:屏幕顶缘居中
+  const notchW = Math.min(sw * 0.34, 120);
+  const notchH = Math.max(12, bezel * 0.9);
+  roundRect(ctx, sx + (sw - notchW) / 2, sy + 8, notchW, notchH, notchH / 2);
+  ctx.fillStyle = el.frame ?? "#0F172A";
+  ctx.fill();
+  // home 指示条:屏幕底缘居中
+  const barW = sw * 0.36;
+  roundRect(ctx, sx + (sw - barW) / 2, sy + sh - 12, barW, 5, 2.5);
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = el.frame ?? "#0F172A";
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+const AI_ACCENT = "#7C3AED";
+
+/** AI 对话卡:星标 + 标题头部;用户消息右对齐气泡,AI 回复占余下高度(支持高亮芯片) */
+export function drawAiChat(ctx: CanvasRenderingContext2D, el: AiChatElement, progress?: number): void {
+  const fontSize = el.fontSize ?? 26;
+  const dark = el.dark === true;
+  const bg = dark ? "#0F172A" : "#FFFFFF";
+  const fg = dark ? "#E2E8F0" : "#1F2937";
+  const sub = dark ? "#94A3B8" : "#64748B";
+  ctx.save();
+  roundRect(ctx, el.x, el.y, el.w, el.h, 16);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.strokeStyle = dark ? "#334155" : "#E2E8F0";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // 头部:四角星徽标 + 标题
+  const headerH = fontSize * 2.2;
+  const cx = el.x + fontSize * 1.15;
+  const cy = el.y + headerH / 2;
+  const r = fontSize * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.quadraticCurveTo(cx + r * 0.22, cy - r * 0.22, cx + r, cy);
+  ctx.quadraticCurveTo(cx + r * 0.22, cy + r * 0.22, cx, cy + r);
+  ctx.quadraticCurveTo(cx - r * 0.22, cy + r * 0.22, cx - r, cy);
+  ctx.quadraticCurveTo(cx - r * 0.22, cy - r * 0.22, cx, cy - r);
+  ctx.fillStyle = AI_ACCENT;
+  ctx.fill();
+  ctx.font = sansFont(fontSize * 0.9, 600);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = fg;
+  ctx.fillText(el.title ?? "AI 助手", cx + r + fontSize * 0.55, cy + 1, el.w - (cx + r + fontSize * 0.55 - el.x) - 12);
+  ctx.strokeStyle = dark ? "#334155" : "#E2E8F0";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(el.x, el.y + headerH);
+  ctx.lineTo(el.x + el.w, el.y + headerH);
+  ctx.stroke();
+  // 消息区:prompt 右对齐气泡,reply 左对齐平铺
+  const padX = fontSize * 0.9;
+  const innerW = el.w - padX * 2;
+  let cursorY = el.y + headerH + fontSize * 0.8;
+  if (el.prompt) {
+    const bubbleH = fontSize * 2.1;
+    const bubbleW = Math.min(innerW * 0.78, padX + el.prompt.length * fontSize * 0.62);
+    roundRect(ctx, el.x + el.w - padX - bubbleW, cursorY, bubbleW, bubbleH, fontSize * 0.7);
+    ctx.fillStyle = dark ? "#4C1D95" : "#EDE9FE";
+    ctx.fill();
+    ctx.font = sansFont(fontSize * 0.85, 400);
+    ctx.fillStyle = dark ? "#E9D5FF" : "#4C1D95";
+    ctx.textAlign = "left";
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(el.x + el.w - padX - bubbleW + fontSize * 0.5, cursorY, bubbleW - fontSize, bubbleH);
+    ctx.clip();
+    drawRichText(ctx, el.x + el.w - padX - bubbleW + fontSize * 0.5, cursorY + (bubbleH - fontSize * 1.5) / 2, bubbleW - fontSize, fontSize * 1.5, el.prompt, { fontSize: fontSize * 0.85, color: dark ? "#E9D5FF" : "#4C1D95", align: "left" });
+    ctx.restore();
+    cursorY += bubbleH + fontSize * 0.7;
+  }
+  if (el.reply) {
+    drawRichText(ctx, el.x + padX, cursorY, innerW, el.y + el.h - cursorY - fontSize * 0.8, el.reply, {
+      fontSize: fontSize * 0.85,
+      color: fg,
+      align: "left",
+      progress,
+    });
+  } else if (!el.prompt) {
+    ctx.font = sansFont(fontSize * 0.85, 400);
+    ctx.fillStyle = sub;
+    ctx.fillText("输入消息…", el.x + padX, cursorY + fontSize);
+  }
   ctx.restore();
 }

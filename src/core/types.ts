@@ -4,48 +4,17 @@
  */
 
 export type ElementKind =
-  | "title"
-  | "artText"
-  | "text"
-  | "shape"
-  | "input"
-  | "code"
-  | "table"
-  | "note"
-  | "badge"
-  | "arrayCells"
-  | "connector"
-  | "image"
-  | "list"
-  | "stepCard"
-  | "terminal"
-  | "progress"
-  | "kbd"
-  | "browser"
-  | "devNode";
+  | "title" | "artText" | "text" | "shape" | "input" | "code" | "table" | "note" | "badge" | "arrayCells"
+  | "connector" | "image" | "list" | "stepCard" | "terminal" | "progress" | "kbd" | "browser"
+  | "devNode" | "phone" | "aiChat";
 export type ShapeVariant =
-  | "rect"
-  | "ellipse"
-  | "triangle"
-  | "diamond"
-  | "hexagon"
-  | "star"
-  | "cylinder"
-  | "blockArrow"
-  | "speechBubble";
+  | "rect" | "ellipse" | "triangle" | "diamond" | "hexagon"
+  | "star" | "cylinder" | "blockArrow" | "speechBubble";
 
 /** 入场动画:pop 弹出/fade 淡入/riseUp 上浮/slideLeft|slideRight 侧滑/dropDown 落入/wipe 擦除/typewriter 打字机/zoomIn 缩放/spinIn 旋转 */
 export type AnimType =
-  | "pop"
-  | "fade"
-  | "riseUp"
-  | "slideLeft"
-  | "slideRight"
-  | "dropDown"
-  | "wipe"
-  | "typewriter"
-  | "zoomIn"
-  | "spinIn";
+  | "pop" | "fade" | "riseUp" | "slideLeft" | "slideRight" | "dropDown"
+  | "wipe" | "typewriter" | "zoomIn" | "spinIn";
 
 /** 缓动:缺省(auto)时按动画类型取默认(pop/spinIn/dropDown 回弹,typewriter 线性,其余缓出) */
 export type EasingKind = "linear" | "easeOut" | "easeInOut" | "back";
@@ -255,26 +224,28 @@ export interface DevNodeElement extends ElementBase {
 
 export type DevNodeVariant = DevNodeElement["dev"];
 
+/** 手机 mock:圆角机身 + 刘海 + 屏幕区(body 底色),后绘制元素可叠加充当界面内容 */
+export interface PhoneElement extends ElementBase {
+  kind: "phone";
+  body?: string; // 屏幕底色
+  frame?: string; // 机身/边框色
+}
+
+/** AI 对话卡:星标头部 + 标题,用户消息气泡与 AI 回复区(reply 支持高亮芯片) */
+export interface AiChatElement extends ElementBase {
+  kind: "aiChat";
+  title?: string;
+  prompt?: string; // 用户消息
+  reply?: string; // AI 回复
+  fontSize?: number;
+  dark?: boolean;
+}
+
 export type SceneElement =
-  | TitleElement
-  | ArtTextElement
-  | TextElement
-  | ShapeElement
-  | InputElement
-  | CodeElement
-  | TableElement
-  | NoteElement
-  | BadgeElement
-  | ArrayCellsElement
-  | ConnectorElement
-  | ImageElement
-  | ListElement
-  | StepCardElement
-  | TerminalElement
-  | ProgressElement
-  | KbdElement
-  | BrowserElement
-  | DevNodeElement;
+  | TitleElement | ArtTextElement | TextElement | ShapeElement | InputElement | CodeElement
+  | TableElement | NoteElement | BadgeElement | ArrayCellsElement | ConnectorElement | ImageElement
+  | ListElement | StepCardElement | TerminalElement | ProgressElement | KbdElement | BrowserElement
+  | DevNodeElement | PhoneElement | AiChatElement;
 
 export interface Scene {
   id: string;

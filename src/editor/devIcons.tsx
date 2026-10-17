@@ -19,4 +19,6 @@ export const DEV_ICONS: Record<string, ReactNode> = {
   "devNode:api": devIcon(<path d="M8 6l-4 6 4 6M16 6l4 6-4 6M13.5 4l-3 16" />),
   "devNode:queue": devIcon(<><path d="M4 6h16M4 12h16M4 18h16" /><path d="M7 6h.01M7 12h.01M7 18h.01" /></>),
   "devNode:container": devIcon(<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9" />),
+  phone: devIcon(<><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 5h3M10 18.5h4" /></>),
+  aiChat: devIcon(<><path d="M4 5h16v11H9l-5 4z" /><path d="M12 8.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L9.1 10.3l2-.3z" fill="currentColor" stroke="none" /></>),
 };

@@ -27,6 +27,8 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   kbd: "按键",
   browser: "浏览器",
   devNode: "开发组件",
+  phone: "手机",
+  aiChat: "AI 对话",
 };
 
 export const SHAPE_LABELS: Record<string, string> = {
@@ -61,6 +63,8 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "kbd",
   "browser",
   "devNode",
+  "phone",
+  "aiChat",
 ];
 
 /** 元素主色:元素库图标与时间轴条共用,保持「库-画布-时间轴」三者颜色一致 */
@@ -85,6 +89,8 @@ export function kindColor(kind: SceneElement["kind"]): string {
     kbd: "#F59E0B",
     browser: "#A855F7",
     devNode: "#0284C7",
+    phone: "#0F172A",
+    aiChat: "#7C3AED",
   };
   return map[kind];
 }
@@ -175,6 +181,10 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       const dev = ((variant ?? "database") as DevNodeVariant);
       return { ...base, kind, dev, w: 300, h: 96, label: DEV_META[dev]?.name ?? "组件", sub: "规格说明" };
     }
+    case "phone":
+      return { ...base, kind, w: 340, h: 700, body: "#FFFFFF", frame: "#0F172A" };
+    case "aiChat":
+      return { ...base, kind, w: 640, h: 420, title: "AI 助手", prompt: "帮我总结这份文档", reply: "好的,以下是三个要点:1) 背景 2) 核心方案 3) 落地步骤", fontSize: 26 };
   }
 }
 

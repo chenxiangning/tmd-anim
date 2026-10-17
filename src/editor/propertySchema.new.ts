@@ -1,4 +1,4 @@
-import type { CodeElement, DevNodeElement, DevNodeVariant, SceneElement } from "../core/types";
+import type { AiChatElement, CodeElement, DevNodeElement, DevNodeVariant, SceneElement } from "../core/types";
 import { DEV_META } from "../core/render/devNode";
 import type { FieldDef } from "./propertySchema";
 
@@ -89,6 +89,20 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
   kbd: {
     title: "按键属性",
     fields: [plain("text", "按键(空格分键帽)", "text"), plain("bg", "底色", "color"), numberField("fontSize", "字号", 30)],
+  },
+  phone: {
+    title: "手机属性",
+    fields: [plain("body", "屏幕底色", "color"), plain("frame", "机身色", "color")],
+  },
+  aiChat: {
+    title: "AI 对话属性",
+    fields: [
+      plain("title", "标题", "text", { placeholder: "AI 助手" }),
+      plain("prompt", "用户消息", "text"),
+      plain("reply", "AI 回复", "textarea", { rows: 4 }),
+      numberField("fontSize", "字号", 26),
+      boolField("dark", "深色模式", (el) => str((el as AiChatElement).dark === true)),
+    ],
   },
   devNode: {
     title: "开发组件属性",

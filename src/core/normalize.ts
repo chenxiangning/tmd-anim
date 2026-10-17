@@ -40,6 +40,8 @@ export const ELEMENT_KINDS: Record<string, true> = {
   kbd: true,
   browser: true,
   devNode: true,
+  phone: true,
+  aiChat: true,
 };
 
 export class ProjectParseError extends Error {
@@ -160,6 +162,12 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     if (connector.text !== undefined && typeof connector.text !== "string") delete connector.text;
     if (connector.sketch !== undefined && typeof connector.sketch !== "boolean") delete connector.sketch;
     if (connector.sketchSeed !== undefined && (typeof connector.sketchSeed !== "number" || !Number.isFinite(connector.sketchSeed))) delete connector.sketchSeed;
+  }
+  // AI 对话卡:title/prompt/reply 非字符串丢弃
+  if (el.kind === "aiChat") {
+    for (const key of ["title", "prompt", "reply"] as const) {
+      if (connector[key] !== undefined && typeof connector[key] !== "string") delete connector[key];
+    }
   }
   // 开发组件:label/sub 非字符串丢弃;dev 未知值保留(渲染回落 server 机架)
   if (el.kind === "devNode") {

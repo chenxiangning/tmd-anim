@@ -165,9 +165,8 @@ const DEV_ITEMS: ReadonlyArray<LibraryItem> = [
 interface LibraryGroup {
   label: string;
   items: ReadonlyArray<LibraryItem>;
-  /** 页签一名字(有 tab2 才显示页签栏);缺省「常规」 */
+  /** tab1 页签名(缺省「常规」);tab2 = 第二页签(形状的手绘/组件的开发) */
   tab1?: string;
-  /** 第二页签:形状的手绘 / 组件的开发 */
   tab2?: { label: string; items: ReadonlyArray<LibraryItem> };
 }
 
@@ -196,6 +195,8 @@ const GROUPS: ReadonlyArray<LibraryGroup> = [
       { kind: "code" },
       { kind: "terminal" },
       { kind: "table" },
+      { kind: "phone" },
+      { kind: "aiChat" },
     ],
     tab2: { label: "开发", items: DEV_ITEMS },
   },
@@ -223,8 +224,7 @@ function itemIcon(item: LibraryItem): ReactNode {
 /** 左栏元素库:图标 + 名称分组;点击添加到画布中央,拖到画布落到指定位置;右缘可拖拽调宽。
  *  形状组(常规/手绘)与组件组(基础/开发)各带页签切换。 */
 export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
-  /** 各分组第二页签是否激活(按组名记) */
-  const [tab2On, setTab2On] = useState<Record<string, boolean>>({});
+  const [tab2On, setTab2On] = useState<Record<string, boolean>>({}); // 各分组第二页签激活态(按组名)
   const { size: width, startResize, resetSize } = usePanelResize({
     axis: "x",
     key: "tmd-anim:lib-w",
