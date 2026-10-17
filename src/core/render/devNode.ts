@@ -14,6 +14,12 @@ export const DEV_META: Record<DevNodeVariant, { color: string; name: string }> =
   api: { color: "#16A34A", name: "API" },
   queue: { color: "#D97706", name: "消息队列" },
   container: { color: "#2563EB", name: "容器" },
+  gateway: { color: "#0891B2", name: "网关" },
+  loadBalancer: { color: "#059669", name: "负载均衡" },
+  cdn: { color: "#6366F1", name: "CDN" },
+  auth: { color: "#B45309", name: "认证" },
+  function: { color: "#DB2777", name: "函数计算" },
+  git: { color: "#EA580C", name: "代码仓库" },
 };
 
 type Ctx = CanvasRenderingContext2D;
@@ -126,6 +132,86 @@ function drawGlyph(ctx: Ctx, dev: DevNodeVariant, ox: number, oy: number, s: num
       ctx.lineTo(hex[2][0], hex[2][1]);
       ctx.moveTo(cx, cy);
       ctx.lineTo(hex[4][0], hex[4][1]);
+      break;
+    }
+    case "gateway": {
+      // 对穿双箭头穿过竖门
+      const rw = s * 0.28;
+      ctx.moveTo(cx - rw, cy - s * 0.14);
+      ctx.lineTo(cx + rw * 0.5, cy - s * 0.14);
+      ctx.lineTo(cx + rw * 0.5, cy - s * 0.22);
+      ctx.lineTo(cx + rw, cy - s * 0.14);
+      ctx.lineTo(cx + rw * 0.5, cy - s * 0.06);
+      ctx.lineTo(cx + rw * 0.5, cy + s * 0.02);
+      ctx.moveTo(cx + rw, cy + s * 0.14);
+      ctx.lineTo(cx - rw * 0.5, cy + s * 0.14);
+      ctx.lineTo(cx - rw * 0.5, cy + s * 0.06);
+      ctx.lineTo(cx - rw, cy + s * 0.14);
+      ctx.lineTo(cx - rw * 0.5, cy + s * 0.22);
+      ctx.lineTo(cx - rw * 0.5, cy + s * 0.3);
+      ctx.moveTo(cx, cy - s * 0.28);
+      ctx.lineTo(cx, cy + s * 0.28);
+      break;
+    }
+    case "loadBalancer": {
+      // 一入三出扇形分流
+      const rw = s * 0.3;
+      ctx.moveTo(cx - rw, cy);
+      ctx.lineTo(cx, cy);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + rw, cy - s * 0.2);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + rw, cy);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + rw, cy + s * 0.2);
+      break;
+    }
+    case "cdn": {
+      // 地球:圆 + 经纬线
+      const r = s * 0.26;
+      ctx.moveTo(cx + r, cy);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.moveTo(cx - r, cy);
+      ctx.lineTo(cx + r, cy);
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx, cy + r);
+      ctx.ellipse(cx, cy, r * 0.45, r, 0, 0, Math.PI * 2);
+      break;
+    }
+    case "auth": {
+      // 盾牌 + 对勾
+      const r = s * 0.24;
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy - r * 0.55);
+      ctx.lineTo(cx + r, cy + r * 0.25);
+      ctx.quadraticCurveTo(cx + r, cy + r * 0.9, cx, cy + r);
+      ctx.quadraticCurveTo(cx - r, cy + r * 0.9, cx - r, cy + r * 0.25);
+      ctx.lineTo(cx - r, cy - r * 0.55);
+      ctx.closePath();
+      ctx.moveTo(cx - r * 0.4, cy);
+      ctx.lineTo(cx - r * 0.1, cy + r * 0.32);
+      ctx.lineTo(cx + r * 0.45, cy - r * 0.3);
+      break;
+    }
+    case "function": {
+      ctx.font = `700 ${Math.round(s * 0.44)}px ${SANS}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = color;
+      ctx.fillText("λ", cx, cy + s * 0.02);
+      return;
+    }
+    case "git": {
+      // 分支:两节点 + 曲线
+      const r = s * 0.09;
+      ctx.moveTo(cx - s * 0.16, cy - s * 0.18);
+      ctx.arc(cx - s * 0.16, cy - s * 0.18, r, 0, Math.PI * 2);
+      ctx.moveTo(cx - s * 0.16, cy - s * 0.18 + r);
+      ctx.lineTo(cx - s * 0.16, cy + s * 0.12);
+      ctx.arc(cx - s * 0.16, cy + s * 0.18, r, Math.PI, 0, true);
+      ctx.quadraticCurveTo(cx, cy - s * 0.04, cx + s * 0.16, cy - s * 0.12 - r);
+      ctx.moveTo(cx + s * 0.16, cy - s * 0.18);
+      ctx.arc(cx + s * 0.16, cy - s * 0.18, r, 0, Math.PI * 2);
       break;
     }
   }

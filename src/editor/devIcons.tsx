@@ -19,6 +19,12 @@ export const DEV_ICONS: Record<string, ReactNode> = {
   "devNode:api": devIcon(<path d="M8 6l-4 6 4 6M16 6l4 6-4 6M13.5 4l-3 16" />),
   "devNode:queue": devIcon(<><path d="M4 6h16M4 12h16M4 18h16" /><path d="M7 6h.01M7 12h.01M7 18h.01" /></>),
   "devNode:container": devIcon(<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9" />),
+  "devNode:gateway": devIcon(<><path d="M3 9h8l3 3 3-3h4M3 15h4l3-3 3 3h8M12 5v14" /></>),
+  "devNode:loadBalancer": devIcon(<path d="M3 12h6m0 0l6-5m-6 5l6 5m0-10v10m4-5h2" />),
+  "devNode:cdn": devIcon(<><circle cx="12" cy="12" r="8" /><path d="M4 12h16M12 4c3 2.5 3 13.5 0 16-3-2.5-3-13.5 0-16z" /></>),
+  "devNode:auth": devIcon(<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6zM9 12l2 2 4-4" />),
+  "devNode:function": devIcon(<path d="M16 4h-2.5A3.5 3.5 0 0 0 10 7.5V20M7 12h7" />),
+  "devNode:git": devIcon(<><circle cx="6" cy="6" r="2.2" /><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="8" r="2.2" /><path d="M6 8.2v7.6M6 13c0-3 4-3 6-3s6 0 6-1.8" /></>),
   phone: devIcon(<><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 5h3M10 18.5h4" /></>),
   aiChat: devIcon(<><path d="M4 5h16v11H9l-5 4z" /><path d="M12 8.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L9.1 10.3l2-.3z" fill="currentColor" stroke="none" /></>),
 };

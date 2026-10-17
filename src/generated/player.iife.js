@@ -1383,6 +1383,30 @@
 		container: {
 			color: "#2563EB",
 			name: "容器"
+		},
+		gateway: {
+			color: "#0891B2",
+			name: "网关"
+		},
+		loadBalancer: {
+			color: "#059669",
+			name: "负载均衡"
+		},
+		cdn: {
+			color: "#6366F1",
+			name: "CDN"
+		},
+		auth: {
+			color: "#B45309",
+			name: "认证"
+		},
+		function: {
+			color: "#DB2777",
+			name: "函数计算"
+		},
+		git: {
+			color: "#EA580C",
+			name: "代码仓库"
 		}
 	};
 	var SANS = "ui-sans-serif, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif";
@@ -1488,6 +1512,80 @@
 				ctx.lineTo(hex[2][0], hex[2][1]);
 				ctx.moveTo(cx, cy);
 				ctx.lineTo(hex[4][0], hex[4][1]);
+				break;
+			}
+			case "gateway": {
+				const rw = s * .28;
+				ctx.moveTo(cx - rw, cy - s * .14);
+				ctx.lineTo(cx + rw * .5, cy - s * .14);
+				ctx.lineTo(cx + rw * .5, cy - s * .22);
+				ctx.lineTo(cx + rw, cy - s * .14);
+				ctx.lineTo(cx + rw * .5, cy - s * .06);
+				ctx.lineTo(cx + rw * .5, cy + s * .02);
+				ctx.moveTo(cx + rw, cy + s * .14);
+				ctx.lineTo(cx - rw * .5, cy + s * .14);
+				ctx.lineTo(cx - rw * .5, cy + s * .06);
+				ctx.lineTo(cx - rw, cy + s * .14);
+				ctx.lineTo(cx - rw * .5, cy + s * .22);
+				ctx.lineTo(cx - rw * .5, cy + s * .3);
+				ctx.moveTo(cx, cy - s * .28);
+				ctx.lineTo(cx, cy + s * .28);
+				break;
+			}
+			case "loadBalancer": {
+				const rw = s * .3;
+				ctx.moveTo(cx - rw, cy);
+				ctx.lineTo(cx, cy);
+				ctx.moveTo(cx, cy);
+				ctx.lineTo(cx + rw, cy - s * .2);
+				ctx.moveTo(cx, cy);
+				ctx.lineTo(cx + rw, cy);
+				ctx.moveTo(cx, cy);
+				ctx.lineTo(cx + rw, cy + s * .2);
+				break;
+			}
+			case "cdn": {
+				const r = s * .26;
+				ctx.moveTo(cx + r, cy);
+				ctx.arc(cx, cy, r, 0, Math.PI * 2);
+				ctx.moveTo(cx - r, cy);
+				ctx.lineTo(cx + r, cy);
+				ctx.moveTo(cx, cy - r);
+				ctx.lineTo(cx, cy + r);
+				ctx.ellipse(cx, cy, r * .45, r, 0, 0, Math.PI * 2);
+				break;
+			}
+			case "auth": {
+				const r = s * .24;
+				ctx.moveTo(cx, cy - r);
+				ctx.lineTo(cx + r, cy - r * .55);
+				ctx.lineTo(cx + r, cy + r * .25);
+				ctx.quadraticCurveTo(cx + r, cy + r * .9, cx, cy + r);
+				ctx.quadraticCurveTo(cx - r, cy + r * .9, cx - r, cy + r * .25);
+				ctx.lineTo(cx - r, cy - r * .55);
+				ctx.closePath();
+				ctx.moveTo(cx - r * .4, cy);
+				ctx.lineTo(cx - r * .1, cy + r * .32);
+				ctx.lineTo(cx + r * .45, cy - r * .3);
+				break;
+			}
+			case "function":
+				ctx.font = `700 ${Math.round(s * .44)}px ${SANS}`;
+				ctx.textAlign = "center";
+				ctx.textBaseline = "middle";
+				ctx.fillStyle = color;
+				ctx.fillText("λ", cx, cy + s * .02);
+				return;
+			case "git": {
+				const r = s * .09;
+				ctx.moveTo(cx - s * .16, cy - s * .18);
+				ctx.arc(cx - s * .16, cy - s * .18, r, 0, Math.PI * 2);
+				ctx.moveTo(cx - s * .16, cy - s * .18 + r);
+				ctx.lineTo(cx - s * .16, cy + s * .12);
+				ctx.arc(cx - s * .16, cy + s * .18, r, Math.PI, 0, true);
+				ctx.quadraticCurveTo(cx, cy - s * .04, cx + s * .16, cy - s * .12 - r);
+				ctx.moveTo(cx + s * .16, cy - s * .18);
+				ctx.arc(cx + s * .16, cy - s * .18, r, 0, Math.PI * 2);
 				break;
 			}
 		}

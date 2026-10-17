@@ -59,8 +59,8 @@ describe("drawDevNode 开发组件节点", () => {
     expect(ctx.texts).toEqual([]);
   });
 
-  it("DEV_META 八个变体齐全且各有主色", () => {
-    for (const v of ["database", "redis", "obs", "cloud", "server", "api", "queue", "container"] as const) {
+  it("DEV_META 十四个变体齐全且各有主色", () => {
+    for (const v of ["database", "redis", "obs", "cloud", "server", "api", "queue", "container", "gateway", "loadBalancer", "cdn", "auth", "function", "git"] as const) {
       expect(DEV_META[v].color).toMatch(/^#/);
       expect(DEV_META[v].name.length).toBeGreaterThan(0);
     }

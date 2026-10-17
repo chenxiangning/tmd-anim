@@ -51,4 +51,12 @@ describe("buildAiPrompt", () => {
     expect(prompt).toContain("say -o /tmp/tmd-tts.aiff");
     expect(prompt).not.toContain("System.Speech");
   });
+
+  it("元素选型速查覆盖全部 kind 与 dev 变体,且插在协议路径之后", () => {
+    const prompt = buildAiPrompt(null, FALLBACK_PROTOCOL_PATHS);
+    expect(prompt).toContain("元素选型速查");
+    expect(prompt).toContain("aiChat");
+    expect(prompt).toContain("loadBalancer");
+    expect(prompt.indexOf("先读协议文档")).toBeLessThan(prompt.indexOf("元素选型速查"));
+  });
 });

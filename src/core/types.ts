@@ -216,7 +216,7 @@ export interface BrowserElement extends ElementBase {
 /** 开发组件节点:左侧图标 + 主名称 + 副标题,图标与主色由 dev 变体决定(架构图常用资源) */
 export interface DevNodeElement extends ElementBase {
   kind: "devNode";
-  dev: "database" | "redis" | "obs" | "cloud" | "server" | "api" | "queue" | "container";
+  dev: "database" | "redis" | "obs" | "cloud" | "server" | "api" | "queue" | "container" | "gateway" | "loadBalancer" | "cdn" | "auth" | "function" | "git";
   label?: string; // 主名称,缺省取变体中文名
   sub?: string;
   fontSize?: number;
