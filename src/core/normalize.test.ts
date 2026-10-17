@@ -207,4 +207,17 @@ describe("normalizeProject", () => {
     const el = p.scenes[0].elements[0] as { text?: unknown };
     expect("text" in el).toBe(false);
   });
+
+  it("sketchSeed:有限数保留,非数丢弃", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [{ elements: [
+        { kind: "shape", shape: "rect", sketch: true, sketchSeed: 123 },
+        { kind: "shape", shape: "rect", sketch: true, sketchSeed: "abc" },
+      ] }],
+    });
+    const els = p.scenes[0].elements as Array<{ sketchSeed?: unknown }>;
+    expect(els[0].sketchSeed).toBe(123);
+    expect("sketchSeed" in els[1]).toBe(false);
+  });
 });

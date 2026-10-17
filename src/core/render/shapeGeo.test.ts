@@ -86,4 +86,15 @@ describe("traceShape 手绘(sketch)模式", () => {
     // 主体(≈17 点)+ 顶面椭圆(13 点)
     expect(ctx.pts.length).toBeGreaterThanOrEqual(28);
   });
+
+  it("显式 sketchSeed:同种子同轮廓,换种子换轮廓(与 id 无关)", () => {
+    const a = mockCtx();
+    const b = mockCtx();
+    const c = mockCtx();
+    traceShape(a, shape({ id: "s1", sketch: true, sketchSeed: 42 }));
+    traceShape(b, shape({ id: "s1", sketch: true, sketchSeed: 42 }));
+    traceShape(c, shape({ id: "s1", sketch: true, sketchSeed: 43 }));
+    expect(a.pts).toEqual(b.pts);
+    expect(a.pts).not.toEqual(c.pts);
+  });
 });

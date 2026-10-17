@@ -209,7 +209,8 @@ export const SCHEMAS = {
         key: "sketch", label: "手绘描边", type: "select",
         options: [{ value: "0", label: "关" }, { value: "1", label: "开" }],
         read: (el) => ((el as ShapeElement).sketch ? "1" : "0"),
-        write: (el, v) => patch(el, { sketch: v === "1" }),
+        // 每次打开都换新种子,等于「换一个」手绘
+        write: (el, v) => patch(el, v === "1" ? { sketch: true, sketchSeed: Math.round(Math.random() * 1e9) } : { sketch: false }),
       },
     ],
   },

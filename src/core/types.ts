@@ -108,12 +108,12 @@ export interface ShapeElement extends ElementBase {
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
-  /** 内嵌文本:居中绘制,默认文字色按填充亮度反推,color 可覆盖 */
-  text?: string;
+  text?: string; // 内嵌文本:居中绘制,默认文字色按填充亮度反推
   fontSize?: number;
   color?: string;
-  /** 手绘描边:按元素 id 种子确定性抖动的轮廓,渲染仍是 (project,t) 纯函数 */
+  /** 手绘描边:轮廓按 sketchSeed(缺省按 id)种子确定性抖动并叠复线,渲染仍是 (project,t) 纯函数 */
   sketch?: boolean;
+  sketchSeed?: number; // 点击生成时的随机种子;重开关手绘/粘贴会换种子
 }
 
 /** 输入框:白底描边圆角矩形 + 文本 + 静态光标(静态保证导出确定性) */

@@ -41,10 +41,11 @@ function noise(seed: number, i: number): number {
   return v - Math.floor(v);
 }
 
-/** 逐顶点抖动:幅度 ~ min(w,h)*5%,有界 1.5~10 逻辑像素;salt 让同一元素的子路径抖得不同 */
+/** 逐顶点抖动:幅度 ~ min(w,h)*5%,有界 1.5~10 逻辑像素;salt 让同一元素的子路径抖得不同。
+ *  种子优先取 sketchSeed(点击/粘贴时随机生成),缺省按 id 稳定展开——渲染仍是纯函数 */
 function wobble(el: ShapeElement, pts: Array<[number, number]>, salt = 0): Array<[number, number]> {
   const amp = Math.min(10, Math.max(1.5, (Math.min(el.w, el.h) * 5) / 100));
-  const seed = hashSeed(el.id) + salt;
+  const seed = Math.round(el.sketchSeed ?? hashSeed(el.id)) + salt;
   return pts.map(([px, py], i) => [
     px + (noise(seed, i * 2) - 0.5) * 2 * amp,
     py + (noise(seed, i * 2 + 1) - 0.5) * 2 * amp,

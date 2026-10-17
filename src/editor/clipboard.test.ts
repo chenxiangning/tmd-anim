@@ -56,4 +56,13 @@ describe("clipboard 元素复制粘贴(多选)", () => {
     pasteElements()[0].id = "changed";
     expect((pasteElements()[0] as BadgeElement).id).not.toBe("changed");
   });
+
+  it("手绘形状粘贴换新种子,两次粘贴轮廓不同", () => {
+    const sketchShape = { id: "s", kind: "shape" as const, shape: "ellipse" as const, x: 0, y: 0, w: 200, h: 200, sketch: true, sketchSeed: 7, anim };
+    copyElements([sketchShape]);
+    const p1 = pasteElements()[0] as typeof sketchShape;
+    const p2 = pasteElements()[0] as typeof sketchShape;
+    expect(p1.sketchSeed).not.toBe(7);
+    expect(p1.sketchSeed).not.toBe(p2.sketchSeed);
+  });
 });

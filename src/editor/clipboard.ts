@@ -1,4 +1,4 @@
-import type { SceneElement } from "../core/types";
+import type { SceneElement, ShapeElement } from "../core/types";
 import { newId } from "./defaults";
 
 /**
@@ -31,6 +31,10 @@ export function pasteElements(): SceneElement[] {
       delete line.toEl;
       line.from = [line.from[0] + off, line.from[1] + off];
       line.to = [line.to[0] + off, line.to[1] + off];
+    }
+    if (clone.kind === "shape" && (clone as ShapeElement).sketch) {
+      // 手绘形状粘贴出新的一份抖动,避免双胞胎轮廓
+      (clone as ShapeElement).sketchSeed = Math.round(Math.random() * 1e9);
     }
     return clone;
   });

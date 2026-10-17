@@ -92,7 +92,8 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
     y,
     anim: { type: "pop", start: 0, duration: 0.6 },
   };
-  const sketchFlag = sketch ? { sketch: true } : {};
+  // 手绘种子:点击瞬间随机,每次生成的手绘抖动都有细微差别;种子进项目所以渲染仍是纯函数
+  const sketchFlag = sketch ? { sketch: true, sketchSeed: Math.round(Math.random() * 1e9) } : {};
   switch (kind) {
     case "title":
       return { ...base, kind, w: 1200, h: 120, text: "新的标题", highlight: ["标题"], fontSize: 64 };

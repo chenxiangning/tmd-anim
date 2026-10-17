@@ -274,6 +274,8 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
         <div className="px-0.5 text-[10px] leading-relaxed text-neutral-300">
           点击添加到画布中央,或拖到目标位置
           <br />
+          形状组可切「手绘」tab,每次生成的抖动都不一样
+          <br />
           画布上双击元素可改文字,⌘C/⌘V 复制粘贴
         </div>
       </div>
