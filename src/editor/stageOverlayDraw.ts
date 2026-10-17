@@ -1,6 +1,7 @@
 import type { SceneElement } from "../core/types";
 import type { Rect } from "../core/render/misc";
 import { connectorRoute, strokeRoundedPolyline } from "../core/render/connectorRoute";
+import { elementRotate } from "./hitTest";
 import { handlePoints, type Guides, type SnapPoint, type ViewTransform } from "./stageOverlay";
 
 /** 画布覆盖层绘制:对齐参考线 / 框选虚线框 / 吸附绿圈 / 选中框与手柄(屏幕空间)。 */
@@ -95,19 +96,59 @@ export function drawSelectionOverlay(ctx: CanvasRenderingContext2D, el: SceneEle
     ctx.stroke();
     return;
   }
-  const x = ox + el.x * scale - 3;
-  const y = oy + el.y * scale - 3;
-  const w = el.w * scale + 6;
-  const h = el.h * scale + 6;
+  // 旋转元素(便签)选中框跟随旋转;手柄锚点已在 handlePoints 内旋转
   ctx.setLineDash([5, 4]);
-  ctx.strokeRect(x, y, w, h);
+  strokeRotatedBox(ctx, view, el);
   ctx.setLineDash([]);
   if (!withHandles) return;
-  for (const hp of handlePoints(el, view)) {
+  const pts = handlePoints(el, view);
+  for (const hp of pts) {
+    if (hp.name === "rot") continue;
     ctx.beginPath();
     ctx.rect(hp.at.x - 5, hp.at.y - 5, 10, 10);
     ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.stroke();
   }
+  // 旋转手柄:顶中点向外的连杆 + 蓝圆点(锚点已随元素旋转)
+  const nAt = pts.find((p) => p.name === "n")?.at;
+  const rotAt = pts.find((p) => p.name === "rot")?.at;
+  if (nAt && rotAt) {
+    ctx.beginPath();
+    ctx.moveTo(nAt.x, nAt.y);
+    ctx.lineTo(rotAt.x, rotAt.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(rotAt.x, rotAt.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#2563EB";
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+/** 按元素几何描外扩 3px 的包围框(虚线/线宽/颜色由调用方预设),旋转元素绕中心旋转后描 */
+function strokeRotatedBox(ctx: CanvasRenderingContext2D, view: ViewTransform, el: SceneElement): void {
+  const { scale, ox, oy } = view;
+  const x = ox + el.x * scale - 3;
+  const y = oy + el.y * scale - 3;
+  const w = el.w * scale + 6;
+  const h = el.h * scale + 6;
+  const deg = elementRotate(el);
+  if (deg === 0) {
+    ctx.strokeRect(x, y, w, h);
+    return;
+  }
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.strokeRect(-w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+/** 悬停高亮:未选中元素的细实线轮廓;连线不描(细线靠光标提示),数组格描占位框与选中框行为一致 */
+export function drawHoverOverlay(ctx: CanvasRenderingContext2D, el: SceneElement, view: ViewTransform): void {
+  if (el.kind === "connector") return;
+  ctx.strokeStyle = "rgba(37, 99, 235, 0.45)";
+  ctx.lineWidth = 1.5;
+  strokeRotatedBox(ctx, view, el);
 }

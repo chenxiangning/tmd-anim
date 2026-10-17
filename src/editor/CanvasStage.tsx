@@ -1,29 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import type { Project, SceneElement } from "../core/types";
 import { drawFrame } from "../core/render";
-import { animState } from "../core/render/anim";
-import { resolveConnector, type Rect } from "../core/render/misc";
+import { resolveConnector } from "../core/render/misc";
 import { locate } from "../core/timeline";
 import { updateElement } from "./editOps";
-import { hitTest, idsInRect, normRect } from "./hitTest";
+import { hitTest } from "./hitTest";
 import { InlineTextEditor } from "./InlineTextEditor";
 import { resolveTextTarget, type TextTarget } from "./textTarget";
+import { useStageDrag } from "./useStageDrag";
+import { useStageView } from "./useStageView";
 import {
-  connectorPatch,
   drawAssistOverlay,
+  drawHoverOverlay,
   drawSelectionOverlay,
+  HANDLE_CURSORS,
   hitHandle,
-  movePatch,
-  resizePatch,
-  snapConnectorPoint,
-  type GestureMode,
-  type HandleName,
-  type SnapPoint,
   type ViewTransform,
 } from "./stageOverlay";
 
 const HANDLE_R = 9;
-const SNAP = 8;
+
 interface CanvasStageProps {
   project: Project;
   t: number;
@@ -36,42 +32,37 @@ interface CanvasStageProps {
   onDropCreate(kind: string, x: number, y: number): void;
 }
 
-interface DragGesture {
-  mode: GestureMode | "marquee";
-  handle: HandleName;
-  id: string;
-  startX: number;
-  startY: number;
-  origin: SceneElement | null;
-  /** 多选整体移动的全部选中元素 */
-  origins: SceneElement[];
-  /** 框选并入模式(Shift) */
-  addMode: boolean;
-  sceneIdx: number;
-  changed: boolean;
-  /** 端点手势最后一次吸附:决定落点绑定 */
-  lastSnap: SnapPoint | null;
-}
-
-/** 中央画布:渲染当前帧 + 选中覆盖层;点击/框选/Shift 多选、拖拽移动、手柄缩放;连线端点吸附并绑定元素;双击改文本。 */
+/** 中央画布:渲染当前帧 + 选中覆盖层;点击/框选/Shift 多选、拖拽移动、手柄缩放(角手柄等比,Shift 自由);
+ *  连线端点吸附并绑定元素;双击改文本;悬停给光标与淡框反馈。手势细节在 useStageDrag。 */
 export function CanvasStage({ project, t, selIds, previewing, onSelectIds, onLivePatch, onGestureBegin, onGestureEnd, onDropCreate }: CanvasStageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const viewRef = useRef<ViewTransform>({ scale: 1, ox: 0, oy: 0 });
-  const [view, setView] = useState<ViewTransform>(viewRef.current);
-  const dragRef = useRef<DragGesture | null>(null);
-  const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
-  const [snapDot, setSnapDot] = useState<SnapPoint | null>(null);
-  const [marquee, setMarquee] = useState<Rect | null>(null);
+  const pw = project.canvas?.width ?? 1920;
+  const ph = project.canvas?.height ?? 1080;
+  const { view, setView, viewRef, computeView, zoomAt, beginPan, movePan, endPan } = useStageView(wrapRef, pw, ph);
   const [editing, setEditing] = useState<{ id: string; target: TextTarget } | null>(null);
-  const marqueeRef = useRef<Rect | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const selIdsRef = useRef(selIds);
   selIdsRef.current = selIds;
 
-  const pw = project.canvas?.width ?? 1920;
-  const ph = project.canvas?.height ?? 1080;
   const located = locate(project, t);
   const scene = project.scenes[located.index];
+
+  const { startDrag, dragging, guides, snapDot, marquee } = useStageDrag({
+    project,
+    t,
+    sceneIdx: located.index,
+    localT: located.localT,
+    canvasW: pw,
+    canvasH: ph,
+    canvasRef,
+    viewRef,
+    selIdsRef,
+    onLivePatch,
+    onSelectIds,
+    onGestureBegin,
+    onGestureEnd,
+  });
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -90,17 +81,20 @@ export function CanvasStage({ project, t, selIds, previewing, onSelectIds, onLiv
       }
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      const scale = Math.min(cw / pw, ch / ph);
-      const next: ViewTransform = { scale, ox: (cw - pw * scale) / 2, oy: (ch - ph * scale) / 2 };
+      const next: ViewTransform = computeView(cw, ch);
       const prev = viewRef.current;
       if (prev.scale !== next.scale || prev.ox !== next.ox || prev.oy !== next.oy) setView(next);
       viewRef.current = next;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cw, ch);
-      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * next.ox, dpr * next.oy);
+      ctx.setTransform(dpr * next.scale, 0, 0, dpr * next.scale, dpr * next.ox, dpr * next.oy);
       drawFrame(ctx, project, t);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!previewing && scene) {
+        if (hoverId) {
+          const el = scene.elements.find((item) => item.id === hoverId);
+          if (el) drawHoverOverlay(ctx, el, next);
+        }
         const withHandles = selIds.length === 1;
         for (const id of selIds) {
           const el = scene.elements.find((item) => item.id === id);
@@ -114,85 +108,19 @@ export function CanvasStage({ project, t, selIds, previewing, onSelectIds, onLiv
     const ro = new ResizeObserver(draw);
     ro.observe(wrap);
     return () => ro.disconnect();
-  }, [project, t, selIds, guides, snapDot, marquee, previewing, pw, ph]);
+  }, [project, t, selIds, hoverId, view, guides, snapDot, marquee, previewing, pw, ph]);
 
-  function startDrag(gesture: DragGesture): void {
-    dragRef.current = gesture;
-    onGestureBegin();
-    const localT = located.localT;
-    // 手势内自持的项目快照:同步连发的 pointermove/up 之间 React 不会重渲染,读 props 会拿到旧状态
-    let working = project;
-    const onMove = (ev: PointerEvent) => {
-      const drag = dragRef.current;
-      const canvas = canvasRef.current;
-      if (!drag || !canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const v = viewRef.current;
-      const px = (ev.clientX - rect.left - v.ox) / v.scale;
-      const py = (ev.clientY - rect.top - v.oy) / v.scale;
-      const dx = px - drag.startX;
-      const dy = py - drag.startY;
-      if (!drag.changed && Math.hypot(dx * v.scale, dy * v.scale) < 2) return;
-      drag.changed = true;
-      if (drag.mode === "marquee") {
-        const rect = normRect(drag.startX, drag.startY, px, py);
-        marqueeRef.current = rect;
-        setMarquee(rect);
-        return;
-      }
-      if (drag.mode === "move") {
-        if (drag.origins.length > 1) {
-          let next = working;
-          for (const o of drag.origins) next = updateElement(next, drag.sceneIdx, o.id, movePatch(o, dx, dy, pw, ph, 0).patch);
-          working = next;
-          onLivePatch(next);
-          return;
-        }
-        if (!drag.origin) return;
-        const moved = movePatch(drag.origin, dx, dy, pw, ph, SNAP);
-        setGuides({ x: moved.guideX, y: moved.guideY });
-        working = updateElement(working, drag.sceneIdx, drag.id, moved.patch);
-        onLivePatch(working);
-        return;
-      }
-      if (drag.mode === "resize") {
-        if (!drag.origin) return;
-        working = updateElement(working, drag.sceneIdx, drag.id, resizePatch(drag.origin, drag.handle, dx, dy));
-        onLivePatch(working);
-        return;
-      }
-      // 端点靠近其他元素时自动粘连,落点绑定该元素实现连线跟随
-      const others = (working.scenes[drag.sceneIdx]?.elements ?? []).filter(
-        (item) => item.id !== drag.id && item.kind !== "connector" && animState(localT, item.anim).active,
-      );
-      const snap = snapConnectorPoint(others, px, py);
-      drag.lastSnap = snap;
-      setSnapDot(snap);
-      working = updateElement(working, drag.sceneIdx, drag.id, connectorPatch(drag.origin as never, drag.handle, snap?.x ?? px, snap?.y ?? py));
-      onLivePatch(working);
+  // 滚轮缩放(绕指针):原生监听以便 preventDefault 吃掉页面滚动
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, e.deltaY);
     };
-    const onUp = () => {
-      const drag = dragRef.current;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      dragRef.current = null;
-      setGuides({ x: null, y: null });
-      setSnapDot(null);
-      if (drag?.mode === "marquee") {
-        const rect = marqueeRef.current;
-        setMarquee(null);
-        if (drag.changed && rect) onSelectIds(drag.addMode ? [...new Set([...selIdsRef.current, ...idsInRect(working, t, rect)])] : idsInRect(working, t, rect));
-      } else if (drag?.mode === "endpoint" && drag.changed && working.scenes[drag.sceneIdx]) {
-        // 落在元素上绑定,落空解除绑定(基于手势内最新项目,不回滚拖拽位移)
-        const field = drag.handle === "nw" ? "fromEl" : "toEl";
-        working = updateElement(working, drag.sceneIdx, drag.id, { [field]: drag.lastSnap?.elId });
-        onLivePatch(working);
-      }
-      onGestureEnd();
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }
+    wrap.addEventListener("wheel", onWheel, { passive: false });
+    return () => wrap.removeEventListener("wheel", onWheel);
+  }, [zoomAt]);
 
   const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
     const canvas = canvasRef.current;
@@ -201,21 +129,67 @@ export function CanvasStage({ project, t, selIds, previewing, onSelectIds, onLiv
     return rect ? { x: (clientX - rect.left - v.ox) / v.scale, y: (clientY - rect.top - v.oy) / v.scale } : { x: 0, y: 0 };
   };
 
+  /** 悬停反馈:手柄按方向变光标,元素变 move 光标并描淡框;拖拽/预览/行内编辑中不干扰 */
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (previewing || dragging || editing) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect || !scene) return;
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    let cursor = "";
+    if (selIds.length === 1) {
+      const el = scene.elements.find((item) => item.id === selIds[0]);
+      const resolved = el?.kind === "connector" ? resolveConnector(el, scene.elements) : el;
+      const hh = resolved ? hitHandle(resolved, viewRef.current, sx, sy, HANDLE_R, scene.elements) : null;
+      if (hh) cursor = hh.isConnector ? "grab" : HANDLE_CURSORS[hh.handle];
+    }
+    const pt = toLogical(e.clientX, e.clientY);
+    const id = hitTest(project, t, pt.x, pt.y);
+    e.currentTarget.style.cursor = cursor || (id ? "move" : "");
+    setHoverId(id && !selIds.includes(id) ? id : null);
+  };
+
+  const onPointerLeave = () => setHoverId(null);
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (previewing) return;
+    // 中键拖拽平移视口
+    if (e.button === 1) {
+      e.preventDefault();
+      beginPan(e.clientX, e.clientY);
+      document.body.style.cursor = "grabbing";
+      const onMove = (ev: PointerEvent) => movePan(ev.clientX, ev.clientY);
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        document.body.style.cursor = "";
+        endPan();
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      return;
+    }
     const pt = toLogical(e.clientX, e.clientY);
+    const rect = canvasRef.current?.getBoundingClientRect();
+    // 已单选:手柄优先于一切命中——手柄命中圆有一半在元素外,悬停光标承诺了方向,按下必须兑现
+    if (!previewing && selIds.length === 1 && scene && rect) {
+      const sel = scene.elements.find((item) => item.id === selIds[0]);
+      const resolvedSel = sel?.kind === "connector" ? resolveConnector(sel, scene.elements) : sel;
+      const selHit = resolvedSel ? hitHandle(resolvedSel, viewRef.current, e.clientX - rect.left, e.clientY - rect.top, HANDLE_R, scene.elements) : null;
+      if (selHit && resolvedSel) {
+        startDrag({ mode: selHit.mode, handle: selHit.handle, id: selIds[0], startX: pt.x, startY: pt.y, origin: resolvedSel, origins: [resolvedSel], addMode: false, sceneIdx: located.index, changed: false, lastSnap: null });
+        return;
+      }
+    }
     const id = hitTest(project, t, pt.x, pt.y);
     if (id && scene) {
       const el = scene.elements.find((item) => item.id === id);
       const resolvedEl = el?.kind === "connector" ? resolveConnector(el, scene.elements) : el;
-      const rect = canvasRef.current?.getBoundingClientRect();
-      // 手柄命中优先于整体移动:缩放手柄仅单一选中时显示;连线端点/曲线点未选中也可直接拖
+      // 未选中连线:端点/曲线点可直接拖(命中半径放宽)
       const hit =
-        rect && resolvedEl && selIds.length === 1 && id === selIds[0]
-          ? hitHandle(resolvedEl, viewRef.current, e.clientX - rect.left, e.clientY - rect.top, HANDLE_R, scene.elements)
-          : rect && resolvedEl?.kind === "connector"
-            ? hitHandle(resolvedEl, viewRef.current, e.clientX - rect.left, e.clientY - rect.top, HANDLE_R + 4, scene.elements)
-            : null;
+        rect && resolvedEl?.kind === "connector"
+          ? hitHandle(resolvedEl, viewRef.current, e.clientX - rect.left, e.clientY - rect.top, HANDLE_R + 4, scene.elements)
+          : null;
       if (hit && resolvedEl) {
         onSelectIds([id]);
         startDrag({ mode: hit.mode, handle: hit.handle, id, startX: pt.x, startY: pt.y, origin: resolvedEl, origins: [resolvedEl], addMode: false, sceneIdx: located.index, changed: false, lastSnap: null });
@@ -282,6 +256,8 @@ export function CanvasStage({ project, t, selIds, previewing, onSelectIds, onLiv
           ref={canvasRef}
           className="absolute inset-0 h-full w-full"
           onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerLeave={onPointerLeave}
           onDoubleClick={onDoubleClick}
         />
         {editing && <InlineTextEditor key={editing.id} target={editing.target} view={view} onCommit={commitInline} onClose={closeInline} />}

@@ -4,6 +4,15 @@ import { drawRichText, roundRect, sansFont } from "./text";
 
 /** 文本类元素绘制:标题 / 艺术字 / 正文 / 输入框 / 便签 / 徽章 / 形状。 */
 
+/** 按填充亮度反推可读文字色(亮色底用深字,暗色底用白字);形状绘制与行内编辑共用 */
+export function readableOn(fill: string | undefined): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(fill ?? "");
+  if (!m) return "#1F2937";
+  const n = parseInt(m[1], 16);
+  const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 150 ? "#1F2937" : "#FFFFFF";
+}
+
 export function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void {
   traceShape(ctx, el);
   const hasStroke = Boolean(el.stroke) && (el.strokeWidth ?? 0) > 0;
@@ -19,6 +28,13 @@ export function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void
     ctx.strokeStyle = el.stroke as string;
     ctx.lineWidth = el.strokeWidth ?? 0;
     ctx.stroke();
+  }
+  if (el.text) {
+    drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
+      fontSize: el.fontSize ?? 28,
+      color: el.color ?? readableOn(el.fill),
+      align: "center",
+    });
   }
 }
 
@@ -74,11 +90,7 @@ export function drawInput(ctx: CanvasRenderingContext2D, el: InputElement): void
 
 export function drawNote(ctx: CanvasRenderingContext2D, el: NoteElement, progress?: number): void {
   ctx.save();
-  const cx = el.x + el.w / 2;
-  const cy = el.y + el.h / 2;
-  ctx.translate(cx, cy);
-  ctx.rotate(((el.rotate ?? -2) * Math.PI) / 180);
-  ctx.translate(-cx, -cy);
+  // 静态旋转由 drawElement 统一处理(便签缺省 -2)
   roundRect(ctx, el.x, el.y, el.w, el.h, 10);
   ctx.fillStyle = el.bg ?? "#FDE68A";
   ctx.fill();

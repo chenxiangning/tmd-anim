@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ConnectorElement, SceneElement } from "../types";
-import { connectorHeadings, connectorRoute, headingForPointFromElement, routeElbow, vectorToHeading } from "./connectorRoute";
+import { connectorHeadings, connectorRoute, headingForPointFromElement, routeElbow, routeElbowAvoid, vectorToHeading } from "./connectorRoute";
 
 const anim = { type: "fade" as const, start: 0, duration: 0.1 };
 
@@ -62,6 +62,59 @@ describe("connectorHeadings 绑定元素出口", () => {
   });
 });
 
+describe("routeElbowAvoid 障碍避让重排", () => {
+  // 障碍外扩 6px 后的矩形(与 obstacleRects 的 pad 一致)
+  const obstacle = { x: 394, y: 494, w: 212, h: 112 };
+  const inRect = (r: { x: number; y: number; w: number; h: number }, px: number, py: number) =>
+    px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h;
+
+  it("无障碍时与 routeElbow 一致", () => {
+    const a = routeElbow({ x: 500, y: 300 }, { x: 520, y: 800 }, [0, 1], [0, -1]);
+    const b = routeElbowAvoid({ x: 500, y: 300 }, { x: 520, y: 800 }, [0, 1], [0, -1], []);
+    expect(b).toEqual(a);
+  });
+
+  it("正前方有障碍:重排出 Z 折线绕开,路径不穿障且端点不变", () => {
+    const pts = routeElbowAvoid({ x: 500, y: 300 }, { x: 520, y: 800 }, [0, 1], [0, -1], [obstacle]);
+    expect(pts[0]).toEqual({ x: 500, y: 300 });
+    expect(pts[pts.length - 1]).toEqual({ x: 520, y: 800 });
+    // 不穿障:全路径采样点都不在障碍内
+    for (let i = 1; i < pts.length; i++) {
+      const steps = Math.ceil(Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) / 4);
+      for (let s = 0; s <= steps; s++) {
+        const x = pts[i - 1].x + ((pts[i].x - pts[i - 1].x) * s) / steps;
+        const y = pts[i - 1].y + ((pts[i].y - pts[i - 1].y) * s) / steps;
+        expect(inRect(obstacle, x, y)).toBe(false);
+      }
+    }
+    // 确实重排了(不是原直通路径)
+    expect(pts.length).toBeGreaterThan(3);
+  });
+
+  it("完全被遮蔽时回落原 elbow,不硬绕", () => {
+    // 单个巨大障碍罩住走廊与所有 lane:任何候选都穿障 → 回落 base
+    const walls = [{ x: 200, y: 200, w: 700, h: 700 }];
+    const pts = routeElbowAvoid({ x: 500, y: 300 }, { x: 520, y: 800 }, [0, 1], [0, -1], walls);
+    expect(pts).toEqual(routeElbow({ x: 500, y: 300 }, { x: 520, y: 800 }, [0, 1], [0, -1]));
+  });
+
+  it("smooth 被遮挡时自动改走直角避让;无遮挡保持 cubic", () => {
+    const blocker = box("mid", 460, 500); // 位于 (500,300)-(520,800) 走廊正中
+    const blocked = connectorRoute(line({}), [blocker]);
+    expect(blocked.mode).toBe("segments");
+    const clear = connectorRoute(line({ from: [100, 100], to: [900, 120] }), [blocker]);
+    expect(clear.mode).toBe("cubic");
+  });
+
+  it("两端绑定元素自身不算障碍:贴线不穿障时保持 smooth", () => {
+    const from = box("b1", 400, 240);
+    const to = box("b2", 420, 760);
+    const el = line({ fromEl: "b1", toEl: "b2" });
+    const route = connectorRoute(el, [from, to]);
+    expect(route.mode).toBe("cubic");
+  });
+});
+
 describe("routeElbow 正交路由", () => {
   it("纵向贯通:出口段 + 水平中段 + 入口段", () => {
     const pts = routeElbow({ x: 500, y: 300 }, { x: 520, y: 800 }, [0, 1], [0, -1]);
@@ -91,6 +144,23 @@ describe("routeElbow 正交路由", () => {
     }
     expect(pts[0]).toEqual({ x: 700, y: 340 });
     expect(pts[pts.length - 1]).toEqual({ x: 1100, y: 400 });
+  });
+
+  it("相向出口 stub 钳到投影:近距离两段出口不相交不打回", () => {
+    // from 朝右、to 朝左,相距 60(< 2×stub 40):旧实现 stub 互穿成折返,新实现各伸 30
+    const pts = routeElbow({ x: 0, y: 0 }, { x: 60, y: 0 }, [1, 0], [-1, 0]);
+    const xs = pts.map((p) => p.x);
+    expect(Math.min(...xs)).toBe(0);
+    expect(Math.max(...xs)).toBe(60);
+    // 路径 x 单调不减(无折返)
+    for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThanOrEqual(xs[i - 1]);
+  });
+
+  it("背向出口 stub 缩为 0:直接从中段走", () => {
+    const pts = routeElbow({ x: 0, y: 0 }, { x: 200, y: 100 }, [-1, 0], [1, 0]);
+    expect(pts[0]).toEqual({ x: 0, y: 0 });
+    expect(pts[1]).toEqual({ x: 100, y: 0 });
+    expect(pts[pts.length - 1]).toEqual({ x: 200, y: 100 });
   });
 });
 

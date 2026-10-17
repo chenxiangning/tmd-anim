@@ -202,6 +202,9 @@ export const SCHEMAS = {
       plain("stroke", "描边色", "color"),
       numberField("strokeWidth", "描边宽", 5),
       numberField("radius", "圆角(矩形)", 24),
+      plain("text", "内嵌文本", "text", { placeholder: "居中显示" }),
+      fontSizeField(28),
+      plain("color", "文字色(留空自动)", "color"),
     ],
   },
   badge: {
@@ -219,7 +222,6 @@ export const SCHEMAS = {
       plain("text", "文本", "textarea", { rows: 3 }),
       plain("bg", "底色", "color"),
       fontSizeField(30),
-      numberField("rotate", "旋转(度)", -2),
     ],
   },
   input: {

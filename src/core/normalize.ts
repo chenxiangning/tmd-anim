@@ -146,6 +146,22 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
   for (const key of ["fromEl", "toEl"] as const) {
     if (connector[key] !== undefined && typeof connector[key] !== "string") delete connector[key];
   }
+  // 绑定端点归一化锚点:仅收 [有限数, 有限数],钳 0..1;脏数据丢弃回落中心射线解析
+  for (const key of ["fromFocus", "toFocus"] as const) {
+    const f = connector[key];
+    if (f === undefined) continue;
+    const ok = Array.isArray(f) && f.length === 2 && f.every((n) => typeof n === "number" && Number.isFinite(n));
+    if (!ok) delete connector[key];
+    else connector[key] = [Math.min(1, Math.max(0, f[0] as number)), Math.min(1, Math.max(0, f[1] as number))];
+  }
+  // 形状内嵌文本:text 非字符串丢弃,fontSize/color 同其他元素字段由绘制层自行容错
+  if (el.kind === "shape" && connector.text !== undefined && typeof connector.text !== "string") delete connector.text;
+  // 通用旋转字段:有限数字保留并归一到 0.1 度,null/非数丢弃
+  if (connector.rotate != null) {
+    const deg = Number(connector.rotate);
+    if (typeof connector.rotate !== "boolean" && Number.isFinite(deg)) connector.rotate = Math.round(deg * 10) / 10;
+    else delete connector.rotate;
+  }
   // 连线路由:仅接受合法枚举,其余回落自动平滑
   if (connector.route !== undefined && !["smooth", "elbow", "straight"].includes(String(connector.route))) {
     delete connector.route;

@@ -5,6 +5,7 @@ import {
   addScene,
   duplicateScene,
   findElement,
+  alignElements,
   moveElement,
   moveScene,
   removeElement,
@@ -57,7 +58,51 @@ describe("元素操作", () => {
     expect(moveElement(project(), 0, "b", "down").scenes[0].elements.map((e) => e.id)).toEqual(["b", "a", "c"]);
   });
 
-  it("findElement 命中与未命中", () => {
+});
+describe("alignElements 对齐分布", () => {
+  // a(0..100, 0..40), b(200..300, 60..100):bb = 0..300 x, 0..100 y
+  const two = () => ({
+    ...project(),
+    scenes: [{ ...project().scenes[0], elements: [
+      { ...el("a"), x: 0, y: 0, w: 100, h: 40 },
+      { ...el("b"), x: 200, y: 60, w: 100, h: 40 },
+    ] }],
+  });
+
+  it("水平三向按选中集包围盒", () => {
+    expect(alignElements(two(), 0, ["a", "b"], "left").scenes[0].elements.map((e) => e.x)).toEqual([0, 0]);
+    expect(alignElements(two(), 0, ["a", "b"], "right").scenes[0].elements.map((e) => e.x)).toEqual([200, 200]);
+    expect(alignElements(two(), 0, ["a", "b"], "hcenter").scenes[0].elements.map((e) => e.x)).toEqual([100, 100]);
+  });
+
+  it("竖直三向按选中集包围盒", () => {
+    expect(alignElements(two(), 0, ["a", "b"], "top").scenes[0].elements.map((e) => e.y)).toEqual([0, 0]);
+    expect(alignElements(two(), 0, ["a", "b"], "bottom").scenes[0].elements.map((e) => e.y)).toEqual([60, 60]);
+    expect(alignElements(two(), 0, ["a", "b"], "vcenter").scenes[0].elements.map((e) => e.y)).toEqual([30, 30]);
+  });
+
+  it("横向分布按中心等距,首尾不动", () => {
+    const p3 = {
+      ...project(),
+      scenes: [{ ...project().scenes[0], elements: [
+        { ...el("a"), x: 0, w: 100 },
+        { ...el("b"), x: 200, w: 100 },
+        { ...el("c"), x: 600, w: 100 },
+      ] }],
+    };
+    // 中心 50/250/650,等距插值后 b 中心 350
+    expect(alignElements(p3, 0, ["a", "b", "c"], "distH").scenes[0].elements.map((e) => e.x)).toEqual([0, 300, 600]);
+  });
+
+  it("元素不足原样返回", () => {
+    const p = two();
+    expect(alignElements(p, 0, ["a"], "left")).toBe(p);
+    expect(alignElements(p, 0, ["a", "b"], "distH")).toBe(p);
+  });
+});
+
+describe("findElement", () => {
+  it("命中与未命中", () => {
     expect(findElement(project(), 1, "d")?.id).toBe("d");
     expect(findElement(project(), 1, "zzz")).toBeNull();
   });

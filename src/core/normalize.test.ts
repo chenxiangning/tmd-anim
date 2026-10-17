@@ -171,4 +171,40 @@ describe("normalizeProject", () => {
     const p = normalizeProject({ version: 1, scenes: [] });
     expect(p.canvas).toEqual({ width: 1920, height: 1080, bg: "#F4F4F1" });
   });
+
+  it("rotate 通用字段:数字归一到 0.1 度,非法值丢弃", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [{ elements: [
+        { kind: "badge", text: "a", rotate: 12.345 },
+        { kind: "badge", text: "b", rotate: "三十" },
+      ] }],
+    });
+    const els = p.scenes[0].elements as Array<{ rotate?: number }>;
+    expect(els[0].rotate).toBe(12.3);
+    expect("rotate" in els[1]).toBe(false);
+  });
+
+  it("fromFocus/toFocus:合法二元组钳 0..1,脏数据丢弃", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [{ elements: [
+        { kind: "connector", from: [0, 0], to: [10, 10], fromEl: "a", fromFocus: [1.5, -0.2], toFocus: [0.25, 0.75] },
+        { kind: "connector", from: [0, 0], to: [10, 10], fromFocus: ["x"] },
+      ] }],
+    });
+    const els = p.scenes[0].elements as Array<{ fromFocus?: unknown; toFocus?: unknown }>;
+    expect(els[0].fromFocus).toEqual([1, 0]);
+    expect(els[0].toFocus).toEqual([0.25, 0.75]);
+    expect("fromFocus" in els[1]).toBe(false);
+  });
+
+  it("形状内嵌文本:text 非字符串丢弃", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [{ elements: [{ kind: "shape", shape: "rect", text: 42 }] }],
+    });
+    const el = p.scenes[0].elements[0] as { text?: unknown };
+    expect("text" in el).toBe(false);
+  });
 });

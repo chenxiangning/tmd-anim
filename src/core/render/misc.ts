@@ -85,7 +85,8 @@ export interface Rect {
   h: number;
 }
 
-/** 元素布局包围盒:数组格取全部格子的外接框;连线不可作为绑定目标,返回 null;与动画状态无关 */
+/** 元素布局包围盒:数组格取全部格子的外接框;连线不可作为绑定目标,返回 null;与动画状态无关。
+ *  ponytail: 未旋转几何,旋转元素的连线锚点/吸附有偏差(同 snapMove),精确时按 rotatePoint 求旋转角点 */
 export function elementBounds(el: SceneElement): Rect | null {
   if (el.kind === "connector") return null;
   if (el.kind === "arrayCells") {
@@ -98,6 +99,19 @@ export function elementBounds(el: SceneElement): Rect | null {
     return { x: el.x, y: el.y, w: cols * size + (cols - 1) * gap, h: rows * size + (rows - 1) * gap };
   }
   return { x: el.x, y: el.y, w: el.w, h: el.h };
+}
+
+/** 元素中心朝 (tx,ty) 的射线与包围盒边界的交点,归一化到 [0..1, 0..1](绑定 focus 与端点解析共用) */
+export function centerRayFocus(rect: Rect, tx: number, ty: number): [number, number] {
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return [0.5, 0];
+  const sx = dx !== 0 ? rect.w / 2 / Math.abs(dx) : Infinity;
+  const sy = dy !== 0 ? rect.h / 2 / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return [(cx + dx * s - rect.x) / rect.w, (cy + dy * s - rect.y) / rect.h];
 }
 
 /** 点到矩形边界的最近点;内部点投影到最近的一条边(连线吸附与绑定端点解析共用) */
@@ -117,8 +131,9 @@ export function nearestBorderPoint(r: Rect, px: number, py: number): { x: number
 }
 
 /**
- * 连线端点解析(纯函数):fromEl/toEl 指向的元素存在时,该端点取「元素中心朝另一端」的射线
- * 与包围盒边界的交点(连线向下就挂在底边而非角落),拖动被绑定元素连线自动跟随;
+ * 连线端点解析(纯函数):fromEl/toEl 指向的元素存在时——
+ * - 有 fromFocus/toFocus(拖拽吸附绑定时记录的归一化位置):端点固定在元素上的相对位置,元素移动/缩放端点跟随,不滑动不跳边;
+ * - 否则取「元素中心朝另一端」的射线与包围盒边界的交点(旧行为兜底);
  * 元素缺失回落到 from/to 原始坐标。
  */
 export function resolveConnector(el: ConnectorElement, elements: SceneElement[]): ConnectorElement {
@@ -128,23 +143,21 @@ export function resolveConnector(el: ConnectorElement, elements: SceneElement[])
     const target = elements.find((e) => e.id === id);
     return target ? elementBounds(target) : null;
   };
-  const anchor = (rect: Rect, tx: number, ty: number): { x: number; y: number } => {
-    const cx = rect.x + rect.w / 2;
-    const cy = rect.y + rect.h / 2;
-    const dx = tx - cx;
-    const dy = ty - cy;
-    if (dx === 0 && dy === 0) return { x: cx, y: rect.y };
-    const sx = dx !== 0 ? rect.w / 2 / Math.abs(dx) : Infinity;
-    const sy = dy !== 0 ? rect.h / 2 / Math.abs(dy) : Infinity;
-    const s = Math.min(sx, sy);
-    return { x: cx + dx * s, y: cy + dy * s };
+  const anchor = (rect: Rect, focus: [number, number] | undefined, tx: number, ty: number): { x: number; y: number } => {
+    if (focus) {
+      const fx = Math.min(1, Math.max(0, focus[0]));
+      const fy = Math.min(1, Math.max(0, focus[1]));
+      return { x: rect.x + fx * rect.w, y: rect.y + fy * rect.h };
+    }
+    const [fx, fy] = centerRayFocus(rect, tx, ty);
+    return { x: rect.x + fx * rect.w, y: rect.y + fy * rect.h };
   };
   const bFrom = boundsOf(el.fromEl);
   const bTo = boundsOf(el.toEl);
   if (!bFrom && !bTo) return el;
   // 先按原始对端解析一端,再按解析后的结果解析另一端,保证确定性
-  const from = bFrom ? anchor(bFrom, el.to[0], el.to[1]) : { x: el.from[0], y: el.from[1] };
-  const to = bTo ? anchor(bTo, from.x, from.y) : { x: el.to[0], y: el.to[1] };
+  const from = bFrom ? anchor(bFrom, el.fromFocus, el.to[0], el.to[1]) : { x: el.from[0], y: el.from[1] };
+  const to = bTo ? anchor(bTo, el.toFocus, from.x, from.y) : { x: el.to[0], y: el.to[1] };
   return { ...el, from: [from.x, from.y], to: [to.x, to.y] };
 }
 

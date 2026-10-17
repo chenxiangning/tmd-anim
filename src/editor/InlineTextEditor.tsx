@@ -45,6 +45,8 @@ export function InlineTextEditor({ target, view, onCommit, onClose }: InlineText
         color: target.color,
         background: target.bg,
         textAlign: target.align,
+        transform: target.rotate ? `rotate(${target.rotate}deg)` : undefined,
+        transformOrigin: "center center",
         padding: 0,
         paddingLeft: target.padLeft * s,
         paddingRight: target.padLeft * s,

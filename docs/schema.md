@@ -49,6 +49,7 @@
 | `kind` | string | 是 | 元素类型,见下表;未知 kind 被跳过 |
 | `x` `y` `w` `h` | number | 否 | 画布坐标(逻辑像素),缺省 0/0/200/80;`arrayCells`/`connector` 的 w/h 不参与布局(仅占位) |
 | `anim` | Anim | 否 | 见上 |
+| `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
 
 ## 元素类型(18 种)
 
@@ -61,7 +62,7 @@
 | `code` | `code`, `filename?`, `fontSize?(26)`, `dark?` | 代码块:mac 三点标题栏 + 轻量词法着色(注释/字符串/数字/关键词,语言无关) |
 | `terminal` | `code`, `title?("zsh")`, `fontSize?(24)`, `dark?(true)` | 终端窗口:mac 三点标题栏,等宽逐行输出;`$` 开头行 = 命令行(提示符着绿、命令用主文字色),其余行为弱化输出色 |
 | `table` | `header: string[]`, `rows: string[][]`, `fontSize?(30)`, `headerBg?` | 表格:深色表头 + 斑马纹,列宽均分 |
-| `note` | `text`, `bg?("FDE68A")`, `fontSize?(30)`, `rotate?(-2)` | 便签:圆角色块微旋转 |
+| `note` | `text`, `bg?("FDE68A")`, `fontSize?(30)` | 便签:圆角色块微旋转(通用 `rotate` 缺省 -2) |
 | `badge` | `text`, `bg?`, `color?`, `fontSize?(34)` | 徽章胶囊;实际宽度取 `max(w, 文本宽+内边距)` 不会被裁 |
 | `list` | `items: string[]`, `marker?("dot")`, `accent?`, `fontSize?(36)`, `color?` | 要点列表:每行一条(不折行,超宽溢出);marker = `dot` 圆点 / `check` 勾 / `number` 序号芯片,marker 与序号用 accent 色 |
 | `stepCard` | `num?("1")`, `title`, `desc?`, `highlight?`, `accent?`, `fontSize?(32)` | 步骤卡片:白底圆角卡,accent 序号芯片 + 加粗标题,desc 支持高亮芯片 |
@@ -69,8 +70,8 @@
 | `kbd` | `text`, `bg?`, `fontSize?(36)` | 按键:text 按空格拆成键帽(白底描边 + 底部投影),单独 `+` 渲染为灰色连接符;整行水平居中 |
 | `browser` | `url?`, `fontSize?(26)`, `body?("FFFFFF")` | 浏览器窗口:mac 三点 + 地址栏胶囊;内容区为纯色底,后绘制的元素叠加其上充当页面内容 |
 | `arrayCells` | `cells: string[]`, `colors?`, `cellSize?(88)`, `gap?(14)`, `perRow?`, `fontSize?` | 色块数组(token/字节格),从 (x,y) 起按 perRow 折行;colors 按索引给逐块底色,缺省走粉彩色板 |
-| `shape` | `shape("rect"/"ellipse"/"triangle"/"diamond"/"hexagon"/"star"/"cylinder"/"blockArrow"/"speechBubble")`, `fill?`, `stroke?`, `strokeWidth?`, `radius?`(矩形圆角) | 基础形状;fill 留空 = 无填充,fill 与描边都缺省时给浅灰底兜底。菱形(流程判断)/六边形/星形(强调)/圆柱(数据库)/块箭头(流向)/对话框为流程图与架构图常用变体 |
-| `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省)/ elbow 直角正交(出口方向按绑定元素搜索锥判定,拐角半径 16 圆滑)/ straight 直线;非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点取「元素中心朝另一端」射线与包围盒边界的交点(向下连线挂底边而非角落),拖动被绑定元素连线自动跟随;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关 |
+| `shape` | `shape("rect"/"ellipse"/"triangle"/"diamond"/"hexagon"/"star"/"cylinder"/"blockArrow"/"speechBubble")`, `fill?`, `stroke?`, `strokeWidth?`, `radius?`(矩形圆角), `text?`, `fontSize?(28)`, `color?` | 基础形状;fill 留空 = 无填充,fill 与描边都缺省时给浅灰底兜底。`text` 为居中内嵌文本,文字色缺省按填充亮度反推(亮色底深字/暗色底白字),`color` 可覆盖。菱形(流程判断)/六边形/星形(强调)/圆柱(数据库)/块箭头(流向)/对话框为流程图与架构图常用变体 |
+| `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `fromFocus?`, `toFocus?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省;路径被其他元素遮挡时自动改走直角避让重排,绕开障碍后仍回原语义)/ elbow 直角正交(始终避让:出口方向按绑定元素搜索锥判定,出口段钳到朝对端投影永不相交,被挡时枚举 L/Z 中段取不穿障的最短路径,拐角半径 16 圆滑)/ straight 直线(不避让);非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点实时解析——`fromFocus`/`toFocus`(归一化 [0..1, 0..1])存在则固定在元素上的相对位置(编辑器拖拽吸附绑定时自动记录,元素移动/缩放端点跟随且不滑动不跳边),否则取「元素中心朝另一端」射线与包围盒边界的交点;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关 |
 | `image` | `src`, `radius?(12)` | 图片,contain 适配圆角裁剪;src 为绝对路径或 dataURL |
 
 ## 高亮芯片规则

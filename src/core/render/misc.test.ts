@@ -68,6 +68,29 @@ describe("resolveConnector 连线绑定元素", () => {
     expect(resolved.from[1]).toBe(260);
     expect(resolved.from[0]).toBeCloseTo(700 - (200 * 30) / 170, 5);
   });
+
+  it("fromFocus 存在时端点固定在元素上的归一化位置,对端移动也不滑动", () => {
+    const el = line({ fromEl: "b1", fromFocus: [1, 0.5] });
+    const r1 = resolveConnector(el, [box]);
+    expect(r1.from).toEqual([300, 130]);
+    // 对端大幅移动:无 focus 时端点会滑到别的边,有 focus 时纹丝不动
+    const el2 = { ...el, to: [500, 900] as [number, number] };
+    const r2 = resolveConnector(el2, [box]);
+    expect(r2.from).toEqual([300, 130]);
+  });
+
+  it("元素移动/缩放后 focus 端点按归一化比例跟随,相对位置固定", () => {
+    const el = line({ fromEl: "b1", fromFocus: [0.5, 1] });
+    const moved: SceneElement = { ...box, x: 300, y: 300, w: 400, h: 120 };
+    const r = resolveConnector(el, [moved]);
+    expect(r.from).toEqual([500, 420]);
+  });
+
+  it("focus 越界钳到 0..1", () => {
+    const el = line({ fromEl: "b1", fromFocus: [2, -1] });
+    const r = resolveConnector(el, [box]);
+    expect(r.from).toEqual([300, 100]);
+  });
 });
 
 describe("elementBounds 布局包围盒", () => {

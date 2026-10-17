@@ -1,9 +1,12 @@
 import { useRef } from "react";
 import type { Project, Scene, SceneElement } from "../core/types";
 import { sceneDuration } from "../core/timeline";
-import { moveElement, updateElement } from "./editOps";
+import { AlignToolbar } from "./AlignBar";
+import { elementRotate } from "./hitTest";
+import { RotateField } from "./RotateField";
 import { ANIM_TYPE_OPTIONS, EASING_OPTIONS, parseEasing } from "./animMeta";
 import { AudioPropsCard } from "./AudioPropsCard";
+import { moveElement, updateElement } from "./editOps";
 import { SCHEMAS } from "./propertySchema";
 import { PanelResizeHandle } from "./PanelResizeHandle";
 import { usePanelResize } from "./usePanelResize";
@@ -14,6 +17,8 @@ interface PropertyPanelProps {
   selected: SceneElement | null;
   /** 画布当前多选总数(单选时为 1) */
   selCount: number;
+  /** 多选时的完整选中 id 列表(单选时缺省) */
+  selIds?: string[];
   /** 当前场景配音;audioSelected 时面板切到配音编辑卡 */
   audio?: Scene["audio"];
   audioSelected?: boolean;
@@ -29,9 +34,9 @@ const inputCls =
   "w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-800 outline-none transition-colors hover:border-neutral-300 focus:border-slate-500";
 
 /** 右栏属性面板:几何/层级 + schema 内容字段 + 入场动画区(与时间轴一一对应);
- *  选中配音条时切到配音编辑卡;多选时只提示数量;左缘可拖拽调宽。 */
+ *  选中配音条时切到配音编辑卡;多选时给对齐/分布工具条;左缘可拖拽调宽。 */
 export function PropertyPanel({
-  project, sceneIdx, selected, selCount, audio, audioSelected, onPatch, onPatchAudio, onDelete, onReplay, onCollapse,
+  project, sceneIdx, selected, selCount, selIds, audio, audioSelected, onPatch, onPatchAudio, onDelete, onReplay, onCollapse,
 }: PropertyPanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const { size: width, startResize, resetSize } = usePanelResize({
@@ -52,12 +57,7 @@ export function PropertyPanel({
           <CollapseButton onClick={onCollapse} />
         </div>
         {audio ? (
-          <AudioPropsCard
-            audio={audio}
-            sceneSec={sceneDuration(project.scenes[sceneIdx])}
-            onPatch={(next, key) => onPatchAudio(next, key)}
-            onRemove={() => onPatchAudio(undefined, "sceneAudio")}
-          />
+          <AudioPropsCard audio={audio} sceneSec={sceneDuration(project.scenes[sceneIdx])} onPatch={(next, key) => onPatchAudio(next, key)} onRemove={() => onPatchAudio(undefined, "sceneAudio")} />
         ) : (
           <div className="flex-1 overflow-y-auto p-4">
             <p className="text-[11px] leading-relaxed text-neutral-400">
@@ -97,6 +97,7 @@ export function PropertyPanel({
             </>
           )}
           </span>
+          {selCount > 1 && selIds && <AlignToolbar project={project} sceneIdx={sceneIdx} selIds={selIds} canDistribute={selCount > 2} onPatch={onPatch} />}
         </div>
       </aside>
     );
@@ -144,6 +145,9 @@ export function PropertyPanel({
             />
           </label>
         ))}
+        {selected.kind !== "connector" && (
+          <RotateField value={elementRotate(selected)} onCommit={(n) => patchEl({ rotate: n }, "geo:rotate")} />
+        )}
       </div>
 
       <div className="mb-4">
@@ -284,11 +288,7 @@ export function PropertyPanel({
 
 function CollapseButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
-      onClick={onClick}
-      title="折叠属性面板"
-    >
+    <button className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600" onClick={onClick} title="折叠属性面板">
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M9 6l6 6-6 6" />
       </svg>

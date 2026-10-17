@@ -12,6 +12,20 @@ export function normRect(x1: number, y1: number, x2: number, y2: number): Rect {
   return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
 }
 
+/** 元素渲染旋转角(度):通用 rotate 字段;便签保留历史缺省 -2,其余缺省 0 */
+export function elementRotate(el: SceneElement): number {
+  return el.rotate ?? (el.kind === "note" ? -2 : 0);
+}
+/** 点绕 (cx, cy) 旋转 deg 度(顺时针为正,y 轴向下坐标系) */
+export function rotatePoint(px: number, py: number, cx: number, cy: number, deg: number): { x: number; y: number } {
+  const r = (deg * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  const dx = px - cx;
+  const dy = py - cy;
+  return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c };
+}
+
 export function elementRects(el: SceneElement): Rect[] | null {
   if (el.kind === "connector") return null;
   if (el.kind === "arrayCells") {
@@ -39,7 +53,12 @@ function hits(el: SceneElement, sceneElements: SceneElement[], px: number, py: n
   }
   const rects = elementRects(el);
   if (!rects) return false;
-  return rects.some((r) => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h);
+  // 旋转元素:指针逆旋转回元素局部坐标再查未旋转框
+  const deg = elementRotate(el);
+  let lx = px;
+  let ly = py;
+  if (deg !== 0) ({ x: lx, y: ly } = rotatePoint(px, py, el.x + el.w / 2, el.y + el.h / 2, -deg));
+  return rects.some((r) => lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h);
 }
 
 /** 全局时刻 t 定位场景后做命中测试,返回命中的元素 id(顶层优先);无命中返回 null */

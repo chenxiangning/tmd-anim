@@ -44,6 +44,15 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
     if (visual.scale !== 1) ctx.scale(visual.scale, visual.scale);
     ctx.translate(-cx, -cy);
   }
+  // 元素静态旋转(通用字段):便签保留历史缺省 -2;与入场动画变换复合。连线端点是绝对坐标,不支持旋转
+  const rotateDeg = el.kind === "connector" ? 0 : (el.rotate ?? (el.kind === "note" ? -2 : 0));
+  if (rotateDeg !== 0) {
+    const rx = el.x + el.w / 2;
+    const ry = el.y + el.h / 2;
+    ctx.translate(rx, ry);
+    ctx.rotate((rotateDeg * Math.PI) / 180);
+    ctx.translate(-rx, -ry);
+  }
   if (visual.wipeWidth !== null) {
     ctx.beginPath();
     ctx.rect(el.x - 4, el.y - 4, el.w * visual.wipeWidth + 8, el.h + 8);

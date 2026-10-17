@@ -53,8 +53,13 @@ const add = (p: Pt, h: Heading, d: number): Pt => ({ x: p.x + h[0] * d, y: p.y +
 
 /** 无障碍情形的正交路由:出口段 → 连接段 → 入口段(语义对齐 Excalidraw elbow 常规输出) */
 export function routeElbow(from: Pt, to: Pt, h1: Heading, h2: Heading, stub = 40): Pt[] {
-  const a = add(from, h1, stub);
-  const b = add(to, h2, stub);
+  // 出口段长度钳到「朝对端的投影」:相向时最多伸到 gap 一半方向,背向时缩为 0,保证两段出口永不交叉
+  const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
+  const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
+  const d1 = Math.min(stub, Math.max(0, proj1));
+  const d2 = Math.min(stub, Math.max(0, proj2));
+  const a = add(from, h1, d1);
+  const b = add(to, h2, d2);
   const mids: Pt[] = [];
   if (h1[0] !== 0 && h2[1] !== 0) mids.push({ x: b.x, y: a.y });
   else if (h1[1] !== 0 && h2[0] !== 0) mids.push({ x: a.x, y: b.y });
@@ -94,6 +99,97 @@ export function strokeRoundedPolyline(ctx: CanvasRenderingContext2D, pts: Pt[], 
 }
 
 export type RouteMode = "smooth" | "elbow" | "straight";
+
+/** 障碍 = 除两端绑定元素外的全部非连线元素包围盒,外扩 pad(线至少离元素 pad 像素) */
+function obstacleRects(el: ConnectorElement, elements: SceneElement[], pad: number): Rect[] {
+  const out: Rect[] = [];
+  for (const e of elements) {
+    if (e.id === el.fromEl || e.id === el.toEl || e.kind === "connector") continue;
+    const b = elementBounds(e);
+    if (b) out.push({ x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 });
+  }
+  return out;
+}
+
+/** 点是否严格落在(已外扩的)障碍内;贴边不算,保证线离真实元素 ≥ pad */
+function inObstacle(r: Rect, px: number, py: number): boolean {
+  return px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h;
+}
+
+/** 折线是否穿过任何障碍(逐段按 4px 步长采样) */
+function pathClear(pts: Pt[], obstacles: Rect[]): boolean {
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+    for (let s = 0; s <= steps; s++) {
+      const x = a.x + ((b.x - a.x) * s) / steps;
+      const y = a.y + ((b.y - a.y) * s) / steps;
+      for (const r of obstacles) if (inObstacle(r, x, y)) return false;
+    }
+  }
+  return true;
+}
+
+function dedupePolyline(pts: Pt[]): Pt[] {
+  const out: Pt[] = [];
+  for (const p of pts) {
+    const last = out[out.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) out.push(p);
+  }
+  return out.filter((p, i) => {
+    if (i === 0 || i === out.length - 1) return true;
+    const prev = out[i - 1];
+    const next = out[i + 1];
+    return !((prev.x === p.x && p.x === next.x) || (prev.y === p.y && p.y === next.y));
+  });
+}
+
+const polylineLen = (pts: Pt[]): number => {
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  return len;
+};
+
+/**
+ * 障碍感知的直角路由:先走无障碍 elbow;被挡则枚举中段重排方案——
+ * 两种 L 拐角 + 以障碍边缘/中点为 lane 的 Z 折线,取第一条不穿障的最短路径;
+ * 全部被挡时回落原 elbow(极端密布局不硬绕)。
+ */
+export function routeElbowAvoid(from: Pt, to: Pt, h1: Heading, h2: Heading, obstacles: Rect[], stub = 40): Pt[] {
+  const base = routeElbow(from, to, h1, h2, stub);
+  if (!obstacles.length || pathClear(base, obstacles)) return base;
+  const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
+  const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
+  const a = add(from, h1, Math.min(stub, Math.max(0, proj1)));
+  const b = add(to, h2, Math.min(stub, Math.max(0, proj2)));
+  const mids: Pt[][] = [];
+  if (a.x !== b.x && a.y !== b.y) {
+    mids.push([a, { x: b.x, y: a.y }, b], [a, { x: a.x, y: b.y }, b]);
+  } else {
+    mids.push([a, b]);
+  }
+  const lanes = new Set<number>();
+  for (const r of obstacles) {
+    lanes.add(r.x - 1).add(r.x + r.w + 1).add(r.y - 1).add(r.y + r.h + 1);
+  }
+  for (const lane of lanes) {
+    if (a.x !== b.x) mids.push([a, { x: lane, y: a.y }, { x: lane, y: b.y }, b]);
+    if (a.y !== b.y) mids.push([a, { x: a.x, y: lane }, { x: b.x, y: lane }, b]);
+  }
+  let best: Pt[] | null = null;
+  let bestLen = Infinity;
+  for (const mid of mids) {
+    const pts = dedupePolyline([from, ...mid, to]);
+    if (!pathClear(pts, obstacles)) continue;
+    const len = polylineLen(pts);
+    if (len < bestLen) {
+      best = pts;
+      bestLen = len;
+    }
+  }
+  return best ?? base;
+}
 
 export interface ConnectorRoute {
   /** segments = 折线(直角/直线);cubic/quad = 参数曲线(自适应/手动弓量) */
@@ -157,12 +253,22 @@ function curveRoute(el: ConnectorElement): ConnectorRoute {
   };
 }
 
-/** 连线路由解析:route 缺省 = smooth(自适应三次);elbow = 直角正交;straight = 直线 */
-export function connectorRoute(el: ConnectorElement, elements: SceneElement[]): ConnectorRoute {
+/** 连线路由解析:route 缺省 = smooth(自适应三次,被其他元素遮挡时自动改走直角避让重排);elbow = 直角正交(始终避让);straight = 直线(不避让,保持语义) */
+export function connectorRoute(el: ConnectorElement, elements: SceneElement[], pad = 6): ConnectorRoute {
   if (el.route === "straight") return polylineRoute([{ x: el.from[0], y: el.from[1] }, { x: el.to[0], y: el.to[1] }]);
+  const obstacles = obstacleRects(el, elements, pad);
   if (el.route === "elbow") {
     const [h1, h2] = connectorHeadings(el, elements);
-    return polylineRoute(routeElbow({ x: el.from[0], y: el.from[1] }, { x: el.to[0], y: el.to[1] }, h1, h2));
+    return polylineRoute(routeElbowAvoid({ x: el.from[0], y: el.from[1] }, { x: el.to[0], y: el.to[1] }, h1, h2, obstacles));
   }
-  return curveRoute(el);
+  const curve = curveRoute(el);
+  if (obstacles.length) {
+    for (const p of curve.sample(12)) {
+      if (obstacles.some((r) => inObstacle(r, p.x, p.y))) {
+        const [h1, h2] = connectorHeadings(el, elements);
+        return polylineRoute(routeElbowAvoid({ x: el.from[0], y: el.from[1] }, { x: el.to[0], y: el.to[1] }, h1, h2, obstacles));
+      }
+    }
+  }
+  return curve;
 }

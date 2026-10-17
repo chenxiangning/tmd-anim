@@ -289,6 +289,18 @@
 		};
 		const connector = el;
 		for (const key of ["fromEl", "toEl"]) if (connector[key] !== void 0 && typeof connector[key] !== "string") delete connector[key];
+		for (const key of ["fromFocus", "toFocus"]) {
+			const f = connector[key];
+			if (f === void 0) continue;
+			if (!(Array.isArray(f) && f.length === 2 && f.every((n) => typeof n === "number" && Number.isFinite(n)))) delete connector[key];
+			else connector[key] = [Math.min(1, Math.max(0, f[0])), Math.min(1, Math.max(0, f[1]))];
+		}
+		if (el.kind === "shape" && connector.text !== void 0 && typeof connector.text !== "string") delete connector.text;
+		if (connector.rotate != null) {
+			const deg = Number(connector.rotate);
+			if (typeof connector.rotate !== "boolean" && Number.isFinite(deg)) connector.rotate = Math.round(deg * 10) / 10;
+			else delete connector.rotate;
+		}
 		if (connector.route !== void 0 && ![
 			"smooth",
 			"elbow",
@@ -969,6 +981,13 @@
 	//#endregion
 	//#region src/core/render/elements.ts
 	/** 文本类元素绘制:标题 / 艺术字 / 正文 / 输入框 / 便签 / 徽章 / 形状。 */
+	/** 按填充亮度反推可读文字色(亮色底用深字,暗色底用白字);形状绘制与行内编辑共用 */
+	function readableOn(fill) {
+		const m = /^#?([0-9a-f]{6})$/i.exec(fill ?? "");
+		if (!m) return "#1F2937";
+		const n = parseInt(m[1], 16);
+		return .299 * (n >> 16 & 255) + .587 * (n >> 8 & 255) + .114 * (n & 255) > 150 ? "#1F2937" : "#FFFFFF";
+	}
 	function drawShape(ctx, el) {
 		traceShape(ctx, el);
 		const hasStroke = Boolean(el.stroke) && (el.strokeWidth ?? 0) > 0;
@@ -984,6 +1003,11 @@
 			ctx.lineWidth = el.strokeWidth ?? 0;
 			ctx.stroke();
 		}
+		if (el.text) drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
+			fontSize: el.fontSize ?? 28,
+			color: el.color ?? readableOn(el.fill),
+			align: "center"
+		});
 	}
 	function drawTitle(ctx, el, progress) {
 		drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
@@ -1035,11 +1059,6 @@
 	}
 	function drawNote(ctx, el, progress) {
 		ctx.save();
-		const cx = el.x + el.w / 2;
-		const cy = el.y + el.h / 2;
-		ctx.translate(cx, cy);
-		ctx.rotate((el.rotate ?? -2) * Math.PI / 180);
-		ctx.translate(-cx, -cy);
 		roundRect(ctx, el.x, el.y, el.w, el.h, 10);
 		ctx.fillStyle = el.bg ?? "#FDE68A";
 		ctx.fill();
@@ -1109,8 +1128,12 @@
 	});
 	/** 无障碍情形的正交路由:出口段 → 连接段 → 入口段(语义对齐 Excalidraw elbow 常规输出) */
 	function routeElbow(from, to, h1, h2, stub = 40) {
-		const a = add(from, h1, stub);
-		const b = add(to, h2, stub);
+		const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
+		const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
+		const d1 = Math.min(stub, Math.max(0, proj1));
+		const d2 = Math.min(stub, Math.max(0, proj2));
+		const a = add(from, h1, d1);
+		const b = add(to, h2, d2);
 		const mids = [];
 		if (h1[0] !== 0 && h2[1] !== 0) mids.push({
 			x: b.x,
@@ -1170,6 +1193,131 @@
 		}
 		ctx.lineTo(to.x * scale, to.y * scale);
 	}
+	/** 障碍 = 除两端绑定元素外的全部非连线元素包围盒,外扩 pad(线至少离元素 pad 像素) */
+	function obstacleRects(el, elements, pad) {
+		const out = [];
+		for (const e of elements) {
+			if (e.id === el.fromEl || e.id === el.toEl || e.kind === "connector") continue;
+			const b = elementBounds(e);
+			if (b) out.push({
+				x: b.x - pad,
+				y: b.y - pad,
+				w: b.w + pad * 2,
+				h: b.h + pad * 2
+			});
+		}
+		return out;
+	}
+	/** 点是否严格落在(已外扩的)障碍内;贴边不算,保证线离真实元素 ≥ pad */
+	function inObstacle(r, px, py) {
+		return px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h;
+	}
+	/** 折线是否穿过任何障碍(逐段按 4px 步长采样) */
+	function pathClear(pts, obstacles) {
+		for (let i = 1; i < pts.length; i++) {
+			const a = pts[i - 1];
+			const b = pts[i];
+			const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+			for (let s = 0; s <= steps; s++) {
+				const x = a.x + (b.x - a.x) * s / steps;
+				const y = a.y + (b.y - a.y) * s / steps;
+				for (const r of obstacles) if (inObstacle(r, x, y)) return false;
+			}
+		}
+		return true;
+	}
+	function dedupePolyline(pts) {
+		const out = [];
+		for (const p of pts) {
+			const last = out[out.length - 1];
+			if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) out.push(p);
+		}
+		return out.filter((p, i) => {
+			if (i === 0 || i === out.length - 1) return true;
+			const prev = out[i - 1];
+			const next = out[i + 1];
+			return !(prev.x === p.x && p.x === next.x || prev.y === p.y && p.y === next.y);
+		});
+	}
+	var polylineLen = (pts) => {
+		let len = 0;
+		for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+		return len;
+	};
+	/**
+	* 障碍感知的直角路由:先走无障碍 elbow;被挡则枚举中段重排方案——
+	* 两种 L 拐角 + 以障碍边缘/中点为 lane 的 Z 折线,取第一条不穿障的最短路径;
+	* 全部被挡时回落原 elbow(极端密布局不硬绕)。
+	*/
+	function routeElbowAvoid(from, to, h1, h2, obstacles, stub = 40) {
+		const base = routeElbow(from, to, h1, h2, stub);
+		if (!obstacles.length || pathClear(base, obstacles)) return base;
+		const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
+		const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
+		const a = add(from, h1, Math.min(stub, Math.max(0, proj1)));
+		const b = add(to, h2, Math.min(stub, Math.max(0, proj2)));
+		const mids = [];
+		if (a.x !== b.x && a.y !== b.y) mids.push([
+			a,
+			{
+				x: b.x,
+				y: a.y
+			},
+			b
+		], [
+			a,
+			{
+				x: a.x,
+				y: b.y
+			},
+			b
+		]);
+		else mids.push([a, b]);
+		const lanes = /* @__PURE__ */ new Set();
+		for (const r of obstacles) lanes.add(r.x - 1).add(r.x + r.w + 1).add(r.y - 1).add(r.y + r.h + 1);
+		for (const lane of lanes) {
+			if (a.x !== b.x) mids.push([
+				a,
+				{
+					x: lane,
+					y: a.y
+				},
+				{
+					x: lane,
+					y: b.y
+				},
+				b
+			]);
+			if (a.y !== b.y) mids.push([
+				a,
+				{
+					x: a.x,
+					y: lane
+				},
+				{
+					x: b.x,
+					y: lane
+				},
+				b
+			]);
+		}
+		let best = null;
+		let bestLen = Infinity;
+		for (const mid of mids) {
+			const pts = dedupePolyline([
+				from,
+				...mid,
+				to
+			]);
+			if (!pathClear(pts, obstacles)) continue;
+			const len = polylineLen(pts);
+			if (len < bestLen) {
+				best = pts;
+				bestLen = len;
+			}
+		}
+		return best ?? base;
+	}
 	function polylineRoute(points) {
 		let total = 0;
 		const segs = [];
@@ -1223,8 +1371,8 @@
 			}
 		};
 	}
-	/** 连线路由解析:route 缺省 = smooth(自适应三次);elbow = 直角正交;straight = 直线 */
-	function connectorRoute(el, elements) {
+	/** 连线路由解析:route 缺省 = smooth(自适应三次,被其他元素遮挡时自动改走直角避让重排);elbow = 直角正交(始终避让);straight = 直线(不避让,保持语义) */
+	function connectorRoute(el, elements, pad = 6) {
 		if (el.route === "straight") return polylineRoute([{
 			x: el.from[0],
 			y: el.from[1]
@@ -1232,17 +1380,31 @@
 			x: el.to[0],
 			y: el.to[1]
 		}]);
+		const obstacles = obstacleRects(el, elements, pad);
 		if (el.route === "elbow") {
 			const [h1, h2] = connectorHeadings(el, elements);
-			return polylineRoute(routeElbow({
+			return polylineRoute(routeElbowAvoid({
 				x: el.from[0],
 				y: el.from[1]
 			}, {
 				x: el.to[0],
 				y: el.to[1]
-			}, h1, h2));
+			}, h1, h2, obstacles));
 		}
-		return curveRoute(el);
+		const curve = curveRoute(el);
+		if (obstacles.length) {
+			for (const p of curve.sample(12)) if (obstacles.some((r) => inObstacle(r, p.x, p.y))) {
+				const [h1, h2] = connectorHeadings(el, elements);
+				return polylineRoute(routeElbowAvoid({
+					x: el.from[0],
+					y: el.from[1]
+				}, {
+					x: el.to[0],
+					y: el.to[1]
+				}, h1, h2, obstacles));
+			}
+		}
+		return curve;
 	}
 	//#endregion
 	//#region src/core/render/misc.ts
@@ -1308,7 +1470,8 @@
 			endAngle: () => Math.atan2(y2 - c2.y, x2 - c2.x)
 		};
 	}
-	/** 元素布局包围盒:数组格取全部格子的外接框;连线不可作为绑定目标,返回 null;与动画状态无关 */
+	/** 元素布局包围盒:数组格取全部格子的外接框;连线不可作为绑定目标,返回 null;与动画状态无关。
+	*  ponytail: 未旋转几何,旋转元素的连线锚点/吸附有偏差(同 snapMove),精确时按 rotatePoint 求旋转角点 */
 	function elementBounds(el) {
 		if (el.kind === "connector") return null;
 		if (el.kind === "arrayCells") {
@@ -1332,9 +1495,22 @@
 			h: el.h
 		};
 	}
+	/** 元素中心朝 (tx,ty) 的射线与包围盒边界的交点,归一化到 [0..1, 0..1](绑定 focus 与端点解析共用) */
+	function centerRayFocus(rect, tx, ty) {
+		const cx = rect.x + rect.w / 2;
+		const cy = rect.y + rect.h / 2;
+		const dx = tx - cx;
+		const dy = ty - cy;
+		if (dx === 0 && dy === 0) return [.5, 0];
+		const sx = dx !== 0 ? rect.w / 2 / Math.abs(dx) : Infinity;
+		const sy = dy !== 0 ? rect.h / 2 / Math.abs(dy) : Infinity;
+		const s = Math.min(sx, sy);
+		return [(cx + dx * s - rect.x) / rect.w, (cy + dy * s - rect.y) / rect.h];
+	}
 	/**
-	* 连线端点解析(纯函数):fromEl/toEl 指向的元素存在时,该端点取「元素中心朝另一端」的射线
-	* 与包围盒边界的交点(连线向下就挂在底边而非角落),拖动被绑定元素连线自动跟随;
+	* 连线端点解析(纯函数):fromEl/toEl 指向的元素存在时——
+	* - 有 fromFocus/toFocus(拖拽吸附绑定时记录的归一化位置):端点固定在元素上的相对位置,元素移动/缩放端点跟随,不滑动不跳边;
+	* - 否则取「元素中心朝另一端」的射线与包围盒边界的交点(旧行为兜底);
 	* 元素缺失回落到 from/to 原始坐标。
 	*/
 	function resolveConnector(el, elements) {
@@ -1344,31 +1520,29 @@
 			const target = elements.find((e) => e.id === id);
 			return target ? elementBounds(target) : null;
 		};
-		const anchor = (rect, tx, ty) => {
-			const cx = rect.x + rect.w / 2;
-			const cy = rect.y + rect.h / 2;
-			const dx = tx - cx;
-			const dy = ty - cy;
-			if (dx === 0 && dy === 0) return {
-				x: cx,
-				y: rect.y
-			};
-			const sx = dx !== 0 ? rect.w / 2 / Math.abs(dx) : Infinity;
-			const sy = dy !== 0 ? rect.h / 2 / Math.abs(dy) : Infinity;
-			const s = Math.min(sx, sy);
+		const anchor = (rect, focus, tx, ty) => {
+			if (focus) {
+				const fx = Math.min(1, Math.max(0, focus[0]));
+				const fy = Math.min(1, Math.max(0, focus[1]));
+				return {
+					x: rect.x + fx * rect.w,
+					y: rect.y + fy * rect.h
+				};
+			}
+			const [fx, fy] = centerRayFocus(rect, tx, ty);
 			return {
-				x: cx + dx * s,
-				y: cy + dy * s
+				x: rect.x + fx * rect.w,
+				y: rect.y + fy * rect.h
 			};
 		};
 		const bFrom = boundsOf(el.fromEl);
 		const bTo = boundsOf(el.toEl);
 		if (!bFrom && !bTo) return el;
-		const from = bFrom ? anchor(bFrom, el.to[0], el.to[1]) : {
+		const from = bFrom ? anchor(bFrom, el.fromFocus, el.to[0], el.to[1]) : {
 			x: el.from[0],
 			y: el.from[1]
 		};
-		const to = bTo ? anchor(bTo, from.x, from.y) : {
+		const to = bTo ? anchor(bTo, el.toFocus, from.x, from.y) : {
 			x: el.to[0],
 			y: el.to[1]
 		};
@@ -1666,6 +1840,14 @@
 			if (visual.rotation !== 0) ctx.rotate(visual.rotation);
 			if (visual.scale !== 1) ctx.scale(visual.scale, visual.scale);
 			ctx.translate(-cx, -cy);
+		}
+		const rotateDeg = el.kind === "connector" ? 0 : el.rotate ?? (el.kind === "note" ? -2 : 0);
+		if (rotateDeg !== 0) {
+			const rx = el.x + el.w / 2;
+			const ry = el.y + el.h / 2;
+			ctx.translate(rx, ry);
+			ctx.rotate(rotateDeg * Math.PI / 180);
+			ctx.translate(-rx, -ry);
 		}
 		if (visual.wipeWidth !== null) {
 			ctx.beginPath();

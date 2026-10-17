@@ -10,13 +10,15 @@ import type {
   TableElement,
   TerminalElement,
 } from "../core/types";
-import { connectorGeometry } from "../core/render/misc";
+import { connectorRoute } from "../core/render/connectorRoute";
+import { readableOn } from "../core/render/elements";
 import { PALETTE } from "../core/render/cells";
+import { elementRotate } from "./hitTest";
 
 /**
  * 双击行内编辑目标:把元素(和点击位置)解析成一个可编辑文本字段,
  * 含编辑框几何与贴合元素外观的样式;patch(value) 产出元素补丁。
- * shape/image 无文本,返回 null。
+ * shape 编辑内嵌 text;image 无文本,返回 null。
  */
 
 export interface TextTarget {
@@ -33,6 +35,8 @@ export interface TextTarget {
   bg: string;
   color: string;
   align: "left" | "center";
+  /** 元素静态旋转角(度);编辑框随元素一起转,缺省 0 */
+  rotate?: number;
   patch(value: string): Record<string, unknown>;
 }
 
@@ -45,7 +49,14 @@ interface Box {
 
 const box = (x: number, y: number, w: number, h: number): Box => ({ x, y, w, h });
 
-export function resolveTextTarget(el: SceneElement, px: number, py: number): TextTarget | null {
+export function resolveTextTarget(el: SceneElement, px: number, py: number, elements: SceneElement[] = []): TextTarget | null {
+  const target = resolveTextTargetInner(el, px, py, elements);
+  if (!target) return null;
+  // 编辑框随元素静态旋转(形状/便签等任意角度),连线无旋转
+  return { ...target, rotate: el.kind === "connector" ? 0 : elementRotate(el) };
+}
+
+function resolveTextTargetInner(el: SceneElement, px: number, py: number, elements: SceneElement[]): TextTarget | null {
   switch (el.kind) {
     case "title":
     case "artText": {
@@ -93,6 +104,15 @@ export function resolveTextTarget(el: SceneElement, px: number, py: number): Tex
         patch: (v) => ({ text: v }),
       };
     }
+    case "shape": {
+      const fontSize = el.fontSize ?? 28;
+      return {
+        field: "text", value: el.text ?? "", multiline: false, mono: false, fontSize,
+        rect: box(el.x, el.y, el.w, el.h), lineHeight: el.h, padLeft: 0,
+        bg: el.fill ?? "#FFFFFF", color: el.color ?? readableOn(el.fill), align: "center",
+        patch: (v) => ({ text: v }),
+      };
+    }
     case "code": {
       const fontSize = el.fontSize ?? 26;
       const headerH = fontSize * 2.1;
@@ -106,7 +126,8 @@ export function resolveTextTarget(el: SceneElement, px: number, py: number): Tex
       };
     }
     case "connector": {
-      const mid = connectorGeometry(el as ConnectorElement).pointAt(0.5);
+      // 标签挂在实际路由中点(避让重排/直角时与曲线几何中点可能不同)
+      const mid = connectorRoute(el as ConnectorElement, elements).mid;
       return {
         field: "label", value: (el as ConnectorElement).label ?? "", multiline: false, mono: false, fontSize: 26,
         rect: box(mid.x - 130, mid.y - 32, 260, 64), lineHeight: 64, padLeft: 0,

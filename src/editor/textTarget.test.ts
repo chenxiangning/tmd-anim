@@ -79,10 +79,24 @@ describe("resolveTextTarget 双击行内编辑目标", () => {
     expect(target?.patch("返回")).toEqual({ label: "返回" });
   });
 
-  it("形状与图片无文本,返回 null", () => {
-    const shape: SceneElement = { id: "s", kind: "shape", x: 0, y: 0, w: 100, h: 100, shape: "rect", anim };
+  it("形状:双击编辑内嵌文本,样式贴合填充与反推文字色", () => {
+    const shape: SceneElement = { id: "s", kind: "shape", x: 100, y: 100, w: 300, h: 120, shape: "rect", fill: "#0EA5E9", text: "启动", anim };
+    const target = resolveTextTarget(shape, 250, 160);
+    expect(target?.field).toBe("text");
+    expect(target?.value).toBe("启动");
+    expect(target?.bg).toBe("#0EA5E9");
+    expect(target?.color).toBe("#FFFFFF"); // 暗色底反推白字
+    expect(target?.align).toBe("center");
+    expect(target?.patch("停止")).toEqual({ text: "停止" });
+    // 无 text 的形状也可双击建文本
+    const empty: SceneElement = { ...shape, text: undefined, fill: "#FDE68A" };
+    const t2 = resolveTextTarget(empty, 250, 160);
+    expect(t2?.value).toBe("");
+    expect(t2?.color).toBe("#1F2937"); // 亮色底深字
+  });
+
+  it("图片无文本,返回 null", () => {
     const image: SceneElement = { id: "i", kind: "image", x: 0, y: 0, w: 100, h: 100, src: "", anim };
-    expect(resolveTextTarget(shape, 50, 50)).toBeNull();
     expect(resolveTextTarget(image, 50, 50)).toBeNull();
   });
 });

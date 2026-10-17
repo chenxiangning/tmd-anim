@@ -35,11 +35,7 @@ export type ShapeVariant =
   | "blockArrow"
   | "speechBubble";
 
-/**
- * 入场动画类型:
- * pop 弹出 / fade 淡入 / riseUp 上浮 / slideLeft 左侧滑入 / slideRight 右侧滑入 /
- * dropDown 顶部落入 / wipe 左向右擦除 / typewriter 打字机 / zoomIn 缩放入场 / spinIn 旋转入场
- */
+/** 入场动画:pop 弹出/fade 淡入/riseUp 上浮/slideLeft|slideRight 侧滑/dropDown 落入/wipe 擦除/typewriter 打字机/zoomIn 缩放/spinIn 旋转 */
 export type AnimType =
   | "pop"
   | "fade"
@@ -71,6 +67,8 @@ interface ElementBase {
   y: number;
   w: number;
   h: number;
+  /** 绕中心旋转角度(度,顺时针);缺省 0,便签保持历史缺省 -2(见 schema 通用字段) */
+  rotate?: number;
   anim: Anim;
 }
 
@@ -101,17 +99,20 @@ export interface TextElement extends ElementBase {
   align?: "left" | "center";
 }
 
-/** 基础形状:矩形(可圆角)/ 圆形 / 三角形 / 菱形 / 六边形 / 星形 / 圆柱 / 块箭头 / 对话框,填充与描边独立可控 */
+/** 基础形状:矩形(可圆角)/圆/三角/菱形/六边形/星形/圆柱/块箭头/对话框,填充描边独立可控 */
 export interface ShapeElement extends ElementBase {
   kind: "shape";
   shape: ShapeVariant;
-  /** 填充色;空 = 无填充 */
+  /** 填充/描边色;空 = 无填充/无描边 */
   fill?: string;
-  /** 描边色;空 = 无描边 */
   stroke?: string;
   strokeWidth?: number;
   /** 矩形圆角 */
   radius?: number;
+  /** 内嵌文本:居中绘制,默认文字色按填充亮度反推,color 可覆盖 */
+  text?: string;
+  fontSize?: number;
+  color?: string;
 }
 
 /** 输入框:白底描边圆角矩形 + 文本 + 静态光标(静态保证导出确定性) */
@@ -143,8 +144,6 @@ export interface NoteElement extends ElementBase {
   text: string;
   bg?: string;
   fontSize?: number;
-  /** 旋转角度(度,默认 -2) */
-  rotate?: number;
 }
 
 export interface BadgeElement extends ElementBase {
@@ -167,8 +166,9 @@ export interface ArrayCellsElement extends ElementBase {
   fontSize?: number;
 }
 
-/** 连线:from/to 为画布绝对坐标;curve 为控制点相对中点的垂直偏移像素(0 = 直线);x/y/w/h 不参与布局。
- *  fromEl/toEl 为可选绑定元素 id:存在时该端点按元素布局包围盒实时解析(拖动元素连线跟随),from/to 退化为未绑定时的兜底值。
+/** 连线:from/to 画布绝对坐标;curve 为控制点相对中点的垂直偏移像素(0 = 直线);x/y/w/h 不参与布局。
+ *  fromEl/toEl 绑定元素 id(可选):存在时端点按元素包围盒实时解析,from/to 退化为兜底值。
+ *  fromFocus/toFocus = 绑定端点在元素上的归一化位置 [0..1,0..1],记录后端点固定、不滑动不跳边。
  *  arrow 缺省 true 画切线箭头,false = 纯直线/曲线。 */
 export interface ConnectorElement extends ElementBase {
   kind: "connector";
@@ -176,6 +176,8 @@ export interface ConnectorElement extends ElementBase {
   to: [number, number];
   fromEl?: string;
   toEl?: string;
+  fromFocus?: [number, number];
+  toFocus?: [number, number];
   color?: string;
   label?: string;
   width?: number;

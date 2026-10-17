@@ -245,6 +245,7 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
             sceneIdx={audioSelected ? audioSceneIdxRef.current : sceneIdx}
             selected={selected}
             selCount={selIds.length}
+            selIds={selIds}
             audio={audioSelected ? project.scenes[audioSceneIdxRef.current]?.audio : undefined}
             audioSelected={audioSelected}
             onPatch={commit}
