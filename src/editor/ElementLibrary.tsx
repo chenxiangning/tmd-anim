@@ -1,14 +1,14 @@
 import { useState, type ReactNode } from "react";
-import type { SceneElement, ShapeVariant } from "../core/types";
+import type { DevNodeVariant, SceneElement, ShapeVariant } from "../core/types";
 import { KIND_LABELS, kindColor } from "./defaults";
+import { DEV_ICONS } from "./devIcons";
 import { PanelResizeHandle } from "./PanelResizeHandle";
 import { usePanelResize } from "./usePanelResize";
 
 interface LibraryItem {
   kind: SceneElement["kind"];
-  /** 形状变体或连线变体(connector:line = 直线) */
-  variant?: ShapeVariant | "line";
-  /** 手绘描边(形状 tab 切到手绘时置位) */
+  /** 形状/连线/开发组件变体(connector:line = 直线);sketch = 手绘标记 */
+  variant?: ShapeVariant | "line" | DevNodeVariant;
   sketch?: boolean;
   label?: string;
 }
@@ -18,17 +18,11 @@ interface ElementLibraryProps {
   onCollapse(): void;
 }
 
+
 function icon(paths: ReactNode, opts?: { stroke?: boolean }): ReactNode {
+  const st = opts?.stroke;
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill={opts?.stroke ? "none" : "currentColor"}
-      stroke={opts?.stroke ? "currentColor" : "none"}
-      strokeWidth={opts?.stroke ? 2 : undefined}
-      strokeLinecap={opts?.stroke ? "round" : undefined}
-      strokeLinejoin={opts?.stroke ? "round" : undefined}
-    >
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill={st ? "none" : "currentColor"} stroke={st ? "currentColor" : "none"} strokeWidth={st ? 2 : undefined} strokeLinecap={st ? "round" : undefined} strokeLinejoin={st ? "round" : undefined}>
       {paths}
     </svg>
   );
@@ -140,29 +134,56 @@ const ICONS: Record<string, ReactNode> = {
     </>,
     { stroke: true },
   ),
+  ...DEV_ICONS,
 };
 
-const GROUPS: ReadonlyArray<{ label: string; items: ReadonlyArray<LibraryItem> }> = [
+/** 形状基础条目:常规页签直接复用,手绘页签加 sketch 标记派生 */
+const SHAPE_ITEMS: ReadonlyArray<LibraryItem> = [
+  { kind: "shape", variant: "rect", label: "矩形" },
+  { kind: "shape", variant: "ellipse", label: "圆形" },
+  { kind: "shape", variant: "triangle", label: "三角形" },
+  { kind: "shape", variant: "diamond", label: "菱形" },
+  { kind: "shape", variant: "hexagon", label: "六边形" },
+  { kind: "shape", variant: "star", label: "星形" },
+  { kind: "shape", variant: "blockArrow", label: "块箭头" },
+  { kind: "shape", variant: "cylinder", label: "圆柱" },
+  { kind: "shape", variant: "speechBubble", label: "对话框" },
+];
+
+/** 开发组件条目:架构图常用资源,落库为 devNode */
+const DEV_ITEMS: ReadonlyArray<LibraryItem> = [
+  { kind: "devNode", variant: "database", label: "数据库" },
+  { kind: "devNode", variant: "redis", label: "Redis" },
+  { kind: "devNode", variant: "obs", label: "对象存储" },
+  { kind: "devNode", variant: "cloud", label: "云" },
+  { kind: "devNode", variant: "server", label: "服务器" },
+  { kind: "devNode", variant: "api", label: "API" },
+  { kind: "devNode", variant: "queue", label: "消息队列" },
+  { kind: "devNode", variant: "container", label: "容器" },
+];
+
+interface LibraryGroup {
+  label: string;
+  items: ReadonlyArray<LibraryItem>;
+  /** 页签一名字(有 tab2 才显示页签栏);缺省「常规」 */
+  tab1?: string;
+  /** 第二页签:形状的手绘 / 组件的开发 */
+  tab2?: { label: string; items: ReadonlyArray<LibraryItem> };
+}
+
+const GROUPS: ReadonlyArray<LibraryGroup> = [
   {
     label: "文字",
     items: [{ kind: "title" }, { kind: "artText" }, { kind: "text" }],
   },
   {
     label: "形状",
-    items: [
-      { kind: "shape", variant: "rect", label: "矩形" },
-      { kind: "shape", variant: "ellipse", label: "圆形" },
-      { kind: "shape", variant: "triangle", label: "三角形" },
-      { kind: "shape", variant: "diamond", label: "菱形" },
-      { kind: "shape", variant: "hexagon", label: "六边形" },
-      { kind: "shape", variant: "star", label: "星形" },
-      { kind: "shape", variant: "blockArrow", label: "块箭头" },
-      { kind: "shape", variant: "cylinder", label: "圆柱" },
-      { kind: "shape", variant: "speechBubble", label: "对话框" },
-    ],
+    items: SHAPE_ITEMS,
+    tab2: { label: "手绘", items: SHAPE_ITEMS.map((it) => ({ ...it, sketch: true })) },
   },
   {
     label: "组件",
+    tab1: "基础",
     items: [
       { kind: "badge" },
       { kind: "note" },
@@ -176,6 +197,7 @@ const GROUPS: ReadonlyArray<{ label: string; items: ReadonlyArray<LibraryItem> }
       { kind: "terminal" },
       { kind: "table" },
     ],
+    tab2: { label: "开发", items: DEV_ITEMS },
   },
   {
     label: "图示与媒体",
@@ -199,9 +221,10 @@ function itemIcon(item: LibraryItem): ReactNode {
 }
 
 /** 左栏元素库:图标 + 名称分组;点击添加到画布中央,拖到画布落到指定位置;右缘可拖拽调宽。
- *  形状组内常规/手绘两个 tab 切换,手绘项落库为 sketch: true 的同变体形状。 */
+ *  形状组(常规/手绘)与组件组(基础/开发)各带页签切换。 */
 export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
-  const [shapeTab, setShapeTab] = useState<"regular" | "sketch">("regular");
+  /** 各分组第二页签是否激活(按组名记) */
+  const [tab2On, setTab2On] = useState<Record<string, boolean>>({});
   const { size: width, startResize, resetSize } = usePanelResize({
     axis: "x",
     key: "tmd-anim:lib-w",
@@ -210,9 +233,6 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
     maxRatio: 0.35,
     dir: 1,
   });
-  /** 形状组:按 tab 派生条目(手绘 = 同变体 + sketch 标记) */
-  const shapeItems = (items: ReadonlyArray<LibraryItem>): LibraryItem[] =>
-    shapeTab === "sketch" ? items.map((it) => ({ ...it, sketch: true })) : [...items];
   return (
     <aside className="relative flex shrink-0 flex-col border-r border-neutral-200 bg-white" style={{ width }}>
       <PanelResizeHandle side="right" onStart={startResize} onReset={resetSize} />
@@ -230,21 +250,21 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
         {GROUPS.map((group) => {
-          const isShapes = group.label === "形状";
-          const items = isShapes ? shapeItems(group.items) : group.items;
+          const on2 = group.tab2 ? (tab2On[group.label] ?? false) : false;
+          const items = group.tab2 && on2 ? group.tab2.items : group.items;
           return (
             <div key={group.label} className="mb-3">
               <div className="mb-1.5 flex items-center justify-between px-0.5">
                 <span className="text-[10px] font-medium tracking-wide text-neutral-400">{group.label}</span>
-                {isShapes && (
+                {group.tab2 && (
                   <div className="flex rounded-md border border-neutral-200 p-px text-[10px]">
-                    {(["regular", "sketch"] as const).map((tab) => (
+                    {[group.tab1 ?? "常规", group.tab2.label].map((label, i) => (
                       <button
-                        key={tab}
-                        onClick={() => setShapeTab(tab)}
-                        className={`rounded-[5px] px-2 py-0.5 transition-colors ${shapeTab === tab ? "bg-slate-700 text-white" : "text-neutral-500 hover:text-neutral-700"}`}
+                        key={label}
+                        onClick={() => setTab2On((s) => ({ ...s, [group.label]: i === 1 }))}
+                        className={`rounded-[5px] px-2 py-0.5 transition-colors ${on2 === (i === 1) ? "bg-slate-700 text-white" : "text-neutral-500 hover:text-neutral-700"}`}
                       >
-                        {tab === "regular" ? "常规" : "手绘"}
+                        {label}
                       </button>
                     ))}
                   </div>
@@ -271,13 +291,7 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
             </div>
           );
         })}
-        <div className="px-0.5 text-[10px] leading-relaxed text-neutral-300">
-          点击添加到画布中央,或拖到目标位置
-          <br />
-          形状组可切「手绘」tab,每次生成的抖动都不一样
-          <br />
-          画布上双击元素可改文字,⌘C/⌘V 复制粘贴
-        </div>
+        <div className="px-0.5 text-[10px] leading-relaxed text-neutral-300">点击添加到画布中央,或拖到目标位置;双击元素改文字</div>
       </div>
     </aside>
   );

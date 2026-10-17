@@ -39,6 +39,7 @@ export const ELEMENT_KINDS: Record<string, true> = {
   progress: true,
   kbd: true,
   browser: true,
+  devNode: true,
 };
 
 export class ProjectParseError extends Error {
@@ -159,6 +160,11 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     if (connector.text !== undefined && typeof connector.text !== "string") delete connector.text;
     if (connector.sketch !== undefined && typeof connector.sketch !== "boolean") delete connector.sketch;
     if (connector.sketchSeed !== undefined && (typeof connector.sketchSeed !== "number" || !Number.isFinite(connector.sketchSeed))) delete connector.sketchSeed;
+  }
+  // 开发组件:label/sub 非字符串丢弃;dev 未知值保留(渲染回落 server 机架)
+  if (el.kind === "devNode") {
+    if (connector.label !== undefined && typeof connector.label !== "string") delete connector.label;
+    if (connector.sub !== undefined && typeof connector.sub !== "string") delete connector.sub;
   }
   // 通用旋转字段:有限数字保留并归一到 0.1 度,null/非数丢弃
   if (connector.rotate != null) {

@@ -11,6 +11,7 @@ import type {
   TerminalElement,
 } from "../core/types";
 import { connectorRoute } from "../core/render/connectorRoute";
+import { DEV_META } from "../core/render/devNode";
 import { readableOn } from "../core/render/elements";
 import { PALETTE } from "../core/render/cells";
 import { elementRotate } from "./hitTest";
@@ -93,6 +94,15 @@ function resolveTextTargetInner(el: SceneElement, px: number, py: number, elemen
         rect: box(el.x, el.y, el.w, el.h), lineHeight: el.h, padLeft: 0,
         bg: el.bg ?? "#1D4ED8", color: el.color ?? "#FFFFFF", align: "center",
         patch: (v) => ({ text: v }),
+      };
+    }
+    case "devNode": {
+      const fontSize = el.fontSize ?? 26;
+      return {
+        field: "label", value: el.label ?? DEV_META[el.dev]?.name ?? "", multiline: false, mono: false, fontSize,
+        rect: box(el.x + el.h + 14, el.y, el.w - el.h - 26, el.h), lineHeight: el.h, padLeft: 0,
+        bg: "#FFFFFF", color: "#1F2937", align: "left",
+        patch: (v) => ({ label: v }),
       };
     }
     case "note": {

@@ -21,9 +21,8 @@ export type ElementKind =
   | "terminal"
   | "progress"
   | "kbd"
-  | "browser";
-
-/** 基础形状变体 */
+  | "browser"
+  | "devNode";
 export type ShapeVariant =
   | "rect"
   | "ellipse"
@@ -81,7 +80,6 @@ export interface TitleElement extends ElementBase {
   color?: string;
 }
 
-/** 艺术字:描边大字(对标参考站的「艺术字」),无高亮芯片 */
 export interface ArtTextElement extends ElementBase {
   kind: "artText";
   text: string;
@@ -116,7 +114,6 @@ export interface ShapeElement extends ElementBase {
   sketchSeed?: number; // 点击生成时的随机种子;重开关手绘/粘贴会换种子
 }
 
-/** 输入框:白底描边圆角矩形 + 文本 + 静态光标(静态保证导出确定性) */
 export interface InputElement extends ElementBase {
   kind: "input";
   text: string;
@@ -155,7 +152,6 @@ export interface BadgeElement extends ElementBase {
   fontSize?: number;
 }
 
-/** 色块数组:从 (x, y) 起按 perRow 折行的圆角色块;w/h 仅为占位,不参与布局 */
 export interface ArrayCellsElement extends ElementBase {
   kind: "arrayCells";
   cells: string[];
@@ -189,12 +185,10 @@ export interface ConnectorElement extends ElementBase {
 
 export interface ImageElement extends ElementBase {
   kind: "image";
-  /** 本地路径或 dataURL */
-  src: string;
+    src: string;
   radius?: number;
 }
 
-/** 要点列表:items 每行一条,marker 为 dot 圆点 / check 勾选 / number 序号 */
 export interface ListElement extends ElementBase {
   kind: "list";
   items: string[];
@@ -205,7 +199,6 @@ export interface ListElement extends ElementBase {
   color?: string;
 }
 
-/** 步骤卡片:序号芯片 + 标题 + 描述,desc 支持高亮芯片 */
 export interface StepCardElement extends ElementBase {
   kind: "stepCard";
   num?: string;
@@ -218,7 +211,6 @@ export interface StepCardElement extends ElementBase {
   fontSize?: number;
 }
 
-/** 终端窗口:mac 三点标题栏 + 等宽行,$ 开头行提示符着色 */
 export interface TerminalElement extends ElementBase {
   kind: "terminal";
   code: string;
@@ -227,7 +219,6 @@ export interface TerminalElement extends ElementBase {
   dark?: boolean;
 }
 
-/** 进度条:可选 label + 轨道 + 百分比填充,percent 0-100 */
 export interface ProgressElement extends ElementBase {
   kind: "progress";
   label?: string;
@@ -238,7 +229,6 @@ export interface ProgressElement extends ElementBase {
   fontSize?: number;
 }
 
-/** 按键:text 按空格拆成键帽,单独的 + 连接符渲染为普通文本 */
 export interface KbdElement extends ElementBase {
   kind: "kbd";
   text: string;
@@ -246,7 +236,6 @@ export interface KbdElement extends ElementBase {
   fontSize?: number;
 }
 
-/** 浏览器窗口:mac 三点 + 地址栏胶囊,内容区默认白底,后绘制元素可叠加内容 */
 export interface BrowserElement extends ElementBase {
   kind: "browser";
   url?: string;
@@ -254,6 +243,17 @@ export interface BrowserElement extends ElementBase {
   /** 内容区底色;空 = 透明白 */
   body?: string;
 }
+
+/** 开发组件节点:左侧图标 + 主名称 + 副标题,图标与主色由 dev 变体决定(架构图常用资源) */
+export interface DevNodeElement extends ElementBase {
+  kind: "devNode";
+  dev: "database" | "redis" | "obs" | "cloud" | "server" | "api" | "queue" | "container";
+  label?: string; // 主名称,缺省取变体中文名
+  sub?: string;
+  fontSize?: number;
+}
+
+export type DevNodeVariant = DevNodeElement["dev"];
 
 export type SceneElement =
   | TitleElement
@@ -273,13 +273,13 @@ export type SceneElement =
   | TerminalElement
   | ProgressElement
   | KbdElement
-  | BrowserElement;
+  | BrowserElement
+  | DevNodeElement;
 
 export interface Scene {
   id: string;
   name: string;
-  /** 末元素结束后的停留秒数(默认 1.5) */
-  dwell?: number;
+  dwell?: number; // 末元素结束后的停留秒数(默认 1.5)
   elements: SceneElement[];
   /** 场景配音:src 为 dataURL 或本地路径,volume 0-2(默认 1);rate 播放速率 0.25-4(默认 1,
    *  >1 压缩 / <1 拉伸,变速不变调);duration 为探测的原始时长(秒,编辑器自动回填)。

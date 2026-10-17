@@ -1,4 +1,5 @@
-import type { CodeElement, SceneElement } from "../core/types";
+import type { CodeElement, DevNodeElement, DevNodeVariant, SceneElement } from "../core/types";
+import { DEV_META } from "../core/render/devNode";
 import type { FieldDef } from "./propertySchema";
 
 /** 并行特性新增组件的属性 schema:browser / list / stepCard / terminal / progress / kbd。 */
@@ -88,5 +89,19 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
   kbd: {
     title: "按键属性",
     fields: [plain("text", "按键(空格分键帽)", "text"), plain("bg", "底色", "color"), numberField("fontSize", "字号", 30)],
+  },
+  devNode: {
+    title: "开发组件属性",
+    fields: [
+      {
+        key: "dev", label: "组件类型", type: "select",
+        options: (Object.keys(DEV_META) as DevNodeVariant[]).map((v) => ({ value: v, label: DEV_META[v].name })),
+        read: (el) => str((el as DevNodeElement).dev),
+        write: (el, v) => patch(el, { dev: v }),
+      },
+      plain("label", "名称", "text", { placeholder: "缺省取类型名" }),
+      plain("sub", "副标题", "text", { placeholder: "规格/说明,可留空" }),
+      numberField("fontSize", "字号", 26),
+    ],
   },
 };

@@ -51,7 +51,7 @@
 | `anim` | Anim | 否 | 见上 |
 | `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
 
-## 元素类型(18 种)
+## 元素类型(19 种)
 
 | kind | 专有字段 | 说明 |
 |---|---|---|
@@ -73,6 +73,7 @@
 | `shape` | `shape("rect"/"ellipse"/"triangle"/"diamond"/"hexagon"/"star"/"cylinder"/"blockArrow"/"speechBubble")`, `fill?`, `stroke?`, `strokeWidth?`, `radius?`(矩形圆角), `text?`, `fontSize?(28)`, `color?`, `sketch?(false)`, `sketchSeed?` | 基础形状;fill 留空 = 无填充,fill 与描边都缺省时给浅灰底兜底。`text` 为居中内嵌文本,文字色缺省按填充亮度反推(亮色底深字/暗色底白字),`color` 可覆盖;画布上双击可改。`sketch: true` 手绘描边:轮廓按 `sketchSeed` 种子确定性抖动并叠复线——编辑器点击/粘贴时随机生成种子(缺省按元素 id 稳定展开),同种子永远同形状,预览与导出一致;协议侧想换一份手绘就换个种子。菱形(流程判断)/六边形/星形(强调)/圆柱(数据库)/块箭头(流向)/对话框为流程图与架构图常用变体 |
 | `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `fromFocus?`, `toFocus?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省;路径被其他元素遮挡时自动改走直角避让重排,绕开障碍后仍回原语义)/ elbow 直角正交(始终避让:出口方向按绑定元素搜索锥判定,出口段钳到朝对端投影永不相交,被挡时枚举 L/Z 中段取不穿障的最短路径,拐角半径 16 圆滑)/ straight 直线(不避让);非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点实时解析——`fromFocus`/`toFocus`(归一化 [0..1, 0..1])存在则固定在元素上的相对位置(编辑器拖拽吸附绑定时自动记录,元素移动/缩放端点跟随且不滑动不跳边),否则取「元素中心朝另一端」射线与包围盒边界的交点;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关 |
 | `image` | `src`, `radius?(12)` | 图片,contain 适配圆角裁剪;src 为绝对路径或 dataURL |
+| `devNode` | `dev("database"/"redis"/"obs"/"cloud"/"server"/"api"/"queue"/"container")`, `label?`, `sub?`, `fontSize?(26)` | 开发组件节点:架构图常用资源;左侧按变体程序化绘制的图标色块 + 主名称 + 副标题(规格/说明),主色随变体(数据库蓝/Redis 红/对象存储橙/云/服务器/API/消息队列/容器);画布上双击改名称 |
 
 ## 高亮芯片规则
 

@@ -1,4 +1,5 @@
-import type { Anim, Project, SceneElement, ShapeVariant } from "../core/types";
+import type { Anim, DevNodeVariant, Project, SceneElement, ShapeVariant } from "../core/types";
+import { DEV_META } from "../core/render/devNode";
 
 /** 元素工厂与空白项目模板:新元素的合理缺省,与示例项目同一审美基调。 */
 
@@ -25,6 +26,7 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   progress: "进度条",
   kbd: "按键",
   browser: "浏览器",
+  devNode: "开发组件",
 };
 
 export const SHAPE_LABELS: Record<string, string> = {
@@ -58,6 +60,7 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "progress",
   "kbd",
   "browser",
+  "devNode",
 ];
 
 /** 元素主色:元素库图标与时间轴条共用,保持「库-画布-时间轴」三者颜色一致 */
@@ -81,6 +84,7 @@ export function kindColor(kind: SceneElement["kind"]): string {
     progress: "#16A34A",
     kbd: "#F59E0B",
     browser: "#A855F7",
+    devNode: "#0284C7",
   };
   return map[kind];
 }
@@ -167,6 +171,10 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       return { ...base, kind, w: 280, h: 80, text: "Cmd + K", fontSize: 30 };
     case "browser":
       return { ...base, kind, w: 900, h: 520, url: "https://example.com" };
+    case "devNode": {
+      const dev = ((variant ?? "database") as DevNodeVariant);
+      return { ...base, kind, dev, w: 300, h: 96, label: DEV_META[dev]?.name ?? "组件", sub: "规格说明" };
+    }
   }
 }
 
@@ -193,7 +201,9 @@ export function elementLabel(el: SceneElement): string {
                       ? el.code.split("\n")[0]
                       : el.kind === "progress"
                         ? (el.label ?? "进度")
-                        : el.kind;
+                        : el.kind === "devNode"
+                          ? (el.label ?? DEV_META[el.dev]?.name ?? "组件")
+                          : el.kind;
   return raw.replace(/\s+/g, " ").slice(0, 12) || KIND_LABELS[el.kind];
 }
 
