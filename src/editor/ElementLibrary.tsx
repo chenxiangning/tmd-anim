@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { SceneElement, ShapeVariant } from "../core/types";
 import { KIND_LABELS, kindColor } from "./defaults";
 import { PanelResizeHandle } from "./PanelResizeHandle";
@@ -8,11 +8,13 @@ interface LibraryItem {
   kind: SceneElement["kind"];
   /** 形状变体或连线变体(connector:line = 直线) */
   variant?: ShapeVariant | "line";
+  /** 手绘描边(形状 tab 切到手绘时置位) */
+  sketch?: boolean;
   label?: string;
 }
 
 interface ElementLibraryProps {
-  onAdd(kind: SceneElement["kind"], variant?: string): void;
+  onAdd(kind: SceneElement["kind"], variant?: string, sketch?: boolean): void;
   onCollapse(): void;
 }
 
@@ -187,11 +189,19 @@ const GROUPS: ReadonlyArray<{ label: string; items: ReadonlyArray<LibraryItem> }
 ];
 
 function itemIconKey(item: LibraryItem): string {
-  return item.variant ? `${item.kind}:${item.variant}` : item.kind;
+  return item.variant ? `${item.kind}:${item.variant}${item.sketch ? ":sketch" : ""}` : item.kind;
 }
 
-/** 左栏元素库:图标 + 名称分组;点击添加到画布中央,拖到画布落到指定位置;右缘可拖拽调宽。 */
+/** 图标回退:手绘变体复用常规形状的图标(结构相同) */
+function itemIcon(item: LibraryItem): ReactNode {
+  const key = itemIconKey(item);
+  return ICONS[key] ?? (item.variant ? ICONS[`${item.kind}:${item.variant}`] : undefined) ?? ICONS[item.kind];
+}
+
+/** 左栏元素库:图标 + 名称分组;点击添加到画布中央,拖到画布落到指定位置;右缘可拖拽调宽。
+ *  形状组内常规/手绘两个 tab 切换,手绘项落库为 sketch: true 的同变体形状。 */
 export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
+  const [shapeTab, setShapeTab] = useState<"regular" | "sketch">("regular");
   const { size: width, startResize, resetSize } = usePanelResize({
     axis: "x",
     key: "tmd-anim:lib-w",
@@ -200,6 +210,9 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
     maxRatio: 0.35,
     dir: 1,
   });
+  /** 形状组:按 tab 派生条目(手绘 = 同变体 + sketch 标记) */
+  const shapeItems = (items: ReadonlyArray<LibraryItem>): LibraryItem[] =>
+    shapeTab === "sketch" ? items.map((it) => ({ ...it, sketch: true })) : [...items];
   return (
     <aside className="relative flex shrink-0 flex-col border-r border-neutral-200 bg-white" style={{ width }}>
       <PanelResizeHandle side="right" onStart={startResize} onReset={resetSize} />
@@ -216,29 +229,48 @@ export function ElementLibrary({ onAdd, onCollapse }: ElementLibraryProps) {
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
-        {GROUPS.map((group) => (
-          <div key={group.label} className="mb-3">
-            <div className="mb-1.5 px-0.5 text-[10px] font-medium tracking-wide text-neutral-400">{group.label}</div>
-            <div className="grid grid-cols-2 gap-2">
-              {group.items.map((item) => (
-                <button
-                  key={itemIconKey(item)}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData("text/x-tmd-anim-kind", itemIconKey(item));
-                    e.dataTransfer.effectAllowed = "copy";
-                  }}
-                  onClick={() => onAdd(item.kind, item.variant)}
-                  className="flex cursor-grab flex-col items-start gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-left transition-all hover:border-slate-300 hover:bg-neutral-50 hover:shadow-sm active:cursor-grabbing"
-                  title={`${item.label ?? KIND_LABELS[item.kind]}:点击添加到画布中央,或直接拖到画布`}
-                >
-                  <span style={{ color: kindColor(item.kind) }}>{ICONS[itemIconKey(item)]}</span>
-                  <span className="text-xs text-neutral-700">{item.label ?? KIND_LABELS[item.kind]}</span>
-                </button>
-              ))}
+        {GROUPS.map((group) => {
+          const isShapes = group.label === "形状";
+          const items = isShapes ? shapeItems(group.items) : group.items;
+          return (
+            <div key={group.label} className="mb-3">
+              <div className="mb-1.5 flex items-center justify-between px-0.5">
+                <span className="text-[10px] font-medium tracking-wide text-neutral-400">{group.label}</span>
+                {isShapes && (
+                  <div className="flex rounded-md border border-neutral-200 p-px text-[10px]">
+                    {(["regular", "sketch"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setShapeTab(tab)}
+                        className={`rounded-[5px] px-2 py-0.5 transition-colors ${shapeTab === tab ? "bg-slate-700 text-white" : "text-neutral-500 hover:text-neutral-700"}`}
+                      >
+                        {tab === "regular" ? "常规" : "手绘"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {items.map((item) => (
+                  <button
+                    key={itemIconKey(item)}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/x-tmd-anim-kind", itemIconKey(item));
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
+                    onClick={() => onAdd(item.kind, item.variant, item.sketch)}
+                    className="flex cursor-grab flex-col items-start gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-left transition-all hover:border-slate-300 hover:bg-neutral-50 hover:shadow-sm active:cursor-grabbing"
+                    title={`${item.label ?? KIND_LABELS[item.kind]}:点击添加到画布中央,或直接拖到画布`}
+                  >
+                    <span style={{ color: kindColor(item.kind) }}>{itemIcon(item)}</span>
+                    <span className="text-xs text-neutral-700">{item.label ?? KIND_LABELS[item.kind]}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div className="px-0.5 text-[10px] leading-relaxed text-neutral-300">
           点击添加到画布中央,或拖到目标位置
           <br />

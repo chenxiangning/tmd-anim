@@ -85,13 +85,14 @@ export function kindColor(kind: SceneElement["kind"]): string {
   return map[kind];
 }
 
-export function createElement(kind: SceneElement["kind"], x: number, y: number, variant?: string): SceneElement {
+export function createElement(kind: SceneElement["kind"], x: number, y: number, variant?: string, sketch?: boolean): SceneElement {
   const base: { id: string; x: number; y: number; anim: Anim } = {
     id: newId("el"),
     x,
     y,
     anim: { type: "pop", start: 0, duration: 0.6 },
   };
+  const sketchFlag = sketch ? { sketch: true } : {};
   switch (kind) {
     case "title":
       return { ...base, kind, w: 1200, h: 120, text: "新的标题", highlight: ["标题"], fontSize: 64 };
@@ -112,9 +113,9 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       const v = (variant ?? "") as ShapeVariant;
       const preset = presets[v];
       if (preset) {
-        return { ...base, kind, shape: v, w: preset.w, h: preset.h, fill: preset.fill, stroke: preset.stroke, strokeWidth: 5 };
+        return { ...base, kind, shape: v, w: preset.w, h: preset.h, fill: preset.fill, stroke: preset.stroke, strokeWidth: 5, ...sketchFlag };
       }
-      return { ...base, kind, shape: "rect", w: 340, h: 240, fill: "#DBEAFE", stroke: "#3B82F6", strokeWidth: 5, radius: 24 };
+      return { ...base, kind, shape: "rect", w: 340, h: 240, fill: "#DBEAFE", stroke: "#3B82F6", strokeWidth: 5, radius: 24, ...sketchFlag };
     }
     case "text":
       return { ...base, kind, w: 800, h: 100, text: "正文内容,支持 高亮 关键词", highlight: ["高亮"], fontSize: 40, align: "center" };

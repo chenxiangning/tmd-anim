@@ -28,6 +28,13 @@ export function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void
     ctx.strokeStyle = el.stroke as string;
     ctx.lineWidth = el.strokeWidth ?? 0;
     ctx.stroke();
+    if (el.sketch) {
+      // 手绘感:同路径叠一道更细更淡的复线,像起稿描边
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = (el.strokeWidth ?? 0) * 0.55;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
   if (el.text) {
     drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {

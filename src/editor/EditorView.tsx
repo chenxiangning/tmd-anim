@@ -99,8 +99,8 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
   }
 
   const addElementAt = useCallback(
-    (kind: SceneElement["kind"], x?: number, y?: number, variant?: string) => {
-      const el = createElement(kind, 0, 0, variant);
+    (kind: SceneElement["kind"], x?: number, y?: number, variant?: string, sketch?: boolean) => {
+      const el = createElement(kind, 0, 0, variant, sketch);
       const cx = (x ?? (projectRef.current.canvas?.width ?? 1920) / 2) - el.w / 2 + (x === undefined ? Math.random() * 48 - 24 : 0);
       const cy = (y ?? (projectRef.current.canvas?.height ?? 1080) / 2) - el.h / 2 + (y === undefined ? Math.random() * 48 - 24 : 0);
       const placed = { ...el, x: Math.round(cx), y: Math.round(cy) };
@@ -120,13 +120,14 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
     [commit],
   );
 
-  /** 画布拖放落点:"kind" 或 "kind:variant"(形状变体) */
+  /** 画布拖放落点:"kind"、"kind:variant"(形状变体)或 "kind:variant:sketch"(手绘) */
   const dropCreate = useCallback(
     (data: string, x: number, y: number) => {
-      const sep = data.indexOf(":");
-      const kind = (sep < 0 ? data : data.slice(0, sep)) as SceneElement["kind"];
-      const variant = sep < 0 ? undefined : data.slice(sep + 1);
-      addElementAt(kind, x, y, variant);
+      const parts = data.split(":");
+      const kind = parts[0] as SceneElement["kind"];
+      const variant = parts[1] || undefined;
+      const sketch = parts[2] === "sketch";
+      addElementAt(kind, x, y, variant, sketch);
     },
     [addElementAt],
   );
@@ -224,7 +225,7 @@ export function EditorView({ repo, projectId, initialProject, onOpenSettings, on
       )}
       <div className="flex min-h-0 flex-1">
         {panels.left ? (
-          <ElementLibrary onAdd={(kind, variant) => addElementAt(kind, undefined, undefined, variant)} onCollapse={() => togglePanel("left")} />
+          <ElementLibrary onAdd={(kind, variant, sketch) => addElementAt(kind, undefined, undefined, variant, sketch)} onCollapse={() => togglePanel("left")} />
         ) : (
           <PanelRail side="left" label="元素" onExpand={() => togglePanel("left")} />
         )}

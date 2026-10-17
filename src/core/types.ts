@@ -107,12 +107,13 @@ export interface ShapeElement extends ElementBase {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
-  /** 矩形圆角 */
   radius?: number;
   /** 内嵌文本:居中绘制,默认文字色按填充亮度反推,color 可覆盖 */
   text?: string;
   fontSize?: number;
   color?: string;
+  /** 手绘描边:按元素 id 种子确定性抖动的轮廓,渲染仍是 (project,t) 纯函数 */
+  sketch?: boolean;
 }
 
 /** 输入框:白底描边圆角矩形 + 文本 + 静态光标(静态保证导出确定性) */
@@ -167,8 +168,7 @@ export interface ArrayCellsElement extends ElementBase {
 }
 
 /** 连线:from/to 画布绝对坐标;curve 为控制点相对中点的垂直偏移像素(0 = 直线);x/y/w/h 不参与布局。
- *  fromEl/toEl 绑定元素 id(可选):存在时端点按元素包围盒实时解析,from/to 退化为兜底值。
- *  fromFocus/toFocus = 绑定端点在元素上的归一化位置 [0..1,0..1],记录后端点固定、不滑动不跳边。
+ *  fromEl/toEl 绑定元素 id(可选):存在时端点按元素包围盒实时解析(from/to 兜底);fromFocus/toFocus = 端点在元素上的归一化位置,记录后固定不跳边。
  *  arrow 缺省 true 画切线箭头,false = 纯直线/曲线。 */
 export interface ConnectorElement extends ElementBase {
   kind: "connector";

@@ -154,8 +154,11 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     if (!ok) delete connector[key];
     else connector[key] = [Math.min(1, Math.max(0, f[0] as number)), Math.min(1, Math.max(0, f[1] as number))];
   }
-  // 形状内嵌文本:text 非字符串丢弃,fontSize/color 同其他元素字段由绘制层自行容错
-  if (el.kind === "shape" && connector.text !== undefined && typeof connector.text !== "string") delete connector.text;
+  // 形状内嵌文本:text 非字符串丢弃,sketch 非布尔丢弃;fontSize/color 由绘制层容错
+  if (el.kind === "shape") {
+    if (connector.text !== undefined && typeof connector.text !== "string") delete connector.text;
+    if (connector.sketch !== undefined && typeof connector.sketch !== "boolean") delete connector.sketch;
+  }
   // 通用旋转字段:有限数字保留并归一到 0.1 度,null/非数丢弃
   if (connector.rotate != null) {
     const deg = Number(connector.rotate);

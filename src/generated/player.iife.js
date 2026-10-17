@@ -295,7 +295,10 @@
 			if (!(Array.isArray(f) && f.length === 2 && f.every((n) => typeof n === "number" && Number.isFinite(n)))) delete connector[key];
 			else connector[key] = [Math.min(1, Math.max(0, f[0])), Math.min(1, Math.max(0, f[1]))];
 		}
-		if (el.kind === "shape" && connector.text !== void 0 && typeof connector.text !== "string") delete connector.text;
+		if (el.kind === "shape") {
+			if (connector.text !== void 0 && typeof connector.text !== "string") delete connector.text;
+			if (connector.sketch !== void 0 && typeof connector.sketch !== "boolean") delete connector.sketch;
+		}
 		if (connector.rotate != null) {
 			const deg = Number(connector.rotate);
 			if (typeof connector.rotate !== "boolean" && Number.isFinite(deg)) connector.rotate = Math.round(deg * 10) / 10;
@@ -901,7 +904,136 @@
 		}
 		return points;
 	}
+	/** FNV-1a 字符串哈希 → 稳定种子;同 id 每次渲染抖出同一形状,保证 (project,t) 纯函数 */
+	function hashSeed(id) {
+		let h = 2166136261;
+		for (let i = 0; i < id.length; i++) h = (h ^ id.charCodeAt(i)) * 16777619;
+		return h >>> 0;
+	}
+	/** 种子噪声 [0,1),sin 哈希,够用的确定性伪随机 */
+	function noise(seed, i) {
+		const v = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+		return v - Math.floor(v);
+	}
+	/** 逐顶点抖动:幅度 ~ min(w,h)*5%,有界 1.5~10 逻辑像素;salt 让同一元素的子路径抖得不同 */
+	function wobble(el, pts, salt = 0) {
+		const amp = Math.min(10, Math.max(1.5, Math.min(el.w, el.h) * 5 / 100));
+		const seed = hashSeed(el.id) + salt;
+		return pts.map(([px, py], i) => [px + (noise(seed, i * 2) - .5) * 2 * amp, py + (noise(seed, i * 2 + 1) - .5) * 2 * amp]);
+	}
+	/** 椭圆/圆弧采样点(角度 from..to 均分 n 段) */
+	function arcPoints(cx, cy, rx, ry, from, to, n) {
+		const pts = [];
+		for (let i = 0; i <= n; i++) {
+			const a = from + (to - from) * i / n;
+			pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
+		}
+		return pts;
+	}
+	/** 圆角矩形周长采样:四边中点 + 每角 3 段圆弧 */
+	function rectPoints(x, y, w, h, r) {
+		const rr = Math.min(r, w / 2, h / 2);
+		const pts = [];
+		const corner = (cx, cy, from) => {
+			for (let i = 0; i <= 3; i++) {
+				const a = from + i / 3 * (Math.PI / 2);
+				pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
+			}
+		};
+		pts.push([x + rr, y], [x + w - rr, y]);
+		corner(x + w - rr, y + rr, -Math.PI / 2);
+		pts.push([x + w, y + h - rr]);
+		corner(x + w - rr, y + h - rr, 0);
+		pts.push([x + w - rr, y + h], [x + rr, y + h]);
+		corner(x + rr, y + h - rr, Math.PI / 2);
+		pts.push([x, y + rr]);
+		corner(x + rr, y + rr, Math.PI);
+		return pts;
+	}
+	/** 手绘描迹:各变体展开为点列后抖动;圆柱顶面/对话框尾巴用 salt 区分子路径 */
+	function traceSketch(ctx, el) {
+		const { x, y, w, h } = el;
+		const poly = (pts, salt = 0) => polygon(ctx, wobble(el, pts, salt));
+		ctx.beginPath();
+		switch (el.shape) {
+			case "ellipse":
+				poly(arcPoints(x + w / 2, y + h / 2, w / 2, h / 2, 0, Math.PI * 2, 14));
+				break;
+			case "triangle":
+				poly([
+					[x + w / 2, y],
+					[x + w, y + h],
+					[x, y + h]
+				]);
+				break;
+			case "diamond":
+				poly([
+					[x + w / 2, y],
+					[x + w, y + h / 2],
+					[x + w / 2, y + h],
+					[x, y + h / 2]
+				]);
+				break;
+			case "hexagon":
+				poly([
+					[x, y + h / 2],
+					[x + w * .25, y],
+					[x + w * .75, y],
+					[x + w, y + h / 2],
+					[x + w * .75, y + h],
+					[x + w * .25, y + h]
+				]);
+				break;
+			case "star":
+				poly(starPoints(x, y, w, h));
+				break;
+			case "cylinder": {
+				const rx = w / 2;
+				const ry = Math.min(h * .14, h / 4);
+				const cx = x + rx;
+				poly([
+					[x, y + ry],
+					[x, y + h - ry],
+					...arcPoints(cx, y + h - ry, rx, ry, Math.PI, Math.PI * 2, 7),
+					[x + w, y + ry],
+					...arcPoints(cx, y + ry, rx, ry, 0, -Math.PI, 7)
+				]);
+				poly(arcPoints(cx, y + ry, rx, ry, 0, Math.PI * 2, 12), 31);
+				break;
+			}
+			case "blockArrow": {
+				const cy = y + h / 2;
+				const shaft = h * .45;
+				const headLen = Math.min(w * .38, w / 2);
+				poly([
+					[x, cy - shaft / 2],
+					[x + w - headLen, cy - shaft / 2],
+					[x + w - headLen, y],
+					[x + w, cy],
+					[x + w - headLen, y + h],
+					[x + w - headLen, cy + shaft / 2],
+					[x, cy + shaft / 2]
+				]);
+				break;
+			}
+			case "speechBubble": {
+				const bodyH = h * .76;
+				poly(rectPoints(x, y, w, bodyH, Math.min(18, h / 4)));
+				poly([
+					[x + w * .2, y + bodyH - 2],
+					[x + w * .14, y + h],
+					[x + w * .4, y + bodyH - 2]
+				], 7);
+				break;
+			}
+			default: poly(rectPoints(x, y, w, h, Math.min(el.radius ?? 0, Math.min(w, h) / 2)));
+		}
+	}
 	function traceShape(ctx, el) {
+		if (el.sketch) {
+			traceSketch(ctx, el);
+			return;
+		}
 		const { x, y, w, h } = el;
 		ctx.beginPath();
 		switch (el.shape) {
@@ -1002,6 +1134,12 @@
 			ctx.strokeStyle = el.stroke;
 			ctx.lineWidth = el.strokeWidth ?? 0;
 			ctx.stroke();
+			if (el.sketch) {
+				ctx.globalAlpha = .55;
+				ctx.lineWidth = (el.strokeWidth ?? 0) * .55;
+				ctx.stroke();
+				ctx.globalAlpha = 1;
+			}
 		}
 		if (el.text) drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
 			fontSize: el.fontSize ?? 28,

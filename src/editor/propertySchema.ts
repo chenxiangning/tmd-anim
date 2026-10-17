@@ -205,6 +205,12 @@ export const SCHEMAS = {
       plain("text", "内嵌文本", "text", { placeholder: "居中显示" }),
       fontSizeField(28),
       plain("color", "文字色(留空自动)", "color"),
+      {
+        key: "sketch", label: "手绘描边", type: "select",
+        options: [{ value: "0", label: "关" }, { value: "1", label: "开" }],
+        read: (el) => ((el as ShapeElement).sketch ? "1" : "0"),
+        write: (el, v) => patch(el, { sketch: v === "1" }),
+      },
     ],
   },
   badge: {
