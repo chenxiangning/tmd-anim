@@ -4,7 +4,7 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
-## [Unreleased]
+## [0.1.8] - 2026-10-19
 
 ### 新增
 
