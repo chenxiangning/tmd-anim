@@ -1,7 +1,9 @@
 import schemaMd from "../../docs/schema.md?raw";
+import recipesMd from "../../docs/recipes.md?raw";
 import xiaoheiStyleMd from "../../docs/xiaohei-style.md?raw";
 import { protocolPaths, renderSkillMd } from "./agentPaths";
 import httpSample from "../samples/http.json";
+import showcaseSample from "../samples/showcase.json";
 import xiaoheiSample from "../samples/xiaohei.json";
 
 /** writeIfChanged 依赖的最小文件面,便于表达「不同才覆写」而不耦合整个 fs 模块 */
@@ -23,7 +25,9 @@ export async function syncProtocol(): Promise<void> {
     const p = await protocolPaths();
     await fs.mkdir(p.dir, { recursive: true });
     await writeIfChanged(fs, p.schemaMd, schemaMd);
+    await writeIfChanged(fs, p.recipesMd, recipesMd);
     await writeIfChanged(fs, p.httpExample, JSON.stringify(httpSample, null, 2));
+    await writeIfChanged(fs, p.showcaseExample, JSON.stringify(showcaseSample, null, 2));
     await writeIfChanged(fs, p.xiaoheiStyleMd, xiaoheiStyleMd);
     await writeIfChanged(fs, p.xiaoheiExample, JSON.stringify(xiaoheiSample, null, 2));
     await writeIfChanged(fs, p.dir + "skill.md", renderSkillMd(p));

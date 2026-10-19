@@ -1,7 +1,8 @@
 import type { Anim, DevNodeVariant, Project, SceneElement, ShapeVariant } from "../core/types";
 import { DEV_META } from "../core/render/devNode";
 
-/** 元素工厂与空白项目模板:新元素的合理缺省,与示例项目同一审美基调。 */
+/** 元素工厂与空白项目模板:新元素的合理缺省,与示例项目同一审美基调。
+ *  file-size-exempt:kind 标签/颜色/工厂/摘要的集中注册表,拆散会让同一 kind 的四处定义分离。 */
 
 export function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -29,6 +30,20 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   devNode: "开发组件",
   phone: "手机",
   aiChat: "AI 对话",
+  barChart: "柱状图",
+  lineChart: "折线图",
+  pieChart: "饼图",
+  cursor: "光标",
+  folderTree: "文件树",
+  codeDiff: "代码对比",
+  spotlight: "聚光灯",
+  gridBg: "网格背景",
+  groupPanel: "分组面板",
+  lane: "泳道",
+  quote: "引用",
+  formula: "公式",
+  avatar: "头像",
+  person: "人物",
 };
 
 export const SHAPE_LABELS: Record<string, string> = {
@@ -52,6 +67,7 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "note",
   "input",
   "code",
+  "codeDiff",
   "table",
   "arrayCells",
   "connector",
@@ -65,6 +81,19 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "devNode",
   "phone",
   "aiChat",
+  "barChart",
+  "lineChart",
+  "pieChart",
+  "folderTree",
+  "cursor",
+  "groupPanel",
+  "lane",
+  "gridBg",
+  "spotlight",
+  "quote",
+  "formula",
+  "avatar",
+  "person",
 ];
 
 /** 元素主色:元素库图标与时间轴条共用,保持「库-画布-时间轴」三者颜色一致 */
@@ -91,6 +120,20 @@ export function kindColor(kind: SceneElement["kind"]): string {
     devNode: "#0284C7",
     phone: "#0F172A",
     aiChat: "#7C3AED",
+    barChart: "#3B82F6",
+    lineChart: "#10B981",
+    pieChart: "#F59E0B",
+    cursor: "#111827",
+    folderTree: "#F59E0B",
+    codeDiff: "#16A34A",
+    spotlight: "#F59E0B",
+    gridBg: "#94A3B8",
+    groupPanel: "#64748B",
+    lane: "#0EA5E9",
+    quote: "#8B5CF6",
+    formula: "#7C3AED",
+    avatar: "#F59E0B",
+    person: "#3B82F6",
   };
   return map[kind];
 }
@@ -185,35 +228,164 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       return { ...base, kind, w: 340, h: 700, body: "#FFFFFF", frame: "#0F172A" };
     case "aiChat":
       return { ...base, kind, w: 640, h: 420, title: "AI 助手", prompt: "帮我总结这份文档", reply: "好的,以下是三个要点:1) 背景 2) 核心方案 3) 落地步骤", fontSize: 26 };
+    case "barChart":
+      return {
+        ...base, kind, w: 780, h: 500, title: "性能对比",
+        series: [{ label: "版本 A", value: 42 }, { label: "版本 B", value: 78 }, { label: "版本 C", value: 58 }],
+        showValue: true, fontSize: 28,
+      };
+    case "lineChart":
+      return {
+        ...base, kind, w: 780, h: 480, title: "增长曲线", smooth: true,
+        series: [{ label: "访问量", points: [12, 25, 20, 48, 65] }, { label: "下单量", points: [5, 12, 18, 30, 52] }],
+        fontSize: 26,
+      };
+    case "pieChart":
+      return {
+        ...base, kind, w: 700, h: 500, title: "流量构成", donut: true,
+        slices: [{ label: "搜索", value: 45 }, { label: "直连", value: 30 }, { label: "外链", value: 25 }],
+        fontSize: 26,
+      };
+    case "cursor":
+      // 移动发生在入场窗口内:duration 拉长让轨迹可读
+      return {
+        ...base, kind, w: 40, h: 40,
+        points: [[x, y], [x + 320, y + 180], [x + 560, y + 60]] as Array<[number, number]>,
+        clicks: [0.8, 1.6],
+        anim: { type: "fade", start: 0, duration: 2.2 },
+      };
+    case "folderTree":
+      return {
+        ...base, kind, w: 560, h: 430, root: "my-app", fontSize: 26,
+        items: [
+          { name: "src", icon: "dir" },
+          { name: "index.ts", icon: "file", depth: 1 },
+          { name: "app.ts", icon: "file", depth: 1 },
+          { name: "components", icon: "dir", depth: 1 },
+          { name: "Button.tsx", icon: "file", depth: 2 },
+          { name: "package.json", icon: "file" },
+        ],
+        anim: { type: "typewriter", start: 0, duration: 1.2 },
+      };
+    case "codeDiff":
+      return {
+        ...base, kind, w: 840, h: 460, filename: "api.ts", fontSize: 24,
+        hunks: [{
+          ctx: "@@ fetchWithRetry @@",
+          lines: [
+            { tag: " ", text: "const cache = new Map();" },
+            { tag: "-", text: "return fetch(url);" },
+            { tag: "+", text: "return fetchWithTimeout(url, 3000);" },
+            { tag: " ", text: "" },
+          ],
+        }],
+        anim: { type: "typewriter", start: 0, duration: 1.2 },
+      };
+    case "spotlight":
+      return { ...base, kind, x: x - 280, y: y - 160, w: 560, h: 320, shape: "rect", strength: 0.65, anim: { type: "fade", start: 0, duration: 0.4 } };
+    case "gridBg":
+      return { ...base, kind, x: 0, y: 0, w: 1920, h: 1080, step: 40, anim: { type: "fade", start: 0, duration: 0.3 } };
+    case "groupPanel":
+      return { ...base, kind, w: 560, h: 360, title: "核心服务", accent: "#3B82F6", anim: { type: "fade", start: 0, duration: 0.4 } };
+    case "lane":
+      return { ...base, kind, w: 1640, h: 820, direction: "v", count: 3, labels: ["客户端", "网关", "服务"], anim: { type: "fade", start: 0, duration: 0.4 } };
+    case "quote":
+      return { ...base, kind, w: 900, h: 200, text: "简洁是可靠的前提", author: "Edsger W. Dijkstra", fontSize: 36 };
+    case "formula":
+      return { ...base, kind, w: 640, h: 200, text: "E = mc^2", fontSize: 64 };
+    case "avatar":
+      return { ...base, kind, w: 260, h: 72, name: "王小黑", status: "online", color: "#3B82F6" };
+    case "person":
+      return { ...base, kind, w: 160, h: 340, pose: "stand", color: "#3B82F6" };
   }
 }
 
 /** 元素展示摘要:时间轴/图层面板用的短标签 */
 export function elementLabel(el: SceneElement): string {
-  const raw =
-    "text" in el && el.text
-      ? el.text
-      : el.kind === "shape"
-        ? SHAPE_LABELS[el.shape]
-        : el.kind === "arrayCells"
-          ? el.cells.join("")
-          : el.kind === "table"
-            ? el.header.join(" ")
-            : el.kind === "code"
-              ? el.code.split("\n")[0]
-              : el.kind === "connector"
-                ? (el.label ?? "连线")
-                : el.kind === "list"
-                  ? el.items.join(" ")
-                  : el.kind === "stepCard"
-                    ? el.title
-                    : el.kind === "terminal"
-                      ? el.code.split("\n")[0]
-                      : el.kind === "progress"
-                        ? (el.label ?? "进度")
-                        : el.kind === "devNode"
-                          ? (el.label ?? DEV_META[el.dev]?.name ?? "组件")
-                          : el.kind;
+  let raw: string;
+  switch (el.kind) {
+    case "shape":
+      raw = SHAPE_LABELS[el.shape];
+      break;
+    case "table":
+      raw = el.header.join(" ");
+      break;
+    case "arrayCells":
+      raw = el.cells.join("");
+      break;
+    case "connector":
+      raw = el.label ?? "连线";
+      break;
+    case "list":
+      raw = el.items.join(" ");
+      break;
+    case "stepCard":
+      raw = el.title;
+      break;
+    case "code":
+    case "terminal":
+      raw = el.code.split("\n")[0];
+      break;
+    case "progress":
+      raw = el.label ?? "进度";
+      break;
+    case "devNode":
+      raw = el.label ?? DEV_META[el.dev]?.name ?? "组件";
+      break;
+    case "barChart":
+      raw = el.title ?? el.series?.[0]?.label ?? "柱状图";
+      break;
+    case "lineChart":
+      raw = el.title ?? el.series?.[0]?.label ?? "折线图";
+      break;
+    case "pieChart":
+      raw = el.title ?? el.slices?.[0]?.label ?? "饼图";
+      break;
+    case "cursor":
+      raw = "光标";
+      break;
+    case "folderTree":
+      raw = el.root ?? "文件树";
+      break;
+    case "codeDiff":
+      raw = el.filename ?? "代码对比";
+      break;
+    case "spotlight":
+      raw = "聚光灯";
+      break;
+    case "gridBg":
+      raw = "网格背景";
+      break;
+    case "groupPanel":
+      raw = el.title ?? "分组面板";
+      break;
+    case "lane":
+      raw = el.labels?.join("/") ?? "泳道";
+      break;
+    case "quote":
+    case "formula":
+      raw = el.text;
+      break;
+    case "avatar":
+      raw = el.name ?? "头像";
+      break;
+    case "person":
+      raw = el.pose ?? "人物";
+      break;
+    case "title":
+    case "artText":
+    case "text":
+    case "badge":
+    case "note":
+    case "input":
+    case "kbd":
+      raw = el.text;
+      break;
+    default:
+      // image/phone/browser/aiChat 等无文本 kind:用中文库名兜底
+      raw = KIND_LABELS[el.kind];
+      break;
+  }
   return raw.replace(/\s+/g, " ").slice(0, 12) || KIND_LABELS[el.kind];
 }
 

@@ -7,7 +7,9 @@ import { buildAiPrompt } from "./aiPrompt";
 const WIN_PATHS: ProtocolPaths = {
   dir: "C:\\Users\\rei\\.tmd-anim\\protocol\\",
   schemaMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\schema.md",
+  recipesMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\recipes.md",
   httpExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\http-example.json",
+  showcaseExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\showcase-example.json",
   xiaoheiStyleMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\xiaohei-style.md",
   xiaoheiExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\xiaohei-example.json",
   projectsDir: "C:\\Users\\rei\\.tmd-anim\\projects\\",

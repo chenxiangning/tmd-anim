@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { openExternal } from "../app/settings/updater";
 import { FALLBACK_PROTOCOL_PATHS, protocolPaths, type ProtocolPaths } from "../app/agentPaths";
+import { lintProject, statsOf } from "../core/lint";
+import type { Project } from "../core/types";
 import { buildAiPrompt, copyText } from "./aiPrompt";
 import {
   checkSkillTargets,
@@ -13,11 +15,27 @@ import {
 /** 小黑插画风格的上游开源仓库,署名按其 NOTICE 要求保留。 */
 const XIAOHEI_REPO_URL = "https://github.com/helloianneo/ian-xiaohei-illustrations";
 
+/** 项目体检摘要:进提示词让 agent 改前就知道现状与 lint 问题(归一化后的项目上跑,组合类规则照常生效) */
+function digestOf(project: Project): string {
+  const stats = statsOf(project);
+  const issues = lintProject(project);
+  const lines = [`统计:${stats.scenes} 场景 / ${stats.elements} 元素 / 总时长 ${stats.duration.toFixed(1)}s`];
+  if (issues.length === 0) {
+    lines.push("lint:干净");
+  } else {
+    lines.push(`lint 警告 ${issues.length} 条(前 5 条,完整跑 validate --json):`);
+    for (const i of issues.slice(0, 5)) lines.push(`- 场景${i.scene + 1}/${i.element}:${i.message}`);
+  }
+  return lines.join("\n");
+}
+
 interface AiGuideDialogProps {
   open: boolean;
   onClose(): void;
   /** 项目文件绝对路径;浏览器版为 null,提示词改用导入指引 */
   projectPath: string | null;
+  /** 当前项目:体检摘要(统计 + lint)注入提示词,agent 改前即知构图问题 */
+  project: Project;
   /** tauri 后端才开放技能安装;浏览器版无本地文件能力 */
   backend: "local" | "tauri";
 }
@@ -30,7 +48,7 @@ function statusBadge(target: SkillCheckResult["targets"][number]) {
 }
 
 /** 「AI 调整」引导弹窗:需求输入 + 提示词复制 + 小黑技能一键安装(显式点按,默认不动用户技能目录)+ 闭环说明。 */
-export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDialogProps) {
+export function AiGuideDialog({ open, onClose, projectPath, project, backend }: AiGuideDialogProps) {
   const [requirement, setRequirement] = useState("");
   const [copied, setCopied] = useState(false);
   const [installedNow, setInstalledNow] = useState<SkillInstallResult | null>(null);
@@ -52,7 +70,7 @@ export function AiGuideDialog({ open, onClose, projectPath, backend }: AiGuideDi
 
   if (!open) return null;
 
-  const fullPrompt = buildAiPrompt(projectPath, paths, requirement);
+  const fullPrompt = buildAiPrompt(projectPath, paths, requirement, digestOf(project));
 
   const handleInstall = () => {
     setInstalling(true);

@@ -51,7 +51,7 @@ export function drawProgress(ctx: CanvasRenderingContext2D, el: ProgressElement)
   const fontSize = el.fontSize ?? 30;
   const percent = Math.min(100, Math.max(0, el.percent ?? 60));
   const showText = el.showText !== false;
-  const barH = Math.min(fontSize * 1.35, el.label !== undefined ? el.h - fontSize * 2.1 : el.h);
+  const barH = Math.max(6, Math.min(fontSize * 1.35, el.label !== undefined ? el.h - fontSize * 2.1 : el.h));
   ctx.save();
   ctx.font = sansFont(fontSize, 600);
   const textW = showText ? ctx.measureText(`${percent}%`).width : 0;

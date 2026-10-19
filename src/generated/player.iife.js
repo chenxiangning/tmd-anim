@@ -9,7 +9,11 @@
 	}
 	function sceneDuration(scene) {
 		let end = 0;
-		for (const el of scene.elements) end = Math.max(end, el.anim.start + el.anim.duration);
+		for (const el of scene.elements) {
+			end = Math.max(end, el.anim.start + el.anim.duration);
+			if (el.exit) end = Math.max(end, el.exit.start + el.exit.duration);
+			if (el.tweens) for (const tw of el.tweens) end = Math.max(end, tw.start + tw.duration);
+		}
 		const base = Math.max(end, .1) + Math.max(0, scene.dwell ?? 0);
 		return Math.max(base, sceneAudioSeconds(scene) ?? 0);
 	}
@@ -49,22 +53,22 @@
 			localT: last.duration
 		};
 	}
-	function clamp01(v) {
+	function clamp01$1(v) {
 		return Math.min(1, Math.max(0, v));
 	}
 	function easeOutCubic(p) {
-		const q = 1 - clamp01(p);
+		const q = 1 - clamp01$1(p);
 		return 1 - q * q * q;
 	}
 	function easeInOutCubic(p) {
-		const x = clamp01(p);
+		const x = clamp01$1(p);
 		return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 	}
 	/** 回弹缓动:终点恰为 1,中途允许超过 1(用于 pop 的过冲缩放) */
 	function easeOutBack(p) {
 		const c1 = 1.70158;
 		const c3 = 2.70158;
-		const x = clamp01(p) - 1;
+		const x = clamp01$1(p) - 1;
 		return 1 + c3 * x * x * x + c1 * x * x;
 	}
 	//#endregion
@@ -162,6 +166,7 @@
 	* 宽容归一化:agent 产出的 JSON 允许缺字段/类型跑偏,这里补默认值、钳边界,
 	* 让 watch 模式下的半成品文件也能播放;结构性损坏(根/scenes/elements 形状)才抛错。
 	* 契约的权威描述在 docs/schema.md,两者必须同步改。
+	* file-size-exempt:归一化入口集中所有 kind 的字段钳制,拆分会让同类守卫散落多处。
 	*/
 	var ANIM_TYPES = /* @__PURE__ */ new Set([
 		"pop",
@@ -203,7 +208,58 @@
 		browser: true,
 		devNode: true,
 		phone: true,
-		aiChat: true
+		aiChat: true,
+		barChart: true,
+		lineChart: true,
+		pieChart: true,
+		cursor: true,
+		folderTree: true,
+		codeDiff: true,
+		spotlight: true,
+		gridBg: true,
+		groupPanel: true,
+		lane: true,
+		quote: true,
+		formula: true,
+		avatar: true,
+		person: true
+	};
+	var EXIT_TYPES = {
+		fadeOut: true,
+		slideOutLeft: true,
+		slideOutRight: true,
+		slideOutUp: true,
+		slideOutDown: true,
+		zoomOut: true,
+		wipeOut: true
+	};
+	var EMPHASIS_TYPES = {
+		pulse: true,
+		shake: true,
+		glow: true,
+		flash: true,
+		ring: true,
+		highlightLines: true,
+		dashFlow: true
+	};
+	/** 强调事件缺省时长(秒):未声明 duration 时按类型取 */
+	var EMPHASIS_DEFAULT_DURATION = {
+		pulse: .6,
+		shake: .5,
+		glow: .9,
+		flash: .4,
+		ring: .9,
+		highlightLines: 1.4,
+		dashFlow: 2.5
+	};
+	/** 补间白名单:percent 仅 progress,activeIndex 仅 arrayCells;不上通用关键帧 */
+	var TWEEN_FIELDS = {
+		percent: true,
+		activeIndex: true
+	};
+	var TWEEN_FIELD_KIND = {
+		percent: "progress",
+		activeIndex: "arrayCells"
 	};
 	var ProjectParseError = class extends Error {
 		constructor(message) {
@@ -276,6 +332,72 @@
 			...easing ? { easing } : {}
 		};
 	}
+	/** 离场归一:类型非法丢弃;start 钳到不早于入场结束;时长下限 0.05 */
+	function normalizeExit(raw, entranceEnd) {
+		if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return void 0;
+		const r = raw;
+		if (typeof r.type !== "string" || EXIT_TYPES[r.type] !== true) return void 0;
+		const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : void 0;
+		return {
+			type: r.type,
+			start: Math.max(entranceEnd, num(r.start, entranceEnd)),
+			duration: Math.max(.05, num(r.duration, .5)),
+			...easing ? { easing } : {}
+		};
+	}
+	/** 强调事件归一:类型/负 start 丢弃;落在离场开始后的事件丢弃(元素已不存在);时长缺省按类型 */
+	function normalizeEmphasis(raw, exitStart) {
+		if (!Array.isArray(raw)) return [];
+		const out = [];
+		for (const item of raw) {
+			if (typeof item !== "object" || item === null) continue;
+			const r = item;
+			if (typeof r.type !== "string" || EMPHASIS_TYPES[r.type] !== true) continue;
+			const start = num(r.start, 0);
+			if (start < 0) continue;
+			if (exitStart !== void 0 && start >= exitStart) continue;
+			const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : void 0;
+			const strength = num(r.strength, 1);
+			const ev = {
+				type: r.type,
+				start,
+				duration: Math.max(.05, num(r.duration, EMPHASIS_DEFAULT_DURATION[r.type] ?? .6)),
+				...easing ? { easing } : {},
+				...strength !== 1 ? { strength: Math.min(3, Math.max(.1, strength)) } : {}
+			};
+			if (r.type === "highlightLines") {
+				const l = r.lines;
+				if (!(Array.isArray(l) && l.length === 2 && l.every((n) => Number.isFinite(Number(n))))) continue;
+				const a = Math.max(1, Math.round(Number(l[0])));
+				const b = Math.max(1, Math.round(Number(l[1])));
+				ev.lines = a <= b ? [a, b] : [b, a];
+			}
+			out.push(ev);
+		}
+		return out;
+	}
+	/** 补间归一:字段白名单 + kind 匹配(percent 仅 progress、activeIndex 仅 arrayCells);to 非数丢弃 */
+	function normalizeTweens(raw, kind) {
+		if (!Array.isArray(raw)) return [];
+		const out = [];
+		for (const item of raw) {
+			if (typeof item !== "object" || item === null) continue;
+			const r = item;
+			if (typeof r.field !== "string" || TWEEN_FIELDS[r.field] !== true || TWEEN_FIELD_KIND[r.field] !== kind) continue;
+			if (!Number.isFinite(Number(r.to))) continue;
+			const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : void 0;
+			const tw = {
+				field: r.field,
+				to: Number(r.to),
+				start: Math.max(0, num(r.start, 0)),
+				duration: Math.max(.05, num(r.duration, 1)),
+				...easing ? { easing } : {}
+			};
+			if (r.from !== void 0 && Number.isFinite(Number(r.from))) tw.from = Number(r.from);
+			out.push(tw);
+		}
+		return out;
+	}
 	function normalizeElement(raw, index) {
 		const anim = typeof raw.anim === "object" && raw.anim !== null ? asRecord(raw.anim, "anim") : {};
 		const base = {
@@ -328,6 +450,114 @@
 			const items = el.items;
 			if (!Array.isArray(items) || items.some((v) => typeof v !== "string")) el.items = Array.isArray(items) ? items.map((v) => String(v)) : [];
 		}
+		const timeline = el;
+		const exit = normalizeExit(raw.exit, base.anim.start + base.anim.duration);
+		if (exit) timeline.exit = exit;
+		else delete timeline.exit;
+		const emphasis = normalizeEmphasis(raw.emphasis, exit?.start);
+		if (emphasis.length > 0) timeline.emphasis = emphasis;
+		else delete timeline.emphasis;
+		const tweens = normalizeTweens(raw.tweens, el.kind);
+		if (tweens.length > 0) timeline.tweens = tweens;
+		else delete timeline.tweens;
+		if (el.kind === "arrayCells" && timeline.activeIndex != null) {
+			const n = Number(timeline.activeIndex);
+			if (Number.isFinite(n)) timeline.activeIndex = Math.round(n);
+			else delete timeline.activeIndex;
+		}
+		if (el.kind === "spotlight") {
+			if (timeline.strength != null) {
+				const s = Number(timeline.strength);
+				if (Number.isFinite(s)) timeline.strength = Math.min(1, Math.max(0, s));
+				else delete timeline.strength;
+			}
+			if (timeline.shape !== void 0 && !["rect", "ellipse"].includes(String(timeline.shape))) delete timeline.shape;
+		}
+		if (el.kind === "lane") {
+			if (timeline.count != null) {
+				const c = Number(timeline.count);
+				if (Number.isFinite(c)) timeline.count = Math.min(4, Math.max(2, Math.round(c)));
+				else delete timeline.count;
+			}
+			if (timeline.direction !== void 0 && !["h", "v"].includes(String(timeline.direction))) delete timeline.direction;
+		}
+		if (el.kind === "barChart" || el.kind === "lineChart" || el.kind === "pieChart") {
+			const key = el.kind === "pieChart" ? "slices" : "series";
+			const isLine = el.kind === "lineChart";
+			const arr = timeline[key];
+			if (!Array.isArray(arr)) timeline[key] = [];
+			else timeline[key] = arr.flatMap((s) => {
+				if (typeof s !== "object" || s === null) return [];
+				const rec = s;
+				const label = typeof rec.label === "string" ? rec.label : "";
+				const color = typeof rec.color === "string" ? rec.color : void 0;
+				if (isLine) {
+					const pts = Array.isArray(rec.points) ? rec.points.map((n) => Number.isFinite(Number(n)) ? Number(n) : 0) : [];
+					return [{
+						label,
+						...color ? { color } : {},
+						points: pts
+					}];
+				}
+				return [{
+					label,
+					value: Number.isFinite(Number(rec.value)) ? Number(rec.value) : 0,
+					...color ? { color } : {}
+				}];
+			});
+		}
+		if (el.kind === "cursor") {
+			timeline.points = (Array.isArray(timeline.points) ? timeline.points : []).filter((p) => Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(Number(n)))).map((p) => [Number(p[0]), Number(p[1])]);
+			if (timeline.clicks !== void 0) timeline.clicks = Array.isArray(timeline.clicks) ? timeline.clicks.filter((n) => Number.isFinite(Number(n))).map(Number) : [];
+			const hold = timeline.hold;
+			if (!(Array.isArray(hold) && hold.length === 2 && hold.every((n) => Number.isFinite(Number(n))))) delete timeline.hold;
+			else timeline.hold = [Number(hold[0]), Number(hold[1])];
+		}
+		if (el.kind === "codeDiff") timeline.hunks = (Array.isArray(timeline.hunks) ? timeline.hunks : []).flatMap((h) => {
+			if (typeof h !== "object" || h === null) return [];
+			const rec = h;
+			const ctx = typeof rec.ctx === "string" ? rec.ctx : void 0;
+			const lines = (Array.isArray(rec.lines) ? rec.lines : []).map((ln) => {
+				const r = typeof ln === "object" && ln !== null ? ln : {};
+				return {
+					tag: r.tag === "+" ? "+" : r.tag === "-" ? "-" : " ",
+					text: typeof r.text === "string" ? r.text : String(r.text ?? "")
+				};
+			});
+			return [{
+				...ctx ? { ctx } : {},
+				lines
+			}];
+		});
+		if (el.kind === "folderTree") timeline.items = (Array.isArray(timeline.items) ? timeline.items : []).flatMap((it) => {
+			if (typeof it !== "object" || it === null) return [];
+			const rec = it;
+			const depth = Number.isFinite(Number(rec.depth)) ? Math.max(0, Math.round(Number(rec.depth))) : void 0;
+			return [{
+				name: typeof rec.name === "string" ? rec.name : String(rec.name ?? ""),
+				...depth !== void 0 ? { depth } : {},
+				...rec.icon === "dir" || rec.icon === "file" ? { icon: rec.icon } : {},
+				...typeof rec.comment === "string" ? { comment: rec.comment } : {}
+			}];
+		});
+		const enumGuard = (key, allowed) => {
+			if (timeline[key] !== void 0 && !allowed.includes(String(timeline[key]))) delete timeline[key];
+		};
+		enumGuard("legend", [
+			"right",
+			"bottom",
+			"none"
+		]);
+		enumGuard("status", [
+			"online",
+			"offline",
+			"busy"
+		]);
+		enumGuard("pose", [
+			"stand",
+			"point",
+			"think"
+		]);
 		return el;
 	}
 	//#endregion
@@ -447,6 +677,148 @@
 				progress: p
 			};
 		}
+	}
+	/** 离场求值:in = 未开始(常驻),out = 离场窗口内(q 为 [0,1] 进度),gone = 已离场(元素不存在) */
+	function exitState(localT, exit) {
+		if (localT + 1e-6 < exit.start) return {
+			phase: "in",
+			q: 0
+		};
+		const q = exit.duration <= 0 ? 1 : Math.min(1, (localT - exit.start) / exit.duration);
+		return q >= 1 ? {
+			phase: "gone",
+			q: 1
+		} : {
+			phase: "out",
+			q
+		};
+	}
+	function resolveExitEasing(exit) {
+		if (exit.easing) return EASING_FNS[exit.easing] ?? easeInOutCubic;
+		return easeInOutCubic;
+	}
+	/** 离场动画 -> 视觉参数:与入场 visual 复合(alpha 相乘、位移叠加、scale 相乘) */
+	function exitVisual(exit, q) {
+		const e = resolveExitEasing(exit)(q);
+		switch (exit.type) {
+			case "fadeOut": return {
+				alpha: 1 - e,
+				dx: 0,
+				dy: 0,
+				scale: 1,
+				wipeWidth: null
+			};
+			case "slideOutLeft": return {
+				alpha: 1,
+				dx: -e * 320,
+				dy: 0,
+				scale: 1,
+				wipeWidth: null
+			};
+			case "slideOutRight": return {
+				alpha: 1,
+				dx: e * 320,
+				dy: 0,
+				scale: 1,
+				wipeWidth: null
+			};
+			case "slideOutUp": return {
+				alpha: 1,
+				dx: 0,
+				dy: -e * 200,
+				scale: 1,
+				wipeWidth: null
+			};
+			case "slideOutDown": return {
+				alpha: 1,
+				dx: 0,
+				dy: e * 200,
+				scale: 1,
+				wipeWidth: null
+			};
+			case "zoomOut": return {
+				alpha: 1 - e,
+				dx: 0,
+				dy: 0,
+				scale: 1 - .4 * e,
+				wipeWidth: null
+			};
+			case "wipeOut": return {
+				alpha: 1,
+				dx: 0,
+				dy: 0,
+				scale: 1,
+				wipeWidth: 1 - e
+			};
+		}
+	}
+	var NO_FX = {
+		scaleMul: 1,
+		dx: 0,
+		dy: 0,
+		glow: 0,
+		flashAlpha: 0,
+		ringQ: null,
+		highlightLines: null,
+		dashFlow: null
+	};
+	function resolveEmphasisEasing(ev) {
+		if (ev.easing) return EASING_FNS[ev.easing] ?? easeOutCubic;
+		if (ev.type === "pulse" || ev.type === "shake") return easeInOutCubic;
+		if (ev.type === "highlightLines" || ev.type === "dashFlow") return EASING_FNS.linear;
+		return easeOutCubic;
+	}
+	/** 强调求值:纯函数,同一 (localT, events) 恒同结果;未命中返回共享空效果(调用方不得修改) */
+	function emphasisFx(localT, events) {
+		if (!events || events.length === 0) return NO_FX;
+		const fx = { ...NO_FX };
+		for (const ev of events) {
+			if (localT + 1e-6 < ev.start) continue;
+			const q = (localT - ev.start) / Math.max(.05, ev.duration);
+			if (q > 1) continue;
+			const e = resolveEmphasisEasing(ev)(Math.min(1, Math.max(0, q)));
+			const s = ev.strength ?? 1;
+			switch (ev.type) {
+				case "pulse":
+					fx.scaleMul *= 1 + Math.sin(Math.PI * e) * .1 * s;
+					break;
+				case "shake":
+					fx.dx += Math.sin(q * Math.PI * 6) * 9 * s * (1 - e);
+					break;
+				case "glow":
+					fx.glow = Math.max(fx.glow, Math.sin(Math.PI * e) * 22 * s);
+					break;
+				case "flash":
+					fx.flashAlpha = Math.max(fx.flashAlpha, Math.sin(Math.PI * e) * .75 * Math.min(1.3, s));
+					break;
+				case "ring":
+					fx.ringQ = e;
+					break;
+				case "highlightLines":
+					fx.highlightLines = {
+						lines: ev.lines ?? [1, 1],
+						alpha: Math.sin(Math.PI * e)
+					};
+					break;
+				case "dashFlow": fx.dashFlow = 60 * s;
+			}
+		}
+		return fx;
+	}
+	/** 补间求值:白名单字段随时间插值;命中多个时后者覆盖前者;未命中返回原元素(免拷贝) */
+	function applyTweens(el, localT) {
+		if (!el.tweens || el.tweens.length === 0) return el;
+		let out = null;
+		for (const tw of el.tweens) {
+			if (localT + 1e-6 < tw.start) continue;
+			const q = Math.min(1, (localT - tw.start) / tw.duration);
+			const e = tw.easing ? (EASING_FNS[tw.easing] ?? ((p) => p))(q) : q;
+			const rec = out ?? el;
+			const base = tw.from ?? (typeof rec[tw.field] === "number" ? rec[tw.field] : 0);
+			if (!out) out = { ...el };
+			out[tw.field] = base + (tw.to - base) * e;
+		}
+		return out ?? el;
 	}
 	//#endregion
 	//#region src/core/highlight.ts
@@ -695,7 +1067,7 @@
 			ctx.fill();
 		});
 	}
-	function drawCode(ctx, el, progress) {
+	function drawCode(ctx, el, progress, hl) {
 		const fontSize = el.fontSize ?? 26;
 		const lineH = fontSize * 1.6;
 		const headerH = fontSize * 2.1;
@@ -709,6 +1081,11 @@
 		ctx.clip();
 		ctx.fillStyle = bg;
 		ctx.fill();
+		if (hl) {
+			const [ha, hb] = hl.lines;
+			ctx.fillStyle = el.dark ? `rgba(96,165,250,${(.3 * hl.alpha).toFixed(3)})` : `rgba(59,130,246,${(.14 * hl.alpha).toFixed(3)})`;
+			ctx.fillRect(el.x, el.y + headerH + lineH * .2 + (ha - 1) * lineH, el.w, (hb - ha + 1) * lineH);
+		}
 		const dotR = fontSize * .22;
 		const dotY = el.y + headerH / 2;
 		drawWindowDots(ctx, el.x + fontSize, dotY, dotR);
@@ -782,7 +1159,7 @@
 		});
 		ctx.restore();
 	}
-	function drawTerminal(ctx, el, progress) {
+	function drawTerminal(ctx, el, progress, hl) {
 		const fontSize = el.fontSize ?? 26;
 		const dark = el.dark !== false;
 		const lineH = fontSize * 1.6;
@@ -794,6 +1171,11 @@
 		ctx.clip();
 		ctx.fillStyle = bg;
 		ctx.fill();
+		if (hl) {
+			const [ha, hb] = hl.lines;
+			ctx.fillStyle = dark ? `rgba(96,165,250,${(.3 * hl.alpha).toFixed(3)})` : `rgba(59,130,246,${(.14 * hl.alpha).toFixed(3)})`;
+			ctx.fillRect(el.x, el.y + headerH + lineH * .2 + (ha - 1) * lineH, el.w, (hb - ha + 1) * lineH);
+		}
 		const dotR = fontSize * .22;
 		drawWindowDots(ctx, el.x + fontSize, el.y + headerH / 2, dotR);
 		ctx.font = sansFont(fontSize * .82, 500);
@@ -981,6 +1363,7 @@
 		const gap = el.gap ?? 14;
 		const perRow = Math.max(1, el.perRow ?? el.cells.length);
 		const fontSize = el.fontSize ?? size * .5;
+		const active = el.activeIndex ?? -1;
 		ctx.save();
 		ctx.font = sansFont(fontSize, 600);
 		ctx.textAlign = "center";
@@ -993,6 +1376,19 @@
 			ctx.fill();
 			ctx.fillStyle = "#1E293B";
 			ctx.fillText(cell, cx + size / 2, cy + size / 2 + 1);
+			if (i === active) {
+				ctx.strokeStyle = "#2563EB";
+				ctx.lineWidth = 4;
+				roundRect(ctx, cx + 2, cy + 2, size - 4, size - 4, size * .16);
+				ctx.stroke();
+				ctx.beginPath();
+				ctx.moveTo(cx + size / 2 - 10, cy - 4);
+				ctx.lineTo(cx + size / 2 + 10, cy - 4);
+				ctx.lineTo(cx + size / 2, cy + 10);
+				ctx.closePath();
+				ctx.fillStyle = "#2563EB";
+				ctx.fill();
+			}
 		});
 		ctx.restore();
 	}
@@ -1265,7 +1661,7 @@
 			align: "center"
 		});
 	}
-	function drawTitle(ctx, el, progress) {
+	function drawTitle$1(ctx, el, progress) {
 		drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
 			fontSize: el.fontSize ?? 64,
 			color: el.color ?? "#111827",
@@ -2096,7 +2492,7 @@
 			to: [to.x, to.y]
 		};
 	}
-	function drawConnector(ctx, el, elements = []) {
+	function drawConnector(ctx, el, elements = [], dashOffset) {
 		const [x1, y1] = el.from;
 		const [x2, y2] = el.to;
 		const color = el.color ?? "#475569";
@@ -2107,6 +2503,10 @@
 		ctx.strokeStyle = color;
 		ctx.lineWidth = lineW;
 		ctx.lineCap = "round";
+		if (dashOffset !== void 0) {
+			ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
+			ctx.lineDashOffset = dashOffset;
+		}
 		ctx.beginPath();
 		if (route.mode === "segments") strokeRoundedPolyline(ctx, route.points, {
 			x: x2,
@@ -2120,6 +2520,7 @@
 			ctx.quadraticCurveTo(route.geo.control.x, route.geo.control.y, x2, y2);
 		}
 		ctx.stroke();
+		ctx.setLineDash([]);
 		if (el.arrow !== false) {
 			const ang = route.endAngle;
 			const size = lineW * 3.2;
@@ -2163,7 +2564,7 @@
 		return entry.ready() ? entry : null;
 	}
 	/** 位图尺寸:主线程是 HTMLImageElement(naturalWidth),Worker 里是 ImageBitmap(width) */
-	function sourceSize(source) {
+	function sourceSize$1(source) {
 		const s = source;
 		return "naturalWidth" in s ? {
 			w: s.naturalWidth,
@@ -2176,7 +2577,7 @@
 	function drawImageEl(ctx, el) {
 		const img = getImage(el.src);
 		if (!img) return;
-		const { w, h } = sourceSize(img.source);
+		const { w, h } = sourceSize$1(img.source);
 		ctx.save();
 		roundRect(ctx, el.x, el.y, el.w, el.h, el.radius ?? 12);
 		ctx.clip();
@@ -2184,6 +2585,1156 @@
 		const dw = w * s;
 		const dh = h * s;
 		ctx.drawImage(img.source, el.x + (el.w - dw) / 2, el.y + (el.h - dh) / 2, dw, dh);
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/actors.ts
+	/**
+	* 角色元素:头像(圆形图片/initials + 名称胶囊 + 状态点)与方块人(stand/point/think 三姿态)。
+	* 纯 (project,t) 绘制,无外部状态;src 图片未就绪时回退 initials,不闪空。
+	*/
+	var INK$2 = "#1F2937";
+	var MUTED$3 = "#64748B";
+	var BLUE$1 = "#3B82F6";
+	var STATUS_COLOR = {
+		online: "#22C55E",
+		busy: "#F59E0B",
+		offline: "#94A3B8"
+	};
+	/** 斜向肢体:从 (x1,y1) 画到 (x2,y2) 的圆角矩形(竖/横/斜统一) */
+	function drawLimb(ctx, x1, y1, x2, y2, w, r) {
+		ctx.save();
+		ctx.translate(x1, y1);
+		ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
+		roundRect(ctx, 0, -w / 2, Math.hypot(x2 - x1, y2 - y1), w, r);
+		ctx.fill();
+		ctx.restore();
+	}
+	/** 位图尺寸:主线程 HTMLImageElement(naturalWidth),Worker ImageBitmap(width) */
+	function sourceSize(source) {
+		const s = source;
+		return "naturalWidth" in s ? {
+			w: s.naturalWidth,
+			h: s.naturalHeight
+		} : {
+			w: s.width,
+			h: s.height
+		};
+	}
+	function drawAvatar(ctx, el) {
+		const d = Math.min(el.h, el.w * .5);
+		const cx = el.x + d / 2;
+		const cy = el.y + el.h / 2;
+		const bg = el.color ?? BLUE$1;
+		ctx.save();
+		ctx.textBaseline = "middle";
+		const img = el.src ? getImage(el.src) : null;
+		if (img) {
+			const { w, h } = sourceSize(img.source);
+			ctx.save();
+			ctx.arc(cx, cy, d / 2, 0, Math.PI * 2);
+			ctx.clip();
+			const s = Math.min(d / w, d / h);
+			const dw = w * s;
+			const dh = h * s;
+			ctx.drawImage(img.source, cx - dw / 2, cy - dh / 2, dw, dh);
+			ctx.restore();
+		} else {
+			const initials = (el.initials ?? (el.name ? el.name.charAt(0) : "?")) || "?";
+			ctx.beginPath();
+			ctx.arc(cx, cy, d / 2, 0, Math.PI * 2);
+			ctx.fillStyle = bg;
+			ctx.fill();
+			ctx.font = sansFont(d * .42, 700);
+			ctx.textAlign = "center";
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillText(initials, cx, cy);
+		}
+		if (el.status) {
+			const a = Math.PI / 4;
+			const sx = cx + Math.cos(a) * d * .42;
+			const sy = cy + Math.sin(a) * d * .42;
+			ctx.beginPath();
+			ctx.arc(sx, sy, d * .13 + 3, 0, Math.PI * 2);
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.arc(sx, sy, d * .13, 0, Math.PI * 2);
+			ctx.fillStyle = STATUS_COLOR[el.status];
+			ctx.fill();
+		}
+		if (el.name) {
+			ctx.font = sansFont(24, 500);
+			const textW = ctx.measureText(el.name).width;
+			const pillH = 30;
+			const px = el.x + d + 8;
+			roundRect(ctx, px, cy - pillH / 2, textW + 28, pillH, 15);
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fill();
+			ctx.lineWidth = 1.5;
+			ctx.strokeStyle = "#E2E8F0";
+			ctx.stroke();
+			ctx.textAlign = "left";
+			ctx.fillStyle = INK$2;
+			ctx.fillText(el.name, px + 14, cy);
+		}
+		ctx.restore();
+	}
+	function drawPerson(ctx, el) {
+		const u = el.h;
+		const cx = el.x + el.w / 2;
+		const color = el.color ?? BLUE$1;
+		const top = el.y;
+		ctx.save();
+		ctx.fillStyle = color;
+		ctx.textBaseline = "middle";
+		ctx.beginPath();
+		ctx.arc(cx, top + u * .11, u * .11, 0, Math.PI * 2);
+		ctx.fill();
+		roundRect(ctx, cx - u * .13, top + u * .24, u * .26, u * .34, u * .08);
+		ctx.fill();
+		const legW = u * .09;
+		for (const lx of [cx - u * .115, cx + u * .025]) {
+			roundRect(ctx, lx, top + u * .58, legW, u * .3, u * .045);
+			ctx.fill();
+		}
+		const armW = legW;
+		const armR = u * .045;
+		const shoulderY = top + u * .27;
+		const armLen = u * .26;
+		const leftX = cx - u * .13 - u * .02 - armW;
+		drawLimb(ctx, leftX, shoulderY, leftX, shoulderY + armLen, armW, armR);
+		const pose = el.pose ?? "stand";
+		if (pose === "stand") drawLimb(ctx, cx + u * .15, shoulderY, cx + u * .15, shoulderY + armLen, armW, armR);
+		else if (pose === "point") {
+			const hx = cx + u * .13 + u * .3;
+			drawLimb(ctx, cx + u * .13, shoulderY, hx, shoulderY, armW, armR);
+			ctx.beginPath();
+			ctx.arc(hx, shoulderY, u * .045, 0, Math.PI * 2);
+			ctx.fill();
+		} else {
+			const ex = cx + u * .13;
+			const ey = top + u * .38;
+			const hx = cx + u * .18;
+			const hy = top + u * .2;
+			drawLimb(ctx, cx + u * .15, shoulderY, ex, ey, armW, armR);
+			drawLimb(ctx, ex, ey, hx, hy, armW, armR);
+			ctx.beginPath();
+			ctx.arc(hx, hy, u * .045, 0, Math.PI * 2);
+			ctx.fill();
+			const bx = cx + u * .15;
+			const by = top + u * .02;
+			ctx.beginPath();
+			ctx.arc(bx, by, u * .05, 0, Math.PI * 2);
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fill();
+			ctx.lineWidth = 1.5;
+			ctx.strokeStyle = "#CBD5E1";
+			ctx.stroke();
+			ctx.font = sansFont(u * .07, 700);
+			ctx.textAlign = "center";
+			ctx.fillStyle = MUTED$3;
+			ctx.fillText("?", bx, by);
+		}
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/charts.ts
+	/**
+	* 图表三件套:柱状 / 折线 / 饼图。数据驱动 + 确定性绘制;
+	* 入场动画语义:柱 = 逐柱生长,线 = 沿路径 draw-on,饼 = 扫掠展开,progress 缺省 = 全显。
+	*/
+	var CHART_PALETTE = [
+		"#3B82F6",
+		"#F59E0B",
+		"#10B981",
+		"#EF4444",
+		"#8B5CF6",
+		"#EC4899"
+	];
+	var INK$1 = "#1F2937";
+	var MUTED$2 = "#64748B";
+	/** 数值上限取整放大:36 -> 40,170 -> 200,让柱顶/点不顶格 */
+	function niceCeil(v) {
+		if (v <= 0) return 1;
+		const mag = Math.pow(10, Math.floor(Math.log10(v)));
+		const n = v / mag;
+		return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+	}
+	function drawTitle(ctx, el, fontSize) {
+		if (!el.title) return 0;
+		ctx.font = sansFont(fontSize, 700);
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = INK$1;
+		ctx.fillText(el.title, el.x, el.y + fontSize * .9, el.w);
+		return fontSize * 1.9;
+	}
+	function drawBarChart(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 28;
+		const series = el.series ?? [];
+		if (series.length === 0) return;
+		const showValue = el.showValue !== false;
+		const showAxis = el.axis !== false;
+		const horizontal = el.horizontal === true;
+		const pad = fontSize * .9;
+		ctx.save();
+		ctx.font = sansFont(fontSize * .72, 500);
+		const titleH = drawTitle(ctx, el, fontSize);
+		const area = {
+			x: el.x + pad,
+			y: el.y + titleH + pad * .5,
+			w: el.w - pad * 2,
+			h: el.h - titleH - pad * 1.5
+		};
+		const dataMax = Math.max(...series.map((s) => s.value), 0);
+		const cap = Math.max(el.max ?? niceCeil(dataMax), dataMax, 1);
+		const n = series.length;
+		const slot = (horizontal ? area.h : area.w) / n;
+		const barLong = horizontal ? area.w : area.h;
+		ctx.textBaseline = "middle";
+		series.forEach((s, i) => {
+			const q = progress === void 0 ? 1 : Math.min(1, Math.max(0, progress * n - i));
+			if (q <= 0) return;
+			const e = 1 - Math.pow(1 - q, 3);
+			const len = barLong * Math.min(1, Math.max(0, s.value / cap)) * e;
+			const thick = slot * .56;
+			ctx.fillStyle = s.color ?? CHART_PALETTE[i % CHART_PALETTE.length];
+			let labelX;
+			let labelY;
+			if (horizontal) {
+				const by = area.y + i * slot + (slot - thick) / 2;
+				roundRect(ctx, area.x, by, Math.max(len, 2), thick, thick / 2);
+				ctx.fill();
+				ctx.textAlign = "right";
+				ctx.fillStyle = MUTED$2;
+				ctx.fillText(s.label, area.x - fontSize * .4, by + thick / 2);
+				labelX = area.x + len + fontSize * .35;
+				labelY = by + thick / 2;
+			} else {
+				const bx = area.x + i * slot + (slot - thick) / 2;
+				const by = area.y + area.h - len;
+				roundRect(ctx, bx, by, thick, Math.max(len, 2), thick * .18);
+				ctx.fill();
+				ctx.textAlign = "center";
+				ctx.fillStyle = MUTED$2;
+				ctx.fillText(s.label, bx + thick / 2, area.y + area.h + fontSize * .75, slot);
+				labelX = bx + thick / 2;
+				labelY = by - fontSize * .6;
+			}
+			if (showValue) {
+				ctx.textAlign = horizontal ? "left" : "center";
+				ctx.fillStyle = INK$1;
+				ctx.font = sansFont(fontSize * .72, 700);
+				ctx.fillText(String(s.value), labelX, labelY);
+				ctx.font = sansFont(fontSize * .72, 500);
+			}
+		});
+		if (showAxis) {
+			ctx.strokeStyle = "#CBD5E1";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			if (horizontal) {
+				ctx.moveTo(area.x, area.y);
+				ctx.lineTo(area.x, area.y + area.h);
+			} else {
+				ctx.moveTo(area.x, area.y + area.h);
+				ctx.lineTo(area.x + area.w, area.y + area.h);
+			}
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+	function drawLineChart(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 26;
+		const series = (el.series ?? []).slice(0, 3);
+		if (series.length === 0) return;
+		const pad = fontSize * .9;
+		const allPts = series.flatMap((s) => s.points);
+		if (allPts.length === 0) return;
+		const dataMin = Math.min(...allPts);
+		const dataMax = Math.max(...allPts);
+		const span = Math.max(dataMax - dataMin, 1e-6);
+		const lo = el.min ?? Math.floor(dataMin - span * .12);
+		const hi = Math.max(el.max ?? Math.ceil(dataMax + span * .12), lo + 1e-6);
+		const n = Math.max(...series.map((s) => s.points.length));
+		ctx.save();
+		const titleH = drawTitle(ctx, el, fontSize);
+		const legendH = series.length > 1 ? fontSize * 1.6 : 0;
+		const area = {
+			x: el.x + pad,
+			y: el.y + titleH + legendH + pad * .4,
+			w: el.w - pad * 2,
+			h: el.h - titleH - legendH - pad * 1.6
+		};
+		const X = (i) => area.x + (n <= 1 ? area.w / 2 : i / (n - 1) * area.w);
+		const Y = (v) => area.y + area.h - (v - lo) / (hi - lo) * area.h;
+		if (el.grid !== false) {
+			ctx.font = sansFont(fontSize * .62, 500);
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			for (let g = 0; g <= 4; g++) {
+				const gv = lo + (hi - lo) * g / 4;
+				const gy = Y(gv);
+				ctx.strokeStyle = "rgba(148,163,184,0.28)";
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.moveTo(area.x, gy);
+				ctx.lineTo(area.x + area.w, gy);
+				ctx.stroke();
+				ctx.fillStyle = MUTED$2;
+				ctx.fillText(String(Math.round(gv)), el.x + fontSize * .1, gy);
+			}
+		}
+		if (el.axis !== false) {
+			ctx.strokeStyle = "#CBD5E1";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.moveTo(area.x, area.y);
+			ctx.lineTo(area.x, area.y + area.h);
+			ctx.lineTo(area.x + area.w, area.y + area.h);
+			ctx.stroke();
+		}
+		series.forEach((s, si) => {
+			const pts = s.points.map((v, i) => ({
+				x: X(i),
+				y: Y(v)
+			}));
+			if (pts.length === 0) return;
+			const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+			const segTotal = Math.max(pts.length - 1, 1);
+			const f = progress === void 0 ? segTotal : Math.min(segTotal, Math.max(0, progress * segTotal));
+			const full = Math.floor(f);
+			const part = f - full;
+			const drawn = pts.slice(0, full + 1);
+			if (part > 0 && full + 1 < pts.length) {
+				const a = pts[full];
+				const b = pts[full + 1];
+				drawn.push({
+					x: a.x + (b.x - a.x) * part,
+					y: a.y + (b.y - a.y) * part
+				});
+			}
+			if (drawn.length === 0) return;
+			if (el.area === true && drawn.length > 1) {
+				ctx.beginPath();
+				ctx.moveTo(drawn[0].x, area.y + area.h);
+				drawn.forEach((p) => ctx.lineTo(p.x, p.y));
+				ctx.lineTo(drawn[drawn.length - 1].x, area.y + area.h);
+				ctx.closePath();
+				ctx.fillStyle = color + "33";
+				ctx.fill();
+			}
+			ctx.beginPath();
+			ctx.strokeStyle = color;
+			ctx.lineWidth = fontSize * .18;
+			ctx.lineJoin = "round";
+			ctx.lineCap = "round";
+			if (el.smooth === true && drawn.length > 2) {
+				ctx.moveTo((drawn[0].x + drawn[1].x) / 2, (drawn[0].y + drawn[1].y) / 2);
+				for (let i = 1; i < drawn.length - 1; i++) {
+					const mx = (drawn[i].x + drawn[i + 1].x) / 2;
+					const my = (drawn[i].y + drawn[i + 1].y) / 2;
+					ctx.quadraticCurveTo(drawn[i].x, drawn[i].y, mx, my);
+				}
+				ctx.lineTo(drawn[drawn.length - 1].x, drawn[drawn.length - 1].y);
+			} else {
+				ctx.moveTo(drawn[0].x, drawn[0].y);
+				drawn.forEach((p) => ctx.lineTo(p.x, p.y));
+			}
+			ctx.stroke();
+			if (el.dot !== false) {
+				ctx.fillStyle = color;
+				drawn.forEach((p) => {
+					ctx.beginPath();
+					ctx.arc(p.x, p.y, fontSize * .16, 0, Math.PI * 2);
+					ctx.fill();
+				});
+			}
+		});
+		if (series.length > 1) {
+			ctx.font = sansFont(fontSize * .68, 600);
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			let lx = area.x;
+			const ly = el.y + titleH + fontSize * .8;
+			series.forEach((s, si) => {
+				ctx.fillStyle = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
+				roundRect(ctx, lx, ly - fontSize * .22, fontSize * .44, fontSize * .44, fontSize * .12);
+				ctx.fill();
+				ctx.fillStyle = INK$1;
+				ctx.fillText(s.label, lx + fontSize * .6, ly);
+				lx += fontSize * .6 + ctx.measureText(s.label).width + fontSize * 1.1;
+			});
+		}
+		ctx.restore();
+	}
+	function drawPieChart(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 26;
+		const slices = (el.slices ?? []).filter((s) => s.value > 0);
+		const total = slices.reduce((sum, s) => sum + s.value, 0);
+		if (total <= 0) return;
+		const legend = el.legend ?? "right";
+		const pad = fontSize * .9;
+		ctx.save();
+		const titleH = drawTitle(ctx, el, fontSize);
+		const legendW = legend === "right" ? el.w * .34 : 0;
+		const legendH = legend === "bottom" ? fontSize * 1.7 : 0;
+		const cx = el.x + (el.w - legendW) / 2;
+		const cy = el.y + titleH + (el.h - titleH - legendH) / 2 + pad * .2;
+		const r = Math.max(Math.min(el.w - legendW, el.h - titleH - legendH) / 2 - pad, fontSize);
+		const start = (el.startAngle ?? -90) * Math.PI / 180;
+		const sweep = (progress ?? 1) * Math.PI * 2;
+		let acc = 0;
+		slices.forEach((s, i) => {
+			const a0 = start + acc / total * sweep;
+			const a1 = start + (acc + s.value) / total * sweep;
+			acc += s.value;
+			if (a1 - a0 <= 0) return;
+			const color = s.color ?? CHART_PALETTE[i % CHART_PALETTE.length];
+			ctx.beginPath();
+			ctx.arc(cx, cy, r, a0, a1);
+			if (el.donut === true) ctx.arc(cx, cy, r * .55, a1, a0, true);
+			else ctx.lineTo(cx, cy);
+			ctx.closePath();
+			ctx.fillStyle = color;
+			ctx.fill();
+			ctx.strokeStyle = "#FFFFFF";
+			ctx.lineWidth = 2.5;
+			ctx.stroke();
+		});
+		if (el.donut === true) {
+			ctx.font = sansFont(fontSize * .9, 700);
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = INK$1;
+			ctx.fillText(String(Math.round(total)), cx, cy);
+		}
+		ctx.font = sansFont(fontSize * .68, 500);
+		ctx.textBaseline = "middle";
+		const drawLegend = (lx, ly, s, i) => {
+			ctx.fillStyle = s.color ?? CHART_PALETTE[i % CHART_PALETTE.length];
+			roundRect(ctx, lx, ly - fontSize * .22, fontSize * .44, fontSize * .44, fontSize * .12);
+			ctx.fill();
+			ctx.textAlign = "left";
+			ctx.fillStyle = INK$1;
+			const pct = `${Math.round(s.value / total * 100)}%`;
+			ctx.fillText(`${s.label}  ${pct}`, lx + fontSize * .62, ly, legend === "right" ? legendW - fontSize : el.w);
+		};
+		if (legend === "right") slices.forEach((s, i) => drawLegend(el.x + el.w - legendW + fontSize * .2, el.y + titleH + pad + i * fontSize * 1.35, s, i));
+		else if (legend === "bottom") {
+			const totalW = slices.reduce((sum, s) => sum + ctx.measureText(s.label).width + fontSize * 2.4, 0);
+			let lx = el.x + (el.w - Math.min(totalW, el.w)) / 2;
+			const ly = el.y + el.h - fontSize * .9;
+			slices.forEach((s, i) => {
+				drawLegend(lx, ly, s, i);
+				lx += ctx.measureText(s.label).width + fontSize * 2.4;
+			});
+		}
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/guide.ts
+	/**
+	* 演示三件套:鼠标光标 / mac 文件树 / 行级代码 diff。确定性绘制,纯 (project, t) 函数;
+	* 入场动画:文件树与 diff = 逐行 stagger(progress 缺省全显),光标移动由 localT 驱动。
+	*/
+	var INK = "#1F2937";
+	var MUTED$1 = "#64748B";
+	var BLUE = "#3B82F6";
+	var clamp01 = (v) => Math.min(1, Math.max(0, v));
+	/** 光标箭头多边形(以 tip 为原点,原始高约 22px) */
+	var ARROW = [
+		[0, 0],
+		[0, 18],
+		[5, 13],
+		[10, 22],
+		[14, 20],
+		[14, 8]
+	];
+	/** localT 时刻的 tip 位置:points 折线均分时间窗逐段线性插值,p>=1 停在末点 */
+	function cursorTipAt(el, localT) {
+		const pts = el.points;
+		if (pts.length === 0) return [el.x, el.y];
+		if (pts.length === 1) return pts[0];
+		const p = clamp01((localT - el.anim.start) / Math.max(el.anim.duration, 1e-6));
+		if (p >= 1) return pts[pts.length - 1];
+		const seg = pts.length - 1;
+		const f = p * seg;
+		const i = Math.min(Math.floor(f), seg - 1);
+		const q = clamp01(f - i);
+		const [ax, ay] = pts[i];
+		const [bx, by] = pts[i + 1];
+		return [ax + (bx - ax) * q, ay + (by - ay) * q];
+	}
+	function drawCursor(ctx, el, localT) {
+		const s = Math.min(40, Math.max(16, el.h * .5)) / 22;
+		for (const c of el.clicks ?? []) {
+			const dt = localT - c;
+			if (dt < 0 || dt > .5) continue;
+			const [cx, cy] = cursorTipAt(el, c);
+			ctx.save();
+			ctx.globalAlpha = (1 - dt / .5) * .45;
+			ctx.strokeStyle = BLUE;
+			ctx.lineWidth = 3;
+			ctx.beginPath();
+			ctx.arc(cx, cy, 6 + dt * 70, 0, Math.PI * 2);
+			ctx.stroke();
+			ctx.restore();
+		}
+		const [tx, ty] = cursorTipAt(el, localT);
+		const holding = el.hold !== void 0 && localT >= el.hold[0] && localT <= el.hold[1];
+		ctx.save();
+		ctx.translate(tx, ty);
+		if (holding) ctx.scale(.9, .9);
+		ctx.lineJoin = "round";
+		ctx.lineCap = "round";
+		ctx.save();
+		ctx.scale(s * 1.14, s * 1.14);
+		ctx.beginPath();
+		ctx.moveTo(ARROW[0][0], ARROW[0][1]);
+		for (let i = 1; i < ARROW.length; i++) ctx.lineTo(ARROW[i][0], ARROW[i][1]);
+		ctx.closePath();
+		ctx.fillStyle = "#111827";
+		ctx.fill();
+		ctx.restore();
+		ctx.scale(s, s);
+		ctx.beginPath();
+		ctx.moveTo(ARROW[0][0], ARROW[0][1]);
+		for (let i = 1; i < ARROW.length; i++) ctx.lineTo(ARROW[i][0], ARROW[i][1]);
+		ctx.closePath();
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.strokeStyle = "#111827";
+		ctx.lineWidth = 1.4;
+		ctx.stroke();
+		ctx.restore();
+	}
+	/** 小文件夹图标(填充 #FBBF24 简形):tab + 圆角主体 */
+	function drawFolderIcon(ctx, x, y, w, h) {
+		ctx.fillStyle = "#FBBF24";
+		roundRect(ctx, x, y, w * .55, h * .5, h * .12);
+		ctx.fill();
+		roundRect(ctx, x, y + h * .2, w, h * .8, h * .14);
+		ctx.fill();
+	}
+	/** 文档图标:白底 #CBD5E1 描边折角 */
+	function drawFileIcon(ctx, x, y, w, h) {
+		const fold = Math.min(w, h) * .32;
+		ctx.beginPath();
+		ctx.moveTo(x, y);
+		ctx.lineTo(x + w - fold, y);
+		ctx.lineTo(x + w, y + fold);
+		ctx.lineTo(x + w, y + h);
+		ctx.lineTo(x, y + h);
+		ctx.closePath();
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.strokeStyle = "#CBD5E1";
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.moveTo(x + w - fold, y);
+		ctx.lineTo(x + w - fold, y + fold);
+		ctx.lineTo(x + w, y + fold);
+		ctx.stroke();
+	}
+	function drawFolderTree(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 24;
+		const lineH = fontSize * 1.7;
+		const headerH = fontSize * 2;
+		const pad = fontSize * .8;
+		const n = el.items.length;
+		const cardH = Math.max(el.h, headerH + n * lineH);
+		ctx.save();
+		roundRect(ctx, el.x, el.y, el.w, cardH, 14);
+		ctx.clip();
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.strokeStyle = "#E2E8F0";
+		ctx.lineWidth = 1.5;
+		roundRect(ctx, el.x, el.y, el.w, cardH, 14);
+		ctx.stroke();
+		ctx.fillStyle = "#F8FAFC";
+		ctx.fillRect(el.x, el.y, el.w, headerH);
+		ctx.strokeStyle = "#E2E8F0";
+		ctx.beginPath();
+		ctx.moveTo(el.x, el.y + headerH);
+		ctx.lineTo(el.x + el.w, el.y + headerH);
+		ctx.stroke();
+		const iconS = fontSize * 1.05;
+		drawFolderIcon(ctx, el.x + pad, el.y + (headerH - iconS * .8) / 2, iconS, iconS * .8);
+		ctx.font = sansFont(fontSize * .72, 600);
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = INK;
+		ctx.fillText(el.root ?? "project", el.x + pad + iconS + fontSize * .4, el.y + headerH / 2);
+		const depths = [];
+		let prev = 0;
+		el.items.forEach((item, i) => {
+			prev = item.depth ?? (i === 0 ? 0 : prev);
+			depths.push(prev);
+		});
+		el.items.forEach((item, i) => {
+			const q = progress === void 0 ? 1 : clamp01(progress * n - i);
+			if (q <= 0) return;
+			ctx.save();
+			ctx.globalAlpha *= q;
+			const rowY = el.y + headerH + i * lineH + lineH / 2;
+			const iconX = el.x + pad + depths[i] * fontSize * 1.4;
+			if ((item.icon ?? "file") === "dir") drawFolderIcon(ctx, iconX, rowY - iconS / 2, iconS, iconS * .8);
+			else drawFileIcon(ctx, iconX, rowY - iconS / 2, iconS * .8, iconS);
+			const textX = iconX + iconS + fontSize * .45;
+			ctx.font = sansFont(fontSize * .72, 600);
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = INK;
+			ctx.fillText(item.name, textX, rowY);
+			if (item.comment) {
+				const nameW = ctx.measureText(item.name).width;
+				ctx.font = sansFont(fontSize * .72, 500);
+				ctx.fillStyle = MUTED$1;
+				ctx.fillText("  // " + item.comment, textX + nameW, rowY);
+			}
+			ctx.restore();
+		});
+		ctx.restore();
+	}
+	function drawCodeDiff(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 24;
+		const lineH = fontSize * 1.6;
+		const headerH = fontSize * 2.1;
+		const padX = fontSize * .9;
+		const rows = [];
+		for (const hunk of el.hunks) {
+			if (hunk.ctx !== void 0) rows.push({
+				tag: "ctx",
+				text: hunk.ctx
+			});
+			for (const line of hunk.lines) rows.push({
+				tag: line.tag,
+				text: line.text
+			});
+		}
+		const total = rows.length;
+		const light = el.dark === false;
+		const lineColor = light ? "#334155" : "#94A3B8";
+		ctx.save();
+		roundRect(ctx, el.x, el.y, el.w, el.h, 16);
+		ctx.clip();
+		ctx.fillStyle = light ? "#FFFFFF" : "#0F172A";
+		ctx.fill();
+		const dotR = fontSize * .22;
+		const dotY = el.y + headerH / 2;
+		drawWindowDots(ctx, el.x + fontSize, dotY, dotR);
+		if (el.filename) {
+			ctx.font = sansFont(fontSize * .82, 500);
+			ctx.textAlign = "right";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = MUTED$1;
+			ctx.fillText(el.filename, el.x + el.w - padX, dotY);
+		}
+		ctx.strokeStyle = light ? "#E2E8F0" : "#1E293B";
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		ctx.moveTo(el.x, el.y + headerH);
+		ctx.lineTo(el.x + el.w, el.y + headerH);
+		ctx.stroke();
+		ctx.font = monoFont(fontSize);
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		let ly = el.y + headerH + lineH * .7;
+		rows.forEach((row, i) => {
+			const q = progress === void 0 ? 1 : clamp01(progress * total - i);
+			if (q <= 0) {
+				ly += lineH;
+				return;
+			}
+			ctx.save();
+			ctx.globalAlpha *= q;
+			if (row.tag === "+") ctx.fillStyle = light ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.14)";
+			else if (row.tag === "-") ctx.fillStyle = light ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.14)";
+			if (row.tag === "+" || row.tag === "-") ctx.fillRect(el.x, ly - lineH / 2, el.w, lineH);
+			if (row.tag === "ctx") ctx.fillStyle = MUTED$1;
+			else if (row.tag === "+") ctx.fillStyle = light ? "#16A34A" : "#4ADE80";
+			else if (row.tag === "-") ctx.fillStyle = light ? "#DC2626" : "#F87171";
+			else ctx.fillStyle = lineColor;
+			ctx.fillText(row.tag === "ctx" || row.tag === " " ? row.text : row.tag + " " + row.text, el.x + padX, ly);
+			ctx.restore();
+			ly += lineH;
+		});
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/stage.ts
+	/**
+	* 舞台打底四件套:聚光暗角 / 网格背景 / 分组面板 / 泳道。
+	* 全部是 (project, t) 纯函数,无动画语义;spotlight 用 evenodd 奇偶填充在暗色底板上挖孔。
+	* 注:Node 测试环境无 Path2D,故暗角走默认路径(beginPath + 子路径)+ fill("evenodd"),与 Path2D 等价。
+	*/
+	var MUTED = "#64748B";
+	var LANE_COLORS = [
+		"#F8FAFC",
+		"#F1F5F9",
+		"#EEF2FF",
+		"#ECFEFF"
+	];
+	/** 聚光灯:全屏暗角,只亮本元素几何区;孔 = 内切椭圆或圆角矩形(r=24) */
+	function drawSpotlight(ctx, el) {
+		const strength = el.strength ?? .65;
+		ctx.save();
+		ctx.fillStyle = `rgba(15,23,42,${strength})`;
+		ctx.beginPath();
+		ctx.rect(-32e3, -32e3, 64e3, 64e3);
+		if (el.shape === "ellipse") ctx.ellipse(el.x + el.w / 2, el.y + el.h / 2, el.w / 2, el.h / 2, 0, 0, Math.PI * 2);
+		else ctx.roundRect(el.x, el.y, el.w, el.h, 24);
+		ctx.fill("evenodd");
+		ctx.restore();
+	}
+	/** 把 rgba 的 alpha 提到 0.6 作轴线加重色;非 rgba 入参原样返回 */
+	function deepenAxisColor(color) {
+		const m = /^(.*,)\s*[\d.]+\)$/.exec(color);
+		return m ? `${m[1]} 0.6)` : color;
+	}
+	/** 网格背景:坐标纸细线或点阵,从区域边缘按 step 布置;axis 时过中心的横竖线加重 */
+	function drawGridBg(ctx, el) {
+		const step = Math.max(el.step ?? 40, 12);
+		const color = el.color ?? "rgba(148,163,184,0.35)";
+		ctx.save();
+		if (el.dot === true) {
+			ctx.fillStyle = color;
+			for (let gx = 0; gx <= el.w + .5; gx += step) for (let gy = 0; gy <= el.h + .5; gy += step) {
+				ctx.beginPath();
+				ctx.arc(el.x + gx, el.y + gy, 1.6, 0, Math.PI * 2);
+				ctx.fill();
+			}
+		} else {
+			ctx.strokeStyle = color;
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			for (let gx = 0; gx <= el.w + .5; gx += step) {
+				ctx.moveTo(el.x + gx, el.y);
+				ctx.lineTo(el.x + gx, el.y + el.h);
+			}
+			for (let gy = 0; gy <= el.h + .5; gy += step) {
+				ctx.moveTo(el.x, el.y + gy);
+				ctx.lineTo(el.x + el.w, el.y + gy);
+			}
+			ctx.stroke();
+		}
+		if (el.axis === true) {
+			ctx.strokeStyle = deepenAxisColor(color);
+			ctx.lineWidth = 1.5;
+			ctx.beginPath();
+			ctx.moveTo(el.x, el.y + el.h / 2);
+			ctx.lineTo(el.x + el.w, el.y + el.h / 2);
+			ctx.moveTo(el.x + el.w / 2, el.y);
+			ctx.lineTo(el.x + el.w / 2, el.y + el.h);
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
+	/** 分组面板:圆角卡片 + 骑跨上边框的标题胶囊(纯视觉归拢,子元素仍绝对坐标) */
+	function drawGroupPanel(ctx, el) {
+		const radius = el.radius ?? 24;
+		ctx.save();
+		roundRect(ctx, el.x, el.y, el.w, el.h, radius);
+		ctx.fillStyle = el.fill ?? "rgba(255,255,255,0.72)";
+		ctx.fill();
+		ctx.strokeStyle = el.stroke ?? "#E2E8F0";
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
+		if (el.title) {
+			const fontSize = 22;
+			const chipH = fontSize * 1.5;
+			ctx.font = sansFont(fontSize, 600);
+			ctx.textBaseline = "middle";
+			const chipX = el.x + 28;
+			const chipY = el.y - fontSize * .75;
+			roundRect(ctx, chipX, chipY, ctx.measureText(el.title).width + fontSize * 1.2, chipH, fontSize * .75);
+			ctx.fillStyle = el.accent ?? "#3B82F6";
+			ctx.fill();
+			ctx.textAlign = "left";
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillText(el.title, chipX + fontSize * .6, chipY + chipH / 2 + 1);
+		}
+		ctx.restore();
+	}
+	/** 泳道标签:带内白底 pill(高 30,宽 = 文本宽 + 24);h 方向靠带内左上,v 方向靠带顶部居中 */
+	function drawLaneLabel(ctx, text, px, py) {
+		ctx.font = sansFont(24, 500);
+		roundRect(ctx, px, py, ctx.measureText(text).width + 24, 30, 15);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.strokeStyle = "#E2E8F0";
+		ctx.lineWidth = 1;
+		ctx.stroke();
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = MUTED;
+		ctx.fillText(text, px + 12, py + 16);
+	}
+	/** 泳道:2-4 条平行色带 + 可选标签;count 缺省取 labels 长度,fallback 2(normalize 已钳 2-4) */
+	function drawLane(ctx, el) {
+		const count = el.count ?? el.labels?.length ?? 2;
+		const gutter = el.gutter ?? 6;
+		const horizontal = el.direction !== "v";
+		const band = (horizontal ? el.h - (count - 1) * gutter : el.w - (count - 1) * gutter) / count;
+		ctx.save();
+		for (let i = 0; i < count; i++) {
+			const bx = horizontal ? el.x : el.x + i * (band + gutter);
+			const by = horizontal ? el.y + i * (band + gutter) : el.y;
+			const bw = horizontal ? el.w : band;
+			const bh = horizontal ? band : el.h;
+			ctx.fillStyle = LANE_COLORS[i % LANE_COLORS.length];
+			ctx.fillRect(bx, by, bw, bh);
+			ctx.font = sansFont(24, 500);
+			const label = el.labels?.[i];
+			if (label) drawLaneLabel(ctx, label, horizontal ? bx + 10 : bx + (bw - (ctx.measureText(label).width + 24)) / 2, by + 8);
+			if (i === count - 1) continue;
+			ctx.strokeStyle = "#E2E8F0";
+			ctx.lineWidth = 1;
+			ctx.setLineDash([6, 6]);
+			ctx.beginPath();
+			if (horizontal) {
+				const gy = by + bh + gutter / 2;
+				ctx.moveTo(el.x, gy);
+				ctx.lineTo(el.x + el.w, gy);
+			} else {
+				const gx = bx + bw + gutter / 2;
+				ctx.moveTo(gx, el.y);
+				ctx.lineTo(gx, el.y + el.h);
+			}
+			ctx.stroke();
+			ctx.setLineDash([]);
+		}
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/rich.ts
+	/** 富文本补强:引用块 + 数学公式(TeX 子集轻量排版,零依赖)。 */
+	function drawQuote(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 34;
+		const accent = el.accent ?? "#3B82F6";
+		const authorH = el.author ? fontSize * 1.5 : 0;
+		ctx.save();
+		roundRect(ctx, el.x, el.y + fontSize * .2, 6, el.h - fontSize * .4 - authorH, 3);
+		ctx.fillStyle = accent;
+		ctx.fill();
+		drawRichText(ctx, el.x + fontSize * .9, el.y, el.w - fontSize, el.h - authorH, el.text, {
+			fontSize,
+			color: "#1F2937",
+			align: "left",
+			progress
+		});
+		if (el.author) {
+			ctx.font = sansFont(fontSize * .78, 500);
+			ctx.textAlign = "right";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = "#64748B";
+			ctx.fillText(`—— ${el.author}`, el.x + el.w, el.y + el.h - fontSize * .75, el.w);
+		}
+		ctx.restore();
+	}
+	/** 命令映射:希腊字母 / 关系与运算 / 大型算子(左值 = TeX 命令名,不含反斜杠) */
+	var TEX_SYMBOLS = {
+		alpha: "α",
+		beta: "β",
+		gamma: "γ",
+		delta: "δ",
+		epsilon: "ε",
+		zeta: "ζ",
+		eta: "η",
+		theta: "θ",
+		lambda: "λ",
+		mu: "μ",
+		xi: "ξ",
+		pi: "π",
+		rho: "ρ",
+		sigma: "σ",
+		tau: "τ",
+		phi: "φ",
+		chi: "χ",
+		psi: "ψ",
+		omega: "ω",
+		Gamma: "Γ",
+		Delta: "Δ",
+		Theta: "Θ",
+		Lambda: "Λ",
+		Pi: "Π",
+		Sigma: "Σ",
+		Phi: "Φ",
+		Omega: "Ω",
+		sum: "∑",
+		int: "∫",
+		infty: "∞",
+		pm: "±",
+		mp: "∓",
+		times: "×",
+		div: "÷",
+		cdot: "⋅",
+		leq: "≤",
+		geq: "≥",
+		neq: "≠",
+		approx: "≈",
+		propto: "∝",
+		rightarrow: "→",
+		leftarrow: "←",
+		Rightarrow: "⇒",
+		mapsto: "↦",
+		partial: "∂",
+		nabla: "∇",
+		forall: "∀",
+		exists: "∃",
+		in: "∈",
+		subset: "⊂",
+		cup: "∪",
+		cap: "∩",
+		ldots: "…",
+		cdots: "⋯",
+		quad: " ",
+		qquad: "  "
+	};
+	var TexError = class extends Error {};
+	/** 递归下降解析:frac/sqrt 命令、^ _ 上下标(绑定前驱)、{} 分组;未闭合抛出由绘制层回落纯文本 */
+	function parseTex(src) {
+		let pos = 0;
+		const peek = () => src[pos];
+		const eat = () => src[pos++];
+		function parseGroup() {
+			if (peek() === "{") {
+				eat();
+				const g = parseSeq();
+				if (peek() !== "}") throw new TexError("未闭合的 {");
+				eat();
+				return g;
+			}
+			if (pos >= src.length) throw new TexError("下标/上标缺操作数");
+			const ch = eat();
+			if (ch === "\\") {
+				const name = readCommand();
+				return {
+					t: "op",
+					sym: TEX_SYMBOLS[name] ?? name
+				};
+			}
+			return {
+				t: "chr",
+				ch
+			};
+		}
+		function readCommand() {
+			const m = /^[a-zA-Z]+/.exec(src.slice(pos));
+			if (m) {
+				pos += m[0].length;
+				return m[0];
+			}
+			return pos < src.length ? eat() : "";
+		}
+		function parseSeq() {
+			const children = [];
+			while (pos < src.length && peek() !== "}") {
+				const ch = eat();
+				if (ch === "\\") {
+					const name = readCommand();
+					if (name === "frac") children.push({
+						t: "frac",
+						num: parseGroup(),
+						den: parseGroup()
+					});
+					else if (name === "sqrt") children.push({
+						t: "sqrt",
+						arg: parseGroup()
+					});
+					else children.push({
+						t: "op",
+						sym: TEX_SYMBOLS[name] ?? name
+					});
+				} else if (ch === "_" || ch === "^") {
+					const prev = children.pop();
+					if (!prev) throw new TexError("下标/上标缺前驱");
+					const arg = parseGroup();
+					children.push(ch === "_" ? {
+						t: "sub",
+						base: prev,
+						arg
+					} : {
+						t: "sup",
+						base: prev,
+						arg
+					});
+				} else if (ch === "{") {
+					children.push(parseSeq());
+					if (peek() !== "}") throw new TexError("未闭合的 {");
+					eat();
+				} else children.push({
+					t: "chr",
+					ch
+				});
+			}
+			return {
+				t: "seq",
+				children
+			};
+		}
+		const root = parseSeq();
+		if (pos !== src.length) throw new TexError("多余的 }");
+		return root;
+	}
+	function mathFont(size) {
+		return `italic 600 ${size}px Georgia,"Times New Roman","Songti SC",serif`;
+	}
+	function measure(ctx, node, size) {
+		const script = size * .66;
+		ctx.font = mathFont(size);
+		switch (node.t) {
+			case "chr":
+			case "op": {
+				const ch = node.t === "chr" ? node.ch : node.sym;
+				return {
+					w: ctx.measureText(ch).width,
+					up: size * .74,
+					down: size * .26
+				};
+			}
+			case "seq": {
+				let w = 0;
+				let up = size * .2;
+				let down = 0;
+				for (const c of node.children) {
+					const m = measure(ctx, c, size);
+					w += m.w;
+					up = Math.max(up, m.up);
+					down = Math.max(down, m.down);
+				}
+				return {
+					w,
+					up,
+					down
+				};
+			}
+			case "frac": {
+				const nm = measure(ctx, node.num, script);
+				const dm = measure(ctx, node.den, script);
+				return {
+					w: Math.max(nm.w, dm.w) + size * .28,
+					up: nm.up + nm.down + size * .34,
+					down: dm.up + dm.down + size * .22
+				};
+			}
+			case "sqrt": {
+				const am = measure(ctx, node.arg, size);
+				return {
+					w: am.w + size * .5,
+					up: am.up + size * .12,
+					down: am.down
+				};
+			}
+			case "sup":
+			case "sub": {
+				const bm = measure(ctx, node.base, size);
+				const am = measure(ctx, node.arg, script);
+				return node.t === "sup" ? {
+					w: bm.w + am.w,
+					up: bm.up + am.up * .85,
+					down: bm.down
+				} : {
+					w: bm.w + am.w,
+					up: bm.up,
+					down: bm.down + am.down + size * .08
+				};
+			}
+		}
+	}
+	function renderAt(ctx, node, x, baseY, size) {
+		const script = size * .66;
+		ctx.font = mathFont(size);
+		switch (node.t) {
+			case "chr":
+			case "op": {
+				const ch = node.t === "chr" ? node.ch : node.sym;
+				ctx.textAlign = "left";
+				ctx.textBaseline = "alphabetic";
+				ctx.fillText(ch, x, baseY);
+				return ctx.measureText(ch).width;
+			}
+			case "seq": {
+				let cx = x;
+				for (const c of node.children) cx += renderAt(ctx, c, cx, baseY, size);
+				return cx - x;
+			}
+			case "frac": {
+				const nm = measure(ctx, node.num, script);
+				const dm = measure(ctx, node.den, script);
+				const w = Math.max(nm.w, dm.w) + size * .28;
+				const ruleY = baseY - size * .1;
+				renderAt(ctx, node.num, x + (w - nm.w) / 2, ruleY - size * .14, script);
+				renderAt(ctx, node.den, x + (w - dm.w) / 2, ruleY + dm.up + size * .14, script);
+				ctx.strokeStyle = ctx.fillStyle;
+				ctx.lineWidth = Math.max(1, size * .045);
+				ctx.beginPath();
+				ctx.moveTo(x + size * .05, ruleY);
+				ctx.lineTo(x + w - size * .05, ruleY);
+				ctx.stroke();
+				return w;
+			}
+			case "sqrt": {
+				const am = measure(ctx, node.arg, size);
+				const signW = size * .42;
+				const topY = baseY - am.up - size * .08;
+				ctx.strokeStyle = ctx.fillStyle;
+				ctx.lineWidth = Math.max(1, size * .05);
+				ctx.lineJoin = "round";
+				ctx.beginPath();
+				ctx.moveTo(x, baseY - size * .08);
+				ctx.lineTo(x + signW * .32, baseY - size * .08);
+				ctx.lineTo(x + signW * .6, topY + size * .04);
+				ctx.lineTo(x + signW, topY);
+				ctx.stroke();
+				ctx.beginPath();
+				ctx.moveTo(x + signW, topY);
+				ctx.lineTo(x + signW + am.w + size * .08, topY);
+				ctx.stroke();
+				renderAt(ctx, node.arg, x + signW + size * .04, baseY, size);
+				return signW + am.w + size * .12;
+			}
+			case "sup":
+			case "sub": {
+				const bm = measure(ctx, node.base, size);
+				const am = measure(ctx, node.arg, script);
+				renderAt(ctx, node.base, x, baseY, size);
+				const argBase = node.t === "sup" ? baseY - bm.up * .85 - am.down * .2 : baseY + bm.down + am.up * .85;
+				renderAt(ctx, node.arg, x + bm.w, argBase, script);
+				return bm.w + am.w;
+			}
+		}
+	}
+	function drawFormula(ctx, el) {
+		const color = el.color ?? "#1F2937";
+		let root = null;
+		try {
+			root = parseTex(el.text);
+		} catch {
+			root = null;
+		}
+		ctx.save();
+		ctx.fillStyle = color;
+		if (!root) {
+			ctx.font = sansFont(el.fontSize ?? 44, 600);
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillText(el.text, el.x + el.w / 2, el.y + el.h / 2, el.w);
+			ctx.restore();
+			return;
+		}
+		let size = el.fontSize ?? 64;
+		let m = measure(ctx, root, size);
+		const scale = Math.min(el.w / Math.max(m.w, 1e-6), el.h / Math.max(m.up + m.down, 1e-6), 1);
+		if (scale < 1) {
+			size *= scale;
+			m = measure(ctx, root, size);
+		}
+		renderAt(ctx, root, el.x + (el.w - m.w) / 2, el.y + (el.h - (m.up + m.down)) / 2 + m.up, size);
 		ctx.restore();
 	}
 	//#endregion
@@ -2290,7 +3841,7 @@
 		const fontSize = el.fontSize ?? 30;
 		const percent = Math.min(100, Math.max(0, el.percent ?? 60));
 		const showText = el.showText !== false;
-		const barH = Math.min(fontSize * 1.35, el.label !== void 0 ? el.h - fontSize * 2.1 : el.h);
+		const barH = Math.max(6, Math.min(fontSize * 1.35, el.label !== void 0 ? el.h - fontSize * 2.1 : el.h));
 		ctx.save();
 		ctx.font = sansFont(fontSize, 600);
 		const textW = showText ? ctx.measureText(`${percent}%`).width : 0;
@@ -2371,96 +3922,175 @@
 		ctx.restore();
 	}
 	function drawElement(ctx, el, localT, sceneElements) {
-		const st = animState(localT, el.anim);
+		const elT = applyTweens(el, localT);
+		const st = animState(localT, elT.anim);
 		if (!st.active) return;
-		const visual = animVisual(el.anim, st.p);
+		const exit = elT.exit ? exitState(localT, elT.exit) : null;
+		if (exit?.phase === "gone") return;
+		const visual = animVisual(elT.anim, st.p);
+		let alpha = visual.alpha;
+		let dx = visual.dx;
+		let dy = visual.dy;
+		let scale = visual.scale;
+		let wipeWidth = visual.wipeWidth;
+		if (exit && exit.phase === "out" && elT.exit) {
+			const ev = exitVisual(elT.exit, exit.q);
+			alpha *= ev.alpha;
+			dx += ev.dx;
+			dy += ev.dy;
+			scale *= ev.scale;
+			if (ev.wipeWidth !== null) wipeWidth = ev.wipeWidth;
+		}
+		const fx = emphasisFx(localT, elT.emphasis);
 		ctx.save();
-		ctx.globalAlpha *= visual.alpha;
-		if (visual.dx !== 0 || visual.dy !== 0) ctx.translate(visual.dx, visual.dy);
-		if (visual.scale !== 1 || visual.rotation !== 0) {
-			const cx = el.x + el.w / 2;
-			const cy = el.y + el.h / 2;
+		ctx.globalAlpha *= alpha;
+		const tx = dx + fx.dx;
+		const ty = dy + fx.dy;
+		if (tx !== 0 || ty !== 0) ctx.translate(tx, ty);
+		const totalScale = scale * fx.scaleMul;
+		if (totalScale !== 1 || visual.rotation !== 0) {
+			const cx = elT.x + elT.w / 2;
+			const cy = elT.y + elT.h / 2;
 			ctx.translate(cx, cy);
 			if (visual.rotation !== 0) ctx.rotate(visual.rotation);
-			if (visual.scale !== 1) ctx.scale(visual.scale, visual.scale);
+			if (totalScale !== 1) ctx.scale(totalScale, totalScale);
 			ctx.translate(-cx, -cy);
 		}
-		const rotateDeg = el.kind === "connector" ? 0 : el.rotate ?? (el.kind === "note" ? -2 : 0);
+		const rotateDeg = elT.kind === "connector" ? 0 : elT.rotate ?? (elT.kind === "note" ? -2 : 0);
 		if (rotateDeg !== 0) {
-			const rx = el.x + el.w / 2;
-			const ry = el.y + el.h / 2;
+			const rx = elT.x + elT.w / 2;
+			const ry = elT.y + elT.h / 2;
 			ctx.translate(rx, ry);
 			ctx.rotate(rotateDeg * Math.PI / 180);
 			ctx.translate(-rx, -ry);
 		}
-		if (visual.wipeWidth !== null) {
+		if (fx.glow > 0) {
+			ctx.shadowColor = "#93C5FD";
+			ctx.shadowBlur = fx.glow;
+		}
+		if (wipeWidth !== null) {
 			ctx.beginPath();
-			ctx.rect(el.x - 4, el.y - 4, el.w * visual.wipeWidth + 8, el.h + 8);
+			ctx.rect(elT.x - 4, elT.y - 4, elT.w * wipeWidth + 8, elT.h + 8);
 			ctx.clip();
 		}
 		const progress = visual.progress;
-		switch (el.kind) {
+		switch (elT.kind) {
 			case "title":
-				drawTitle(ctx, el, progress);
+				drawTitle$1(ctx, elT, progress);
 				break;
 			case "artText":
-				drawArtText(ctx, el, progress);
+				drawArtText(ctx, elT, progress);
 				break;
 			case "shape":
-				drawShape(ctx, el);
+				drawShape(ctx, elT);
 				break;
 			case "text":
-				drawText(ctx, el, progress);
+				drawText(ctx, elT, progress);
 				break;
 			case "input":
-				drawInput(ctx, el);
+				drawInput(ctx, elT);
 				break;
 			case "note":
-				drawNote(ctx, el, progress);
+				drawNote(ctx, elT, progress);
 				break;
 			case "badge":
-				drawBadge(ctx, el);
+				drawBadge(ctx, elT);
 				break;
 			case "code":
-				drawCode(ctx, el, progress);
+				drawCode(ctx, elT, progress, fx.highlightLines);
 				break;
 			case "table":
-				drawTable(ctx, el, progress);
+				drawTable(ctx, elT, progress);
 				break;
 			case "arrayCells":
-				drawArrayCells(ctx, el);
+				drawArrayCells(ctx, elT);
 				break;
 			case "connector":
-				drawConnector(ctx, resolveConnector(el, sceneElements), sceneElements);
+				drawConnector(ctx, resolveConnector(elT, sceneElements), sceneElements, fx.dashFlow !== null ? -localT * fx.dashFlow : void 0);
 				break;
 			case "image":
-				drawImageEl(ctx, el);
+				drawImageEl(ctx, elT);
 				break;
 			case "list":
-				drawList(ctx, el, progress);
+				drawList(ctx, elT, progress);
 				break;
 			case "stepCard":
-				drawStepCard(ctx, el, progress);
+				drawStepCard(ctx, elT, progress);
 				break;
 			case "terminal":
-				drawTerminal(ctx, el, progress);
+				drawTerminal(ctx, elT, progress, fx.highlightLines);
 				break;
 			case "progress":
-				drawProgress(ctx, el);
+				drawProgress(ctx, elT);
 				break;
 			case "kbd":
-				drawKbd(ctx, el);
+				drawKbd(ctx, elT);
 				break;
 			case "browser":
-				drawBrowser(ctx, el);
+				drawBrowser(ctx, elT);
 				break;
 			case "devNode":
-				drawDevNode(ctx, el);
+				drawDevNode(ctx, elT);
 				break;
 			case "phone":
-				drawPhone(ctx, el);
+				drawPhone(ctx, elT);
 				break;
-			case "aiChat": drawAiChat(ctx, el, progress);
+			case "aiChat":
+				drawAiChat(ctx, elT, progress);
+				break;
+			case "barChart":
+				drawBarChart(ctx, elT, progress);
+				break;
+			case "lineChart":
+				drawLineChart(ctx, elT, progress);
+				break;
+			case "pieChart":
+				drawPieChart(ctx, elT, progress);
+				break;
+			case "cursor":
+				drawCursor(ctx, elT, localT);
+				break;
+			case "folderTree":
+				drawFolderTree(ctx, elT, progress);
+				break;
+			case "codeDiff":
+				drawCodeDiff(ctx, elT, progress);
+				break;
+			case "spotlight":
+				drawSpotlight(ctx, elT);
+				break;
+			case "gridBg":
+				drawGridBg(ctx, elT);
+				break;
+			case "groupPanel":
+				drawGroupPanel(ctx, elT);
+				break;
+			case "lane":
+				drawLane(ctx, elT);
+				break;
+			case "quote":
+				drawQuote(ctx, elT, progress);
+				break;
+			case "formula":
+				drawFormula(ctx, elT);
+				break;
+			case "avatar":
+				drawAvatar(ctx, elT);
+				break;
+			case "person": drawPerson(ctx, elT);
+		}
+		if (fx.flashAlpha > 0) {
+			ctx.globalAlpha = fx.flashAlpha;
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(elT.x, elT.y, elT.w, elT.h);
+		}
+		if (fx.ringQ !== null) {
+			ctx.globalAlpha = (1 - fx.ringQ) * .55;
+			ctx.strokeStyle = "#3B82F6";
+			ctx.lineWidth = 5;
+			ctx.beginPath();
+			ctx.arc(elT.x + elT.w / 2, elT.y + elT.h / 2, Math.max(elT.w, elT.h) / 2 * (.35 + .85 * fx.ringQ), 0, Math.PI * 2);
+			ctx.stroke();
 		}
 		ctx.restore();
 	}

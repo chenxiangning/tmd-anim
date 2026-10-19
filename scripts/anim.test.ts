@@ -11,9 +11,11 @@ function projectWith(elements: unknown[]): unknown {
 describe("lintProject", () => {
   it("未知 kind 报告(半成品修复示例)", () => {
     const issues = lintProject(projectWith([{ id: "el-1", kind: "buttun", x: 0, y: 0, w: 100, h: 40 }]));
-    expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({ scene: 0, element: "el-1" });
-    expect(issues[0].message).toContain("buttun");
+    // 元素级断言过滤场景级问题(「*」):本场景 1 元素且无 hero,会另触发稀疏提示
+    const elIssues = issues.filter((i) => i.element !== "*");
+    expect(elIssues).toHaveLength(1);
+    expect(elIssues[0]).toMatchObject({ scene: 0, element: "el-1" });
+    expect(elIssues[0].message).toContain("buttun");
   });
 
   it("connector 悬空 fromEl/toEl 报告", () => {
@@ -21,7 +23,7 @@ describe("lintProject", () => {
       { id: "a", kind: "text", x: 0, y: 0, w: 100, h: 40, text: "hi" },
       { id: "c", kind: "connector", x: 0, y: 0, w: 10, h: 10, from: [0, 0], to: [9, 9], fromEl: "ghost", toEl: "a" },
     ];
-    const issues = lintProject(projectWith(els));
+    const issues = lintProject(projectWith(els)).filter((i) => i.element !== "*");
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({ element: "c" });
     expect(issues[0].message).toContain("fromEl");

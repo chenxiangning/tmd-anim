@@ -101,6 +101,7 @@ export function EditorHeader({ project, saveState, backend, previewing, onRename
         open={aiGuideOpen}
         onClose={() => setAiGuideOpen(false)}
         projectPath={aiPromptPath}
+        project={project}
         backend={backend}
       />
     </header>

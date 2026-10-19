@@ -46,7 +46,12 @@ export function drawWindowDots(ctx: CanvasRenderingContext2D, x: number, y: numb
   });
 }
 
-export function drawCode(ctx: CanvasRenderingContext2D, el: CodeElement, progress?: number): void {
+export function drawCode(
+  ctx: CanvasRenderingContext2D,
+  el: CodeElement,
+  progress?: number,
+  hl?: { lines: [number, number]; alpha: number } | null,
+): void {
   const fontSize = el.fontSize ?? 26;
   const lineH = fontSize * 1.6;
   const headerH = fontSize * 2.1;
@@ -61,6 +66,15 @@ export function drawCode(ctx: CanvasRenderingContext2D, el: CodeElement, progres
   ctx.clip();
   ctx.fillStyle = bg;
   ctx.fill();
+
+  // 强调行高亮(emphasis.highlightLines):画在底色上、代码文字下
+  if (hl) {
+    const [ha, hb] = hl.lines;
+    ctx.fillStyle = el.dark
+      ? `rgba(96,165,250,${(0.3 * hl.alpha).toFixed(3)})`
+      : `rgba(59,130,246,${(0.14 * hl.alpha).toFixed(3)})`;
+    ctx.fillRect(el.x, el.y + headerH + lineH * 0.2 + (ha - 1) * lineH, el.w, (hb - ha + 1) * lineH);
+  }
 
   // 标题栏:三个圆点 + 文件名
   const dotR = fontSize * 0.22;

@@ -21,6 +21,9 @@ export function sceneDuration(scene: Scene): number {
   let end = 0;
   for (const el of scene.elements) {
     end = Math.max(end, el.anim.start + el.anim.duration);
+    // 离场与补间窗口也撑起场景时长:防止离场期/进度补间被 dwell 截断
+    if (el.exit) end = Math.max(end, el.exit.start + el.exit.duration);
+    if (el.tweens) for (const tw of el.tweens) end = Math.max(end, tw.start + tw.duration);
   }
   const base = Math.max(end, 0.1) + Math.max(0, scene.dwell ?? 0);
   // 配音未播完不切幕:场景自动延长到配音有效时长

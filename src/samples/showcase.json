@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "name": "新元素全家福",
+  "canvas": { "width": 1920, "height": 1080, "bg": "#F4F4F1" },
+  "scenes": [
+    {
+      "id": "sc-1",
+      "name": "数据讲好故事",
+      "dwell": 1.4,
+      "elements": [
+        { "id": "el-t1", "kind": "title", "x": 360, "y": 60, "w": 1200, "h": 100, "text": "新元素:数据可视化三件套", "highlight": ["数据可视化"], "fontSize": 58, "anim": { "type": "pop", "start": 0, "duration": 0.6 } },
+        { "id": "el-b1", "kind": "barChart", "x": 80, "y": 220, "w": 560, "h": 620, "title": "版本 P95 延迟(ms)", "series": [ { "label": "v1", "value": 420 }, { "label": "v2", "value": 260 }, { "label": "v3", "value": 160 } ], "showValue": true, "anim": { "type": "typewriter", "start": 0.4, "duration": 1.6 } },
+        { "id": "el-l1", "kind": "lineChart", "x": 680, "y": 220, "w": 560, "h": 620, "title": "访问量 vs 下单量", "smooth": true, "dot": true, "series": [ { "label": "访问量", "points": [12, 25, 20, 48, 65, 90] }, { "label": "下单量", "points": [5, 12, 18, 30, 52, 70] } ], "anim": { "type": "typewriter", "start": 0.8, "duration": 1.8 } },
+        { "id": "el-p1", "kind": "pieChart", "x": 1280, "y": 220, "w": 560, "h": 620, "title": "流量构成", "donut": true, "legend": "right", "slices": [ { "label": "搜索", "value": 45 }, { "label": "直连", "value": 30 }, { "label": "外链", "value": 25 } ], "anim": { "type": "typewriter", "start": 1.2, "duration": 1.4 } },
+        { "id": "el-n1", "kind": "note", "x": 700, "y": 880, "w": 520, "h": 130, "text": "结论:图表配 typewriter 入场 = 逐柱/逐段/扫掠生长", "fontSize": 28, "anim": { "type": "riseUp", "start": 2.6, "duration": 0.5 } },
+        { "id": "el-s1", "kind": "spotlight", "x": 700, "y": 250, "w": 520, "h": 540, "shape": "rect", "strength": 0.55, "anim": { "type": "fade", "start": 3.2, "duration": 0.5 } }
+      ]
+    },
+    {
+      "id": "sc-2",
+      "name": "UI 演示与代码",
+      "dwell": 1.4,
+      "elements": [
+        { "id": "el-t2", "kind": "title", "x": 360, "y": 60, "w": 1200, "h": 100, "text": "演示三件套:光标 / 文件树 / 代码对比", "highlight": ["光标"], "fontSize": 56, "anim": { "type": "pop", "start": 0, "duration": 0.6 } },
+        { "id": "el-f1", "kind": "folderTree", "x": 80, "y": 220, "w": 560, "h": 660, "root": "my-app", "items": [ { "name": "src", "icon": "dir" }, { "name": "index.ts", "icon": "file", "depth": 1 }, { "name": "app.ts", "icon": "file", "depth": 1, "comment": "入口" }, { "name": "components", "icon": "dir", "depth": 1 }, { "name": "Button.tsx", "icon": "file", "depth": 2 }, { "name": "package.json", "icon": "file" } ], "fontSize": 26, "anim": { "type": "typewriter", "start": 0.3, "duration": 1.6 } },
+        { "id": "el-d1", "kind": "codeDiff", "x": 700, "y": 220, "w": 1120, "h": 420, "filename": "api.ts", "hunks": [ { "ctx": "@@ fetchWithRetry @@", "lines": [ { "tag": " ", "text": "const cache = new Map();" }, { "tag": "-", "text": "return fetch(url);" }, { "tag": "+", "text": "return fetchWithTimeout(url, 3000);" }, { "tag": "+", "text": "" }, { "tag": " ", "text": "function onError(err: Error) {" } ] } ], "fontSize": 26, "anim": { "type": "typewriter", "start": 1.2, "duration": 1.4 } },
+        { "id": "el-q1", "kind": "quote", "x": 700, "y": 690, "w": 540, "h": 190, "text": "过早优化是万恶之源", "author": "Knuth", "accent": "#8B5CF6", "fontSize": 34, "anim": { "type": "riseUp", "start": 2.2, "duration": 0.5 } },
+        { "id": "el-f2", "kind": "formula", "x": 1290, "y": 690, "w": 530, "h": 190, "text": "T(n) = O(n \\log n)", "fontSize": 56, "anim": { "type": "zoomIn", "start": 2.4, "duration": 0.6 } },
+        { "id": "el-c1", "kind": "cursor", "x": 0, "y": 0, "w": 40, "h": 40, "points": [ [ 500, 860 ], [ 960, 760 ], [ 1180, 500 ], [ 900, 430 ] ], "clicks": [ 1.4, 2.6 ], "anim": { "type": "fade", "start": 0.8, "duration": 3.0 } }
+      ]
+    },
+    {
+      "id": "sc-3",
+      "name": "角色分工与编排",
+      "dwell": 1.6,
+      "elements": [
+        { "id": "el-g0", "kind": "gridBg", "x": 0, "y": 0, "w": 1920, "h": 1080, "step": 48, "anim": { "type": "fade", "start": 0, "duration": 0.3 } },
+        { "id": "el-l0", "kind": "lane", "x": 60, "y": 200, "w": 1800, "h": 800, "direction": "h", "count": 3, "labels": [ "客户端", "网关", "服务" ], "anim": { "type": "fade", "start": 0.2, "duration": 0.4 } },
+        { "id": "el-t3", "kind": "title", "x": 360, "y": 50, "w": 1200, "h": 110, "text": "泳道 + 分组 + 角色 + 时间轴三段", "highlight": ["时间轴三段"], "fontSize": 54, "anim": { "type": "pop", "start": 0, "duration": 0.6 } },
+        { "id": "el-a1", "kind": "avatar", "x": 150, "y": 270, "w": 260, "h": 72, "name": "用户", "status": "online", "color": "#3B82F6", "anim": { "type": "pop", "start": 0.5, "duration": 0.5 } },
+        { "id": "el-p1", "kind": "person", "x": 420, "y": 380, "w": 170, "h": 360, "pose": "point", "color": "#3B82F6", "anim": { "type": "riseUp", "start": 0.8, "duration": 0.6 } },
+        { "id": "el-dn1", "kind": "devNode", "x": 820, "y": 420, "w": 320, "h": 100, "dev": "gateway", "label": "API 网关", "sub": "限流 / 鉴权", "anim": { "type": "pop", "start": 1.1, "duration": 0.5 } },
+        { "id": "el-dn2", "kind": "devNode", "x": 1360, "y": 420, "w": 320, "h": 100, "dev": "database", "label": "订单库", "sub": "MySQL 8.0", "anim": { "type": "pop", "start": 1.4, "duration": 0.5 } },
+        { "id": "el-cn1", "kind": "connector", "x": 0, "y": 0, "w": 24, "h": 24, "from": [ 600, 560 ], "to": [ 810, 470 ], "fromEl": "el-p1", "toEl": "el-dn1", "color": "#475569", "width": 5, "route": "smooth", "emphasis": [ { "type": "dashFlow", "start": 2.0, "duration": 2.5 } ], "anim": { "type": "fade", "start": 1.7, "duration": 0.4 } },
+        { "id": "el-cn2", "kind": "connector", "x": 0, "y": 0, "w": 24, "h": 24, "from": [ 1150, 470 ], "to": [ 1350, 470 ], "fromEl": "el-dn1", "toEl": "el-dn2", "label": "查询", "color": "#475569", "width": 5, "route": "elbow", "emphasis": [ { "type": "dashFlow", "start": 2.2, "duration": 2.5 } ], "anim": { "type": "fade", "start": 1.8, "duration": 0.4 } },
+        { "id": "el-gp1", "kind": "groupPanel", "x": 1280, "y": 250, "w": 480, "h": 330, "title": "核心服务", "accent": "#3B82F6", "anim": { "type": "fade", "start": 1.0, "duration": 0.4 } },
+        { "id": "el-sc1", "kind": "stepCard", "x": 150, "y": 820, "w": 520, "h": 160, "num": "01", "title": "入场编排", "desc": "错开 start,别同刻挤入", "accent": "#2563EB", "anim": { "type": "riseUp", "start": 2.8, "duration": 0.5 }, "exit": { "type": "slideOutLeft", "start": 6.4, "duration": 0.6 } },
+        { "id": "el-sc2", "kind": "stepCard", "x": 700, "y": 820, "w": 520, "h": 160, "num": "02", "title": "强调事件", "desc": "dashFlow 让数据流跑起来", "accent": "#2563EB", "anim": { "type": "riseUp", "start": 3.2, "duration": 0.5 }, "emphasis": [ { "type": "glow", "start": 4.4, "duration": 0.9 } ], "exit": { "type": "slideOutLeft", "start": 6.4, "duration": 0.6 } },
+        { "id": "el-sc3", "kind": "stepCard", "x": 1250, "y": 820, "w": 520, "h": 160, "num": "03", "title": "属性补间", "desc": "progress 走值 / 高亮格游移", "accent": "#2563EB", "anim": { "type": "riseUp", "start": 3.6, "duration": 0.5 }, "exit": { "type": "slideOutRight", "start": 6.4, "duration": 0.6 } },
+        { "id": "el-pr1", "kind": "progress", "x": 150, "y": 970, "w": 760, "h": 90, "label": "渲染进度", "percent": 10, "showText": true, "fontSize": 24, "tweens": [ { "field": "percent", "from": 10, "to": 92, "start": 4.6, "duration": 2.0, "easing": "easeOut" } ], "anim": { "type": "fade", "start": 4.4, "duration": 0.3 } },
+        { "id": "el-ac1", "kind": "arrayCells", "x": 1000, "y": 1015, "w": 640, "h": 60, "cells": [ "t", "o", "k", "e", "n", "s" ], "cellSize": 52, "gap": 12, "perRow": 6, "fontSize": 26, "activeIndex": 0, "tweens": [ { "field": "activeIndex", "from": 0, "to": 5, "start": 4.6, "duration": 2.0 } ], "anim": { "type": "fade", "start": 4.4, "duration": 0.3 } }
+      ]
+    }
+  ]
+}

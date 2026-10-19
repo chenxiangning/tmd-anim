@@ -4,6 +4,15 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
+## [Unreleased]
+
+### 新增
+
+- 新元素 14 种:柱状图/折线图/饼图(数据驱动,typewriter 入场逐段生长)、光标(路径插值 + 点击涟漪 + 按压区间)、文件树(逐行展开)、代码对比(行级增删改着色)、聚光灯(全屏暗角聚焦)、网格背景、分组面板、泳道、引用块、数学公式(TeX 子集零依赖排版)、头像、方块人;元素库新增图表/演示/舞台/角色分组
+- 时间轴三段协议(元素级可选):exit 离场动画(淡出/四向滑出/缩小/擦除)、emphasis 强调事件(pulse/shake/glow/flash/ring,与专用 highlightLines 代码扫行、dashFlow 连线数据流)、tweens 属性补间白名单(progress.percent 走值、arrayCells.activeIndex 高亮格游移);exit/tween 结束时刻撑起场景时长;属性面板可编辑离场,时间轴面板可视化离场(红)/强调(琥珀)泳道
+- AI 生成质量层:`pnpm anim validate` 新增 8 类构图 lint(场景稀疏/同刻堆叠/聚光灯次序/网格首位/孤儿面板/离场后强调丢弃/光标点数/公式可解析),新增 `--layout` 布局报告(归一化落位 + 生命周期终点,免视觉自查);新增 `docs/recipes.md` 叙事配方库(10 个构图模板)投递协议目录;「AI 调整」提示词注入当前项目体检摘要(统计 + lint 前 5 条)并引用配方库与新元素活例 `showcase.json`
+- 新活例 `src/samples/showcase.json`(新元素 + 时间轴三编排放到一起的参照项目),随协议投递
+
 ## [0.1.7] - 2026-10-19
 
 ### 新增

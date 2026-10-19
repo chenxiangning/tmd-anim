@@ -161,7 +161,7 @@ export function resolveConnector(el: ConnectorElement, elements: SceneElement[])
   return { ...el, from: [from.x, from.y], to: [to.x, to.y] };
 }
 
-export function drawConnector(ctx: CanvasRenderingContext2D, el: ConnectorElement, elements: SceneElement[] = []): void {
+export function drawConnector(ctx: CanvasRenderingContext2D, el: ConnectorElement, elements: SceneElement[] = [], dashOffset?: number): void {
   const [x1, y1] = el.from;
   const [x2, y2] = el.to;
   const color = el.color ?? "#475569";
@@ -172,6 +172,11 @@ export function drawConnector(ctx: CanvasRenderingContext2D, el: ConnectorElemen
   ctx.strokeStyle = color;
   ctx.lineWidth = lineW;
   ctx.lineCap = "round";
+  // 强调数据流(emphasis.dashFlow):虚线滚动,速度由 dashOffset 变化率决定
+  if (dashOffset !== undefined) {
+    ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
+    ctx.lineDashOffset = dashOffset;
+  }
   ctx.beginPath();
   if (route.mode === "segments") {
     strokeRoundedPolyline(ctx, route.points, { x: x2, y: y2 });
@@ -183,6 +188,7 @@ export function drawConnector(ctx: CanvasRenderingContext2D, el: ConnectorElemen
     ctx.quadraticCurveTo(route.geo!.control.x, route.geo!.control.y, x2, y2);
   }
   ctx.stroke();
+  ctx.setLineDash([]);
   // arrow 缺省 true;false = 纯直线/曲线(直线库入口)
   if (el.arrow !== false) {
     const ang = route.endAngle;

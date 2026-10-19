@@ -41,6 +41,18 @@
 | `type` | string | 否 | `pop` 弹出 / `fade` 淡入 / `riseUp` 上浮 / `dropDown` 顶部落入 / `slideLeft` 左侧滑入 / `slideRight` 右侧滑入 / `zoomIn` 缩放入场 / `spinIn` 旋转入场 / `wipe` 左向右擦除 / `typewriter` 打字机(仅文本类元素生效,其余元素回落快速淡入) |
 | `easing` | string | 否 | `linear` 线性 / `easeOut` 缓出 / `easeInOut` 缓入缓出 / `back` 回弹;缺省时按类型取默认(pop/spinIn/dropDown 回弹,typewriter 线性,其余缓出),非法值丢弃 |
 
+`typewriter` 也是分段显现开关:列表(list)/表格(table)/柱状图(barChart)/折线图(lineChart)/饼图(pieChart)/文件树(folderTree)/代码对比(codeDiff) 在其入场窗口内逐行/逐段/逐柱显现;其余动画类型这些元素一次性全显。
+
+## 时间轴三段(元素级可选,缺省 = 入场后常驻到场景结束)
+
+元素生命周期 = 入场(anim) → 常态 → 离场(exit)窗口 → 不存在。exit 与 tweens 的结束时刻都会撑起场景时长(不会被 dwell 截断)。
+
+**exit 离场动画**:`{ type, start, duration?, easing? }`。type = `fadeOut` 淡出 / `slideOutLeft|slideOutRight|slideOutUp|slideOutDown` 四向滑出 / `zoomOut` 缩小消失 / `wipeOut` 右向左擦除;start 钳到不早于入场结束;默认缓入缓出。
+
+**emphasis 强调事件**(数组,可多个,常驻期间叠加):`{ type, start, duration?, easing?, strength?, lines? }`。type = `pulse` 缩放脉动 / `shake` 抖动 / `glow` 发光 / `flash` 白闪 / `ring` 扩散圈 / `highlightLines`(仅 code/terminal,lines=[起,止] 行区间 1 起,扫过式高亮) / `dashFlow`(仅 connector,虚线滚动表数据流);strength 强度 0.1-3 默认 1;落在离场开始后的事件被丢弃。
+
+**tweens 属性补间**(数组,白名单字段随时间插值,不上通用关键帧):`{ field, from?, to, start, duration, easing? }`。field = `percent`(仅 progress,进度从 from/静态值走到 to) / `activeIndex`(仅 arrayCells,高亮格从 from/静态值游移到 to,渲染取整)。
+
 ## 元素共有字段
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -51,7 +63,7 @@
 | `anim` | Anim | 否 | 见上 |
 | `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
 
-## 元素类型(21 种)
+## 元素类型(35 种)
 
 | kind | 专有字段 | 说明 |
 |---|---|---|
@@ -66,16 +78,30 @@
 | `badge` | `text`, `bg?`, `color?`, `fontSize?(34)` | 徽章胶囊;实际宽度取 `max(w, 文本宽+内边距)` 不会被裁 |
 | `list` | `items: string[]`, `marker?("dot")`, `accent?`, `fontSize?(36)`, `color?` | 要点列表:每行一条(不折行,超宽溢出);marker = `dot` 圆点 / `check` 勾 / `number` 序号芯片,marker 与序号用 accent 色 |
 | `stepCard` | `num?("1")`, `title`, `desc?`, `highlight?`, `accent?`, `fontSize?(32)` | 步骤卡片:白底圆角卡,accent 序号芯片 + 加粗标题,desc 支持高亮芯片 |
-| `progress` | `label?`, `percent?(60)`, `barColor?`, `trackColor?`, `showText?(true)`, `fontSize?(30)` | 进度条:percent 钳 0-100;有 label 时 label 行在上(百分比右对齐同行)、轨道占下方;无 label 时轨道在垂直居中、百分比缀于右侧 |
+| `progress` | `label?`, `percent?(60)`, `barColor?`, `trackColor?`, `showText?(true)`, `fontSize?(30)` | 进度条:percent 钳 0-100;有 label 时 label 行在上(百分比右对齐同行)、轨道占下方;无 label 时轨道在垂直居中、百分比缀于右侧;`tweens.field=percent` 可让进度走值 |
 | `kbd` | `text`, `bg?`, `fontSize?(36)` | 按键:text 按空格拆成键帽(白底描边 + 底部投影),单独 `+` 渲染为灰色连接符;整行水平居中 |
 | `browser` | `url?`, `fontSize?(26)`, `body?("FFFFFF")` | 浏览器窗口:mac 三点 + 地址栏胶囊;内容区为纯色底,后绘制的元素叠加其上充当页面内容 |
-| `arrayCells` | `cells: string[]`, `colors?`, `cellSize?(88)`, `gap?(14)`, `perRow?`, `fontSize?` | 色块数组(token/字节格),从 (x,y) 起按 perRow 折行;colors 按索引给逐块底色,缺省走粉彩色板 |
+| `arrayCells` | `cells: string[]`, `colors?`, `cellSize?(88)`, `gap?(14)`, `perRow?`, `fontSize?`, `activeIndex?` | 色块数组(token/字节格),从 (x,y) 起按 perRow 折行;colors 按索引给逐块底色,缺省走粉彩色板;activeIndex(0 起,-1 无)高亮格描边 + 顶部指针,`tweens.field=activeIndex` 可游移 |
 | `shape` | `shape("rect"/"ellipse"/"triangle"/"diamond"/"hexagon"/"star"/"cylinder"/"blockArrow"/"speechBubble")`, `fill?`, `stroke?`, `strokeWidth?`, `radius?`(矩形圆角), `text?`, `fontSize?(28)`, `color?`, `sketch?(false)`, `sketchSeed?` | 基础形状;fill 留空 = 无填充,fill 与描边都缺省时给浅灰底兜底。`text` 为居中内嵌文本,文字色缺省按填充亮度反推(亮色底深字/暗色底白字),`color` 可覆盖;画布上双击可改。`sketch: true` 手绘描边:轮廓按 `sketchSeed` 种子确定性抖动并叠复线——编辑器点击/粘贴时随机生成种子(缺省按元素 id 稳定展开),同种子永远同形状,预览与导出一致;协议侧想换一份手绘就换个种子。菱形(流程判断)/六边形/星形(强调)/圆柱(数据库)/块箭头(流向)/对话框为流程图与架构图常用变体 |
-| `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `fromFocus?`, `toFocus?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省;路径被其他元素遮挡时自动改走直角避让重排,绕开障碍后仍回原语义)/ elbow 直角正交(始终避让:出口方向按绑定元素搜索锥判定,出口段钳到朝对端投影永不相交,被挡时枚举 L/Z 中段取不穿障的最短路径,拐角半径 16 圆滑)/ straight 直线(不避让);非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点实时解析——`fromFocus`/`toFocus`(归一化 [0..1, 0..1])存在则固定在元素上的相对位置(编辑器拖拽吸附绑定时自动记录,元素移动/缩放端点跟随且不滑动不跳边),否则取「元素中心朝另一端」射线与包围盒边界的交点;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关 |
+| `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `fromFocus?`, `toFocus?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省;路径被其他元素遮挡时自动改走直角避让重排,绕开障碍后仍回原语义)/ elbow 直角正交(始终避让:出口方向按绑定元素搜索锥判定,出口段钳到朝对端投影永不相交,被挡时枚举 L/Z 中段取不穿障的最短路径,拐角半径 16 圆滑)/ straight 直线(不避让);非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点实时解析——`fromFocus`/`toFocus`(归一化 [0..1, 0..1])存在则固定在元素上的相对位置(编辑器拖拽吸附绑定时自动记录,元素移动/缩放端点跟随且不滑动不跳边),否则取「元素中心朝另一端」射线与包围盒边界的交点;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关;`emphasis.field=dashFlow` 让其虚线滚动表数据流 |
 | `image` | `src`, `radius?(12)` | 图片,contain 适配圆角裁剪;src 为绝对路径或 dataURL |
 | `phone` | `body?`, `frame?` | 手机 mock:圆角深色机身 + 顶部刘海胶囊 + 底部 home 指示条,中间为屏幕区(body 底色);后绘制元素可叠加在屏幕上充当界面内容,与 browser 同模式 |
 | `aiChat` | `title?`, `prompt?`, `reply?`, `fontSize?(26)`, `dark?` | AI 对话卡:紫色四角星徽标 + 标题头部;`prompt` 为右对齐用户气泡,`reply` 为左对齐 AI 回复区(支持高亮芯片,`dark: true` 深色模式);画布双击改 reply |
 | `devNode` | `dev("database"/"redis"/"obs"/"cloud"/"server"/"api"/"queue"/"container"/"gateway"/"loadBalancer"/"cdn"/"auth"/"function"/"git")`, `label?`, `sub?`, `fontSize?(26)` | 开发组件节点:架构图常用资源;左侧按变体程序化绘制的图标色块 + 主名称 + 副标题(规格/说明),主色随变体(数据库蓝/Redis 红/对象存储橙/云/服务器/API/消息队列/容器);画布上双击改名称 |
+| `barChart` | `title?`, `series: {label, value, color?}[]`, `horizontal?`, `showValue?(true)`, `axis?(true)`, `max?`(缺省按数据 niceCeil), `fontSize?(28)` | 柱状图:数据驱动,垂直(缺省)或水平条形;typewriter 入场 = 逐柱生长(柱间窗口均分),其余类型一次性全显 |
+| `lineChart` | `title?`, `series: {label, color?, points: number[]}[]`(≤3 条), `smooth?`, `dot?(true)`, `area?`, `axis?(true)`, `grid?(true)`, `min?/max?`(缺省按数据留边), `fontSize?(26)` | 折线图:沿路径 draw-on 入场(边界段插值);smooth 中点贝塞尔平滑,area 面积填充;多序列自动图例 |
+| `pieChart` | `title?`, `slices: {label, value, color?}[]`, `donut?`, `legend?("right"/"bottom"/"none")`, `startAngle?(-90)`, `fontSize?(26)` | 饼图/环图:扫掠展开入场;donut 中央显示合计;非正值 slice 被过滤 |
+| `cursor` | `points: [x,y][]`(≥2), `clicks?: number[]`(场景秒,涟漪圈), `hold?: [start,end]`(按压区间) | 鼠标光标(mac 箭头):移动发生在入场窗口内(与 anim.start/duration 绑定,与动画类型无关),p=1 后停在末点;建议入场 duration 拉到 2-3s 让轨迹可读 |
+| `folderTree` | `root?("project")`, `items: {name, depth?, icon?:dir/file, comment?}[]`, `fontSize?(26)` | 文件树:mac 圆角卡 + 根目录头;depth 缺省继承上一行(首行 0);typewriter 入场 = 逐行显现 |
+| `codeDiff` | `filename?`, `hunks: {ctx?, lines: {tag:" "/"+"/"-", text}[]}[]`, `fontSize?(24)`, `dark?(true)` | 代码 diff:+绿/-红 行底与前缀,ctx 行灰色;typewriter 入场 = 逐行显现 |
+| `spotlight` | `shape?("rect"/"ellipse")`, `strength?(0.65)` | 聚光灯:全屏暗角、只亮本元素几何区(圆角矩形/椭圆孔);约定放在 elements 数组末尾(其后的元素暗角盖不住,lint 强制校验) |
+| `gridBg` | `step?(40)`, `color?`, `dot?(false)`, `axis?` | 网格/点阵背景,为流程图垫底;约定放在 elements[0](lint 校验) |
+| `groupPanel` | `title?`, `accent?`, `fill?`, `stroke?`, `radius?(24)` | 分组面板:圆角卡片 + 骑跨上边框的标题芯片;纯视觉归拢,子元素仍绝对坐标置内;lint 警告面板内无元素的孤儿 |
+| `lane` | `direction?("h"/"v")`, `count?(2-4)`, `labels?: string[]`, `gutter?(6)` | 泳道:平行色带 + 标签(按角色/阶段分栏),元素置带内绝对坐标 |
+| `quote` | `text`, `author?`, `accent?`, `fontSize?(36)` | 引用块:左侧竖条 + 引文,可署名 |
+| `formula` | `text`(TeX 子集), `fontSize?(64)`, `color?` | 数学公式:支持 `\frac{}{}` `\sqrt{}` 上下标(`^`/`_`) `\sum` `\int` 希腊字母等;解析失败回落纯文本 + lint 警告;超界自动缩放到元素框内 |
+| `avatar` | `name?`, `src?`(图片) 或 `initials?`, `status?("online"/"offline"/"busy")`, `color?` | 头像:圆形(图片 contain 裁剪,未就绪回退 initials)+ 名称胶囊 + 右下状态点 |
+| `person` | `pose?("stand"/"point"/"think")`, `color?` | 方块人:极简扁平角色,服务「用户/系统/我们」叙事站位;think 姿态带头侧思考泡 |
 
 ## 高亮芯片规则
 
@@ -84,10 +110,15 @@
 
 ## agent 工作流建议
 
-1. 复制 `src/samples/http.json` 为模板改内容;桌面版协议副本在 `~/.tmd-anim/protocol/`
-   (`schema.md`、`http-example.json`、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,
+1. 复制 `src/samples/http.json` 为模板改内容,或先查 `docs/recipes.md`(叙事配方库:
+   开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾,套模板再填槽);
+   桌面版协议副本在 `~/.tmd-anim/protocol/`
+   (`schema.md`、`recipes.md`、`http-example.json`、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,
    应用启动时自动投递)。需要小黑插画风格(手绘怪诞配图)时先读 `xiaohei-style.md`。
-2. 自查:运行 `pnpm anim validate <文件>` —— 退出码 2 = 结构错误必须修;警告(未知 kind、悬空绑定、坐标越界、负 start、空 text)建议顺手修。`--json` 输出结构化结果。
+2. 自查:运行 `pnpm anim validate <文件>` —— 退出码 2 = 结构错误必须修;警告(未知 kind、悬空绑定、
+   坐标越界、负 start、空 text、场景稀疏、同刻堆叠、聚光灯次序、网格首位、孤儿面板、
+   离场后强调被丢弃、光标点数不足、公式不可解析)建议逐条修。`--json` 输出结构化结果;
+   `--layout` 额外输出每个元素的归一化落位与生命周期终点(免视觉自查构图)。
 3. 交付:Tauri 桌面版项目文件在 `~/.tmd-anim/projects/<id>.json`,应用 watch 该文件自动热重载,改完保存即生效(顶栏「重新载入」可手动兜底);浏览器版通过「导入 JSON」或拖拽载入。
 
 ## 导出

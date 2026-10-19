@@ -11,6 +11,7 @@ export function drawArrayCells(ctx: CanvasRenderingContext2D, el: ArrayCellsElem
   const gap = el.gap ?? 14;
   const perRow = Math.max(1, el.perRow ?? el.cells.length);
   const fontSize = el.fontSize ?? size * 0.5;
+  const active = el.activeIndex ?? -1;
   ctx.save();
   ctx.font = sansFont(fontSize, 600);
   ctx.textAlign = "center";
@@ -23,6 +24,20 @@ export function drawArrayCells(ctx: CanvasRenderingContext2D, el: ArrayCellsElem
     ctx.fill();
     ctx.fillStyle = "#1E293B";
     ctx.fillText(cell, cx + size / 2, cy + size / 2 + 1);
+    // 高亮格:tweens.activeIndex 游移目标;描边 + 顶部小三角指针
+    if (i === active) {
+      ctx.strokeStyle = "#2563EB";
+      ctx.lineWidth = 4;
+      roundRect(ctx, cx + 2, cy + 2, size - 4, size - 4, size * 0.16);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + size / 2 - 10, cy - 4);
+      ctx.lineTo(cx + size / 2 + 10, cy - 4);
+      ctx.lineTo(cx + size / 2, cy + 10);
+      ctx.closePath();
+      ctx.fillStyle = "#2563EB";
+      ctx.fill();
+    }
   });
   ctx.restore();
 }

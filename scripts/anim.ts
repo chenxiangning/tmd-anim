@@ -1,35 +1,18 @@
 #!/usr/bin/env node
 /**
- * anim CLI:项目 JSON 校验 + 统计,给 coding agent 改完文件后自查用。
- * 用法:pnpm anim validate <file...> [--json]
+ * anim CLI:项目 JSON 校验 + 统计 + 布局报告,给 coding agent 改完文件后自查用。
+ * 用法:pnpm anim validate <file...> [--json] [--layout]
  * 退出码:0 = 结构合法(lint 警告不算错误);2 = 结构错误或用法错误。
  * 不做 node 侧渲染:渲染唯一路径在 src/core/render(需浏览器 canvas)。
+ * lint/统计/布局实现位于 src/core/lint.ts(与应用内 AI 提示词共用)。
  */
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { ELEMENT_KINDS, ProjectParseError, normalizeProject } from "../src/core/normalize";
-import { DEV_META } from "../src/core/render/devNode";
-import { projectDuration } from "../src/core/timeline";
-import type { Project } from "../src/core/types";
+import { ProjectParseError, normalizeProject } from "../src/core/normalize";
+import { layoutOf, lintProject, statsOf, type LayoutRow, type LintIssue, type ProjectStats } from "../src/core/lint";
 
-/** lint 警告:normalize 会静默吞掉、但 agent 应当知道的问题 */
-export interface LintIssue {
-  /** 场景下标,0 起 */
-  scene: number;
-  /** 元素 id(原始 JSON 缺 id 时给占位) */
-  element: string;
-  message: string;
-}
-
-/** 结构统计:基于归一化后的项目,反映真正会被渲染的内容 */
-export interface ProjectStats {
-  scenes: number;
-  elements: number;
-  /** kind -> 数量 */
-  kinds: Record<string, number>;
-  /** 总时长(秒) */
-  duration: number;
-}
+export { layoutOf, lintProject, statsOf };
+export type { LayoutRow, LintIssue, ProjectStats };
 
 interface FileReport {
   file: string;
@@ -38,85 +21,11 @@ interface FileReport {
   error?: string;
   stats?: ProjectStats;
   issues: LintIssue[];
+  /** --layout 时输出:归一化后的元素落位与生命周期 */
+  layout?: LayoutRow[];
 }
 
-/** asRecord 轻量版:仅判「对象但非数组」,字段类型由各 lint 规则自行 typeof 检查 */
-function asObject(v: unknown): Record<string, unknown> | null {
-  return v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
-}
-
-/**
- * 对归一化前的原始 JSON 做 lint:专报 normalize 会静默修复或跳过的五类问题:
- * 未知 kind、connector 悬空绑定、坐标越界(connector/arrayCells 的 w/h 是占位,跳过)、
- * anim.start 负值、空 text。
- */
-export function lintProject(raw: unknown): LintIssue[] {
-  const issues: LintIssue[] = [];
-  const root = asObject(raw);
-  if (!root || root.version !== 1 || !Array.isArray(root.scenes)) return issues;
-  const canvas = asObject(root.canvas) ?? {};
-  const cw = typeof canvas.width === "number" ? canvas.width : 1920;
-  const ch = typeof canvas.height === "number" ? canvas.height : 1080;
-  root.scenes.forEach((scene, si) => {
-    const sc = asObject(scene);
-    if (!sc || !Array.isArray(sc.elements)) return;
-    const ids = new Set<string>();
-    for (const el of sc.elements) {
-      const id = asObject(el)?.id;
-      if (typeof id === "string" && id) ids.add(id);
-    }
-    sc.elements.forEach((el, ei) => {
-      const e = asObject(el);
-      if (!e) return;
-      const at = { scene: si, element: typeof e.id === "string" && e.id ? e.id : `el-${ei + 1}` };
-      if (typeof e.kind !== "string" || ELEMENT_KINDS[e.kind] !== true) {
-        issues.push({ ...at, message: `未知 kind ${JSON.stringify(e.kind ?? null)},该元素会被静默跳过不渲染` });
-      }
-      if (e.kind === "connector") {
-        for (const key of ["fromEl", "toEl"] as const) {
-          const bound = e[key];
-          if (typeof bound === "string" && !ids.has(bound)) {
-            issues.push({ ...at, message: `${key} 指向不存在的元素 id ${JSON.stringify(bound)},绑定会被忽略` });
-          }
-        }
-      }
-      const numeric =
-        typeof e.x === "number" && typeof e.y === "number" && typeof e.w === "number" && typeof e.h === "number";
-      const placeholder = e.kind === "connector" || e.kind === "arrayCells";
-      if (!placeholder && numeric && (e.x < 0 || e.y < 0 || e.x + e.w > cw || e.y + e.h > ch)) {
-        issues.push({
-          ...at,
-          message: `包围盒 (x,y,w,h)=(${e.x},${e.y},${e.w},${e.h}) 超出画布 ${cw}x${ch},超出部分不可见`,
-        });
-      }
-      const anim = asObject(e.anim) ?? {};
-      if (typeof anim.start === "number" && anim.start < 0) {
-        issues.push({ ...at, message: `anim.start=${anim.start} 为负数,归一化会钳到 0,入场时刻与预期不符` });
-      }
-      if (typeof e.text === "string" && e.text.trim().length === 0) {
-        issues.push({ ...at, message: "text 为空(或仅空白),渲染为空内容" });
-      }
-      if (e.kind === "devNode" && typeof e.dev === "string" && !(e.dev in DEV_META)) {
-        issues.push({ ...at, message: `未知开发组件 dev ${JSON.stringify(e.dev)},渲染回落为服务器机架` });
-      }
-    });
-  });
-  return issues;
-}
-
-export function statsOf(project: Project): ProjectStats {
-  const kinds: Record<string, number> = {};
-  let elements = 0;
-  for (const scene of project.scenes) {
-    for (const el of scene.elements) {
-      elements += 1;
-      kinds[el.kind] = (kinds[el.kind] ?? 0) + 1;
-    }
-  }
-  return { scenes: project.scenes.length, elements, kinds, duration: projectDuration(project) };
-}
-
-async function validateFile(file: string): Promise<FileReport> {
+async function validateFile(file: string, withLayout = false): Promise<FileReport> {
   let text: string;
   try {
     text = await readFile(file, "utf8");
@@ -130,7 +39,14 @@ async function validateFile(file: string): Promise<FileReport> {
     return { file, ok: false, error: `JSON 解析失败:${e instanceof SyntaxError ? e.message : String(e)}`, issues: [] };
   }
   try {
-    return { file, ok: true, stats: statsOf(normalizeProject(raw)), issues: lintProject(raw) };
+    const project = normalizeProject(raw);
+    return {
+      file,
+      ok: true,
+      stats: statsOf(project),
+      issues: lintProject(raw),
+      ...(withLayout ? { layout: layoutOf(project) } : {}),
+    };
   } catch (e) {
     return { file, ok: false, error: e instanceof ProjectParseError ? e.message : String(e), issues: [] };
   }
@@ -149,27 +65,36 @@ function printReport(r: FileReport): void {
   console.log(`  ${s?.scenes} 场景 / ${s?.elements} 元素 / ${s?.duration.toFixed(2)}s / ${kinds || "无元素"}`);
   if (r.issues.length === 0) {
     console.log("  lint 干净");
-    return;
+  } else {
+    for (const issue of r.issues) {
+      console.warn(`  [警告] 场景${issue.scene + 1}/${issue.element}:${issue.message}`);
+    }
+    console.warn(`  共 ${r.issues.length} 条 lint 警告(退出码仍为 0)`);
   }
-  for (const issue of r.issues) {
-    console.warn(`  [警告] 场景${issue.scene + 1}/${issue.element}:${issue.message}`);
+  if (r.layout) {
+    console.log(`  布局报告 ${r.layout.length} 行(--json 取结构化):`);
+    for (const row of r.layout) {
+      console.log(
+        `    sc${row.scene + 1} ${row.id} [${row.kind}] (${row.x},${row.y}) ${row.w}x${row.h} 入场止 ${row.entranceEnd.toFixed(2)}s${row.exitEnd !== undefined ? ` 离场止 ${row.exitEnd.toFixed(2)}s` : ""}`,
+      );
+    }
   }
-  console.warn(`  共 ${r.issues.length} 条 lint 警告(退出码仍为 0)`);
 }
 
 async function runCli(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   if (cmd !== "validate") {
-    console.error("用法:pnpm anim validate <file...> [--json]");
+    console.error("用法:pnpm anim validate <file...> [--json] [--layout]");
     return 2;
   }
   const json = rest.includes("--json");
-  const files = rest.filter((a) => a !== "--json");
+  const withLayout = rest.includes("--layout");
+  const files = rest.filter((a) => a !== "--json" && a !== "--layout");
   if (files.length === 0) {
-    console.error("用法:pnpm anim validate <file...> [--json]");
+    console.error("用法:pnpm anim validate <file...> [--json] [--layout]");
     return 2;
   }
-  const reports = await Promise.all(files.map(validateFile));
+  const reports = await Promise.all(files.map((f) => validateFile(f, withLayout)));
   if (json) {
     const ok = reports.every((r) => r.ok);
     console.log(JSON.stringify({ ok, files: reports }, null, 2));

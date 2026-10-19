@@ -11,7 +11,9 @@ import skillMd from "../../docs/skill.md?raw";
 export interface ProtocolPaths {
   dir: string;
   schemaMd: string;
+  recipesMd: string;
   httpExample: string;
+  showcaseExample: string;
   xiaoheiStyleMd: string;
   xiaoheiExample: string;
   projectsDir: string;
@@ -21,7 +23,9 @@ export interface ProtocolPaths {
 export const FALLBACK_PROTOCOL_PATHS: ProtocolPaths = {
   dir: "~/.tmd-anim/protocol/",
   schemaMd: "~/.tmd-anim/protocol/schema.md",
+  recipesMd: "~/.tmd-anim/protocol/recipes.md",
   httpExample: "~/.tmd-anim/protocol/http-example.json",
+  showcaseExample: "~/.tmd-anim/protocol/showcase-example.json",
   xiaoheiStyleMd: "~/.tmd-anim/protocol/xiaohei-style.md",
   xiaoheiExample: "~/.tmd-anim/protocol/xiaohei-example.json",
   projectsDir: "~/.tmd-anim/projects/",
@@ -43,7 +47,9 @@ export async function protocolPaths(): Promise<ProtocolPaths> {
     return {
       dir: root + "protocol" + s,
       schemaMd: root + "protocol" + s + "schema.md",
+      recipesMd: root + "protocol" + s + "recipes.md",
       httpExample: root + "protocol" + s + "http-example.json",
+      showcaseExample: root + "protocol" + s + "showcase-example.json",
       xiaoheiStyleMd: root + "protocol" + s + "xiaohei-style.md",
       xiaoheiExample: root + "protocol" + s + "xiaohei-example.json",
       projectsDir: root + "projects" + s,
@@ -59,6 +65,7 @@ export function renderSkillMd(p: ProtocolPaths): string {
     .replaceAll("{{PROTOCOL_DIR}}", p.dir)
     .replaceAll("{{PROJECTS_DIR}}", p.projectsDir)
     .replaceAll("{{SCHEMA_MD}}", p.schemaMd)
+    .replaceAll("{{RECIPES_MD}}", p.recipesMd)
     .replaceAll("{{HTTP_EXAMPLE_JSON}}", p.httpExample)
     .replaceAll("{{XIAOHEI_STYLE_MD}}", p.xiaoheiStyleMd)
     .replaceAll("{{XIAOHEI_EXAMPLE_JSON}}", p.xiaoheiExample);

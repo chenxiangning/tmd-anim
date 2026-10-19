@@ -4,7 +4,7 @@ import { sceneDuration } from "../core/timeline";
 import { AlignToolbar } from "./AlignBar";
 import { elementRotate } from "./hitTest";
 import { RotateField } from "./RotateField";
-import { ANIM_TYPE_OPTIONS, EASING_OPTIONS, parseEasing } from "./animMeta";
+import { labelCls, inputCls, TimelineSections } from "./TimelineSections";
 import { AudioPropsCard } from "./AudioPropsCard";
 import { moveElement, updateElement } from "./editOps";
 import { SCHEMAS } from "./propertySchema";
@@ -28,10 +28,6 @@ interface PropertyPanelProps {
   onReplay: () => void;
   onCollapse: () => void;
 }
-
-const labelCls = "mb-1 block text-[11px] font-medium text-neutral-500";
-const inputCls =
-  "w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-800 outline-none transition-colors hover:border-neutral-300 focus:border-slate-500";
 
 /** 右栏属性面板:几何/层级 + schema 内容字段 + 入场动画区(与时间轴一一对应);
  *  选中配音条时切到配音编辑卡;多选时给对齐/分布工具条;左缘可拖拽调宽。 */
@@ -111,6 +107,15 @@ export function PropertyPanel({
       updateElement(project, sceneIdx, selected.id, { anim: { ...selected.anim, ...fields } }),
       `anim:${selected.id}:${key}`,
     );
+  };
+  const patchExit = (fields: Record<string, unknown>, key: string) => {
+    const exit = { type: "fadeOut" as const, start: selected.anim.start + selected.anim.duration + 1, duration: 0.5, ...selected.exit, ...fields };
+    onPatch(updateElement(project, sceneIdx, selected.id, { exit }), `exit:${selected.id}:${key}`);
+  };
+  const clearExit = () => {
+    const next = { ...selected } as Record<string, unknown>;
+    delete next.exit;
+    onPatch(updateElement(project, sceneIdx, selected.id, next), `exit:${selected.id}:clear`);
   };
   const pickImage = (file: File) => {
     const reader = new FileReader();
@@ -234,53 +239,14 @@ export function PropertyPanel({
         })}
       </div>
 
-      {/* 入场动画:与时间轴条目一一对应 */}
-      <div className="mt-4 border-t border-neutral-100 pt-3">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-medium text-neutral-400">入场动画</span>
-          <button
-            className="rounded px-1.5 py-0.5 text-[11px] text-sky-600 transition-colors hover:bg-sky-50"
-            onClick={onReplay}
-            title="把播放头挪到该元素动画起点并播放"
-          >
-            ▶ 重播
-          </button>
-        </div>
-        <label className="mb-2 block">
-          <span className={labelCls}>类型</span>
-          <select className={inputCls} value={selected.anim.type} onChange={(e) => patchAnim({ type: e.target.value }, "type")}>
-            {ANIM_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="mb-2 block">
-          <span className={labelCls}>缓动</span>
-          <select
-            className={inputCls}
-            value={selected.anim.easing ?? "auto"}
-            onChange={(e) => patchAnim({ easing: parseEasing(e.target.value) }, "easing")}
-          >
-            {EASING_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <label>
-            <span className={labelCls}>开始(秒)</span>
-            <input type="number" min={0} step={0.1} className={inputCls} value={selected.anim.start} onChange={(e) => patchAnim({ start: Math.max(0, Number(e.target.value) || 0) }, "start")} />
-          </label>
-          <label>
-            <span className={labelCls}>时长(秒)</span>
-            <input type="number" min={0.05} step={0.1} className={inputCls} value={selected.anim.duration} onChange={(e) => patchAnim({ duration: Math.max(0.05, Number(e.target.value) || 0.5) }, "duration")} />
-          </label>
-        </div>
-      </div>
+      {/* 入场/离场动画:与时间轴条目一一对应 */}
+      <TimelineSections
+        selected={selected}
+        onReplay={onReplay}
+        patchAnim={patchAnim}
+        patchExit={patchExit}
+        clearExit={clearExit}
+      />
       </div>
     </aside>
   );

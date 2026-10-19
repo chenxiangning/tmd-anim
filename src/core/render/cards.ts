@@ -45,7 +45,12 @@ export function drawStepCard(ctx: CanvasRenderingContext2D, el: StepCardElement,
   ctx.restore();
 }
 
-export function drawTerminal(ctx: CanvasRenderingContext2D, el: TerminalElement, progress?: number): void {
+export function drawTerminal(
+  ctx: CanvasRenderingContext2D,
+  el: TerminalElement,
+  progress?: number,
+  hl?: { lines: [number, number]; alpha: number } | null,
+): void {
   const fontSize = el.fontSize ?? 26;
   const dark = el.dark !== false;
   const lineH = fontSize * 1.6;
@@ -57,6 +62,14 @@ export function drawTerminal(ctx: CanvasRenderingContext2D, el: TerminalElement,
   ctx.clip();
   ctx.fillStyle = bg;
   ctx.fill();
+  // 强调行高亮(emphasis.highlightLines):画在底色上、输出文字下
+  if (hl) {
+    const [ha, hb] = hl.lines;
+    ctx.fillStyle = dark
+      ? `rgba(96,165,250,${(0.3 * hl.alpha).toFixed(3)})`
+      : `rgba(59,130,246,${(0.14 * hl.alpha).toFixed(3)})`;
+    ctx.fillRect(el.x, el.y + headerH + lineH * 0.2 + (ha - 1) * lineH, el.w, (hb - ha + 1) * lineH);
+  }
   const dotR = fontSize * 0.22;
   drawWindowDots(ctx, el.x + fontSize, el.y + headerH / 2, dotR);
   ctx.font = sansFont(fontSize * 0.82, 500);

@@ -1,4 +1,4 @@
-import type { Anim, EasingKind } from "../core/types";
+import type { Anim, EasingKind, ExitType } from "../core/types";
 
 /** 动画类型/缓动的中文元数据:属性面板与时间轴共用,顺序即下拉顺序。 */
 
@@ -14,6 +14,21 @@ export const ANIM_TYPE_OPTIONS: ReadonlyArray<{ value: Anim["type"]; label: stri
   { value: "wipe", label: "擦除" },
   { value: "typewriter", label: "打字机" },
 ];
+
+/** 离场动画选项:属性面板「离场动画」与时间轴共用 */
+export const EXIT_TYPE_OPTIONS: ReadonlyArray<{ value: ExitType; label: string }> = [
+  { value: "fadeOut", label: "淡出" },
+  { value: "slideOutLeft", label: "左侧滑出" },
+  { value: "slideOutRight", label: "右侧滑出" },
+  { value: "slideOutUp", label: "上滑出" },
+  { value: "slideOutDown", label: "下滑出" },
+  { value: "zoomOut", label: "缩小消失" },
+  { value: "wipeOut", label: "擦除消失" },
+];
+
+export function exitTypeLabel(type: ExitType): string {
+  return EXIT_TYPE_OPTIONS.find((opt) => opt.value === type)?.label ?? type;
+}
 
 export function animTypeLabel(type: Anim["type"]): string {
   return ANIM_TYPE_OPTIONS.find((opt) => opt.value === type)?.label ?? type;
