@@ -228,6 +228,10 @@
 		cardFlow: true,
 		specRow: true,
 		docStack: true,
+		chipRow: true,
+		ringNode: true,
+		stackList: true,
+		loopArrow: true,
 		quote: true,
 		formula: true,
 		avatar: true,
@@ -272,6 +276,13 @@
 		percent: "progress",
 		activeIndex: "arrayCells"
 	};
+	/** 胶囊风格白名单,未知值回落 tint */
+	var CHIP_STYLES = {
+		solid: true,
+		tint: true,
+		outline: true,
+		dashed: true
+	};
 	var ProjectParseError = class extends Error {
 		constructor(message) {
 			super(message);
@@ -315,7 +326,8 @@
 				if (typeof e !== "object" || e === null) return [];
 				const record = e;
 				if (typeof record.kind !== "string" || ELEMENT_KINDS[record.kind] !== true) return [];
-				return [normalizeElement(record, j)];
+				const el = normalizeElement(record, j);
+				return el ? [el] : [];
 			}),
 			caption: typeof raw.caption === "string" && raw.caption.trim().length > 0 ? raw.caption.trim() : void 0,
 			audio: normalizeSceneAudio(raw.audio)
@@ -444,6 +456,7 @@
 				"reply"
 			]) if (connector[key] !== void 0 && typeof connector[key] !== "string") delete connector[key];
 		}
+		if (el.kind === "title" && connector.sub !== void 0 && (typeof connector.sub !== "string" || connector.sub.length === 0)) delete connector.sub;
 		if (el.kind === "devNode") {
 			if (connector.label !== void 0 && typeof connector.label !== "string") delete connector.label;
 			if (connector.sub !== void 0 && typeof connector.sub !== "string") delete connector.sub;
@@ -475,6 +488,7 @@
 			"elbow",
 			"straight"
 		].includes(String(connector.route))) delete connector.route;
+		if (el.kind === "connector") delete connector.float;
 		if (el.kind === "list") {
 			const items = el.items;
 			if (!Array.isArray(items) || items.some((v) => typeof v !== "string")) el.items = Array.isArray(items) ? items.map((v) => String(v)) : [];
@@ -537,7 +551,9 @@
 					return [{
 						label,
 						...color ? { color } : {},
-						points: pts
+						points: pts,
+						...rec.dash === true ? { dash: true } : {},
+						...rec.dot === false ? { dot: false } : {}
 					}];
 				}
 				return [{
@@ -546,6 +562,160 @@
 					...color ? { color } : {}
 				}];
 			});
+		}
+		if (el.kind === "barChart") {
+			if (timeline.groups !== void 0) {
+				const out = (Array.isArray(timeline.groups) ? timeline.groups : []).flatMap((g) => {
+					if (typeof g !== "object" || g === null) return [];
+					const rec = g;
+					const label = typeof rec.label === "string" ? rec.label : "";
+					const values = (Array.isArray(rec.values) ? rec.values : []).map((n) => Number.isFinite(Number(n)) ? Number(n) : 0);
+					if (values.length === 0) return [];
+					const deltas = Array.isArray(rec.deltas) ? rec.deltas.map((d) => typeof d === "string" && d.length > 0 ? d : null) : void 0;
+					return [{
+						label,
+						values,
+						...deltas ? { deltas } : {}
+					}];
+				});
+				if (out.length > 0) timeline.groups = out;
+				else delete timeline.groups;
+			}
+			if (timeline.groupSeries !== void 0) {
+				const gs = Array.isArray(timeline.groupSeries) ? timeline.groupSeries.filter((s) => typeof s === "string" && s.length > 0) : [];
+				if (gs.length > 0) timeline.groupSeries = gs;
+				else delete timeline.groupSeries;
+			}
+		}
+		if (el.kind === "cardFlow") {
+			timeline.items = (Array.isArray(timeline.items) ? timeline.items : []).flatMap((it) => {
+				if (typeof it !== "object" || it === null) return [];
+				const rec = it;
+				if (typeof rec.title !== "string") return [];
+				const tags = Array.isArray(rec.tags) ? rec.tags.filter((t) => typeof t === "string" && t.length > 0) : [];
+				return [{
+					title: rec.title,
+					...typeof rec.num === "string" ? { num: rec.num } : {},
+					...tags.length > 0 ? { tags } : {},
+					...typeof rec.desc === "string" ? { desc: rec.desc } : {}
+				}];
+			});
+			for (const key of ["note", "accent"]) if (timeline[key] !== void 0 && typeof timeline[key] !== "string") delete timeline[key];
+			if (timeline.active != null) {
+				const n = Number(timeline.active);
+				timeline.active = Number.isFinite(n) ? Math.round(n) : -1;
+			}
+		}
+		if (el.kind === "specRow") {
+			if (typeof timeline.title !== "string") timeline.title = "";
+			for (const key of [
+				"num",
+				"path",
+				"badge",
+				"accent"
+			]) if (timeline[key] !== void 0 && typeof timeline[key] !== "string") delete timeline[key];
+		}
+		if (el.kind === "docStack") {
+			if (timeline.count != null) {
+				const c = Number(timeline.count);
+				if (Number.isFinite(c)) timeline.count = Math.min(5, Math.max(1, Math.round(c)));
+				else delete timeline.count;
+			}
+			for (const key of ["label", "accent"]) if (timeline[key] !== void 0 && typeof timeline[key] !== "string") delete timeline[key];
+		}
+		if (el.kind === "chipRow") {
+			timeline.items = (Array.isArray(timeline.items) ? timeline.items : []).flatMap((it) => {
+				if (typeof it !== "object" || it === null) return [];
+				const rec = it;
+				if (typeof rec.text !== "string" || rec.text.length === 0) return [];
+				const style = typeof rec.style === "string" && CHIP_STYLES[rec.style] === true ? rec.style : void 0;
+				const color = typeof rec.color === "string" ? rec.color : void 0;
+				return [{
+					text: rec.text,
+					...color ? { color } : {},
+					...style ? { style } : {}
+				}];
+			});
+			if (timeline.align !== void 0 && ![
+				"left",
+				"center",
+				"right"
+			].includes(String(timeline.align))) delete timeline.align;
+			for (const key of ["gap"]) if (timeline[key] != null) {
+				const n = Number(timeline[key]);
+				if (Number.isFinite(n)) timeline[key] = Math.min(120, Math.max(0, n));
+				else delete timeline[key];
+			}
+		}
+		if (el.kind === "ringNode") {
+			for (const key of [
+				"label",
+				"sub",
+				"accent"
+			]) if (timeline[key] !== void 0 && typeof timeline[key] !== "string") delete timeline[key];
+			if (timeline.ring != null) {
+				const r = Number(timeline.ring);
+				if (Number.isFinite(r)) timeline.ring = Math.min(3, Math.max(.4, r));
+				else delete timeline.ring;
+			}
+		}
+		if (el.kind === "stackList") {
+			if (timeline.keys !== void 0) {
+				const keys = Array.isArray(timeline.keys) ? timeline.keys.filter((k) => typeof k === "string" && k.length > 0).slice(0, 3) : [];
+				if (keys.length > 0) timeline.keys = keys;
+				else delete timeline.keys;
+			}
+			if (timeline.sheets != null) {
+				const s = Number(timeline.sheets);
+				if (Number.isFinite(s)) timeline.sheets = Math.min(4, Math.max(1, Math.round(s)));
+				else delete timeline.sheets;
+			}
+			for (const key of ["label", "accent"]) if (timeline[key] !== void 0 && typeof timeline[key] !== "string") delete timeline[key];
+		}
+		if (el.kind === "loopArrow") {
+			const f = timeline.from;
+			const t = timeline.to;
+			const okPt = (p) => Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(Number(n)));
+			if (!okPt(f) || !okPt(t)) return null;
+			timeline.from = [Number(f[0]), Number(f[1])];
+			timeline.to = [Number(t[0]), Number(t[1])];
+			if (timeline.side !== void 0 && ![
+				"top",
+				"bottom",
+				"left",
+				"right"
+			].includes(String(timeline.side))) delete timeline.side;
+			for (const key of ["depth", "width"]) if (timeline[key] != null) {
+				const n = Number(timeline[key]);
+				if (Number.isFinite(n)) timeline[key] = Math.min(key === "depth" ? 400 : 24, Math.max(key === "depth" ? 24 : 1, n));
+				else delete timeline[key];
+			}
+			for (const key of ["label", "color"]) if (timeline[key] !== void 0 && typeof timeline[key] !== "string") delete timeline[key];
+			const pFrom = timeline.from;
+			const pTo = timeline.to;
+			const side = String(timeline.side ?? "bottom");
+			const vertical = side === "top" || side === "bottom";
+			const sgn = side === "bottom" || side === "right" ? 1 : -1;
+			const span = vertical ? Math.abs(pTo[0] - pFrom[0]) : Math.abs(pTo[1] - pFrom[1]);
+			if (timeline.depth === void 0) timeline.depth = Math.round(Math.min(400, Math.max(48, span * .26 + 56)));
+			const d = Number(timeline.depth);
+			const xs = vertical ? [pFrom[0], pTo[0]] : [
+				pFrom[0],
+				pTo[0],
+				pFrom[0] + sgn * d,
+				pTo[0] + sgn * d
+			];
+			const ys = vertical ? [
+				pFrom[1],
+				pTo[1],
+				pFrom[1] + sgn * d,
+				pTo[1] + sgn * d
+			] : [pFrom[1], pTo[1]];
+			const pad = 12;
+			timeline.x = Math.min(...xs) - pad;
+			timeline.y = Math.min(...ys) - pad;
+			timeline.w = Math.max(...xs) - Math.min(...xs) + 24;
+			timeline.h = Math.max(...ys) - Math.min(...ys) + 24;
 		}
 		if (el.kind === "cursor") {
 			timeline.points = (Array.isArray(timeline.points) ? timeline.points : []).filter((p) => Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(Number(n)))).map((p) => [Number(p[0]), Number(p[1])]);
@@ -1780,11 +1950,19 @@
 		});
 	}
 	function drawTitle$1(ctx, el, progress) {
-		drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
-			fontSize: el.fontSize ?? 64,
+		const fontSize = el.fontSize ?? 64;
+		const subH = el.sub ? fontSize * .85 : 0;
+		drawRichText(ctx, el.x, el.y, el.w, el.h - subH, el.text, {
+			fontSize,
 			color: el.color ?? "#111827",
 			align: "center",
 			highlights: el.highlight,
+			progress
+		});
+		if (el.sub) drawRichText(ctx, el.x, el.y + el.h - subH, el.w, subH, el.sub, {
+			fontSize: Math.max(14, fontSize * .36),
+			color: "#64748B",
+			align: "center",
 			progress
 		});
 	}
@@ -2639,7 +2817,7 @@
 		if (dashOffset !== void 0) {
 			ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
 			ctx.lineDashOffset = dashOffset;
-		}
+		} else if (el.dash === true) ctx.setLineDash([lineW * 2.4, lineW * 1.8]);
 		ctx.beginPath();
 		if (route.mode === "segments") strokeRoundedPolyline(ctx, route.points, {
 			x: x2,
@@ -2726,8 +2904,8 @@
 	* 角色元素:头像(圆形图片/initials + 名称胶囊 + 状态点)与方块人(stand/point/think 三姿态)。
 	* 纯 (project,t) 绘制,无外部状态;src 图片未就绪时回退 initials,不闪空。
 	*/
-	var INK$4 = "#1F2937";
-	var MUTED$4 = "#64748B";
+	var INK$5 = "#1F2937";
+	var MUTED$5 = "#64748B";
 	var BLUE$1 = "#3B82F6";
 	var STATUS_COLOR = {
 		online: "#22C55E",
@@ -2808,7 +2986,7 @@
 			ctx.strokeStyle = "#E2E8F0";
 			ctx.stroke();
 			ctx.textAlign = "left";
-			ctx.fillStyle = INK$4;
+			ctx.fillStyle = INK$5;
 			ctx.fillText(el.name, px + 14, cy);
 		}
 		ctx.restore();
@@ -2866,7 +3044,7 @@
 			ctx.stroke();
 			ctx.font = sansFont(u * .07, 700);
 			ctx.textAlign = "center";
-			ctx.fillStyle = MUTED$4;
+			ctx.fillStyle = MUTED$5;
 			ctx.fillText("?", bx, by);
 		}
 		ctx.restore();
@@ -2942,7 +3120,7 @@
 	* 吉祥物:有脸的拟人生物,拟人化叙事(doc 文档精 / bot 机器人)。
 	* 纯 (project,t) 绘制;variant/mood 未知值回落 doc/happy(devNode 先例)。
 	*/
-	var INK$3 = "#1F2937";
+	var INK$4 = "#1F2937";
 	var BLUSH = "#F9C6D0";
 	var SWEAT = "#7DD3FC";
 	/** 顶部切角的纸片路径(右上折角),替代普通圆角矩形 */
@@ -2961,7 +3139,7 @@
 	}
 	/** 脸:两点眼(wink 左眼闭合线)+ 嘴 + 腮红;dark 底时眼嘴换白 */
 	function drawFace(ctx, cx, cy, u, mood, dark) {
-		const ink = dark ? "#FFFFFF" : INK$3;
+		const ink = dark ? "#FFFFFF" : INK$4;
 		const eyeY = cy - u * .02;
 		const eyeDx = u * .11;
 		const eyeR = Math.max(3, u * .035);
@@ -2996,7 +3174,7 @@
 			ctx.translate(cx + u * .3, cy - u * .34);
 			ctx.rotate(Math.PI / 4);
 			ctx.fillStyle = SWEAT;
-			ctx.strokeStyle = INK$3;
+			ctx.strokeStyle = INK$4;
 			ctx.lineWidth = Math.max(2, u * .02);
 			roundRect(ctx, -u * .035, -u * .035, u * .07, u * .07, u * .015);
 			ctx.fill();
@@ -3017,7 +3195,7 @@
 		ctx.fillStyle = bg;
 		ctx.fill();
 		ctx.lineWidth = Math.max(2.5, h * .09);
-		ctx.strokeStyle = INK$3;
+		ctx.strokeStyle = INK$4;
 		ctx.stroke();
 		ctx.fillStyle = "#FFFFFF";
 		ctx.textAlign = "center";
@@ -3026,7 +3204,7 @@
 	}
 	/** 四肢:两臂斜下伸展 + 两腿;pose 由 mood 派生(worried 双臂上举慌张) */
 	function drawLimbs(ctx, el, insetX, armY, bottom, lw) {
-		ctx.fillStyle = INK$3;
+		ctx.fillStyle = INK$4;
 		const up = (el.mood ?? "happy") === "worried";
 		const len = el.w * .16;
 		drawLimb(ctx, el.x + insetX, armY, el.x + insetX - len, up ? armY - len * .8 : armY + len, lw, lw * .45);
@@ -3052,9 +3230,9 @@
 		ctx.fillStyle = "#FFFFFF";
 		ctx.fill();
 		ctx.lineWidth = 2.5;
-		ctx.strokeStyle = INK$3;
+		ctx.strokeStyle = INK$4;
 		ctx.stroke();
-		ctx.fillStyle = INK$3;
+		ctx.fillStyle = INK$4;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		ctx.fillText(el.label, x + w / 2, y + h / 2 + 1);
@@ -3069,7 +3247,7 @@
 			const bodyH = el.h * .82;
 			const r = Math.min(28, el.w * .12);
 			const cx = el.x + el.w / 2;
-			ctx.strokeStyle = INK$3;
+			ctx.strokeStyle = INK$4;
 			ctx.lineWidth = Math.max(3, el.w * .02);
 			ctx.beginPath();
 			ctx.moveTo(cx, el.y + r * .4);
@@ -3084,7 +3262,7 @@
 			ctx.fillStyle = body;
 			ctx.fill();
 			ctx.lineWidth = 4;
-			ctx.strokeStyle = INK$3;
+			ctx.strokeStyle = INK$4;
 			ctx.stroke();
 			const by = el.y + el.h * .06;
 			if (el.badge) {
@@ -3094,9 +3272,9 @@
 				ctx.fillStyle = el.badgeColor ?? "#F7C948";
 				ctx.fill();
 				ctx.lineWidth = 3;
-				ctx.strokeStyle = INK$3;
+				ctx.strokeStyle = INK$4;
 				ctx.stroke();
-				ctx.fillStyle = INK$3;
+				ctx.fillStyle = INK$4;
 				ctx.font = sansFont(Math.min(plateH * .52, 40), 700);
 				ctx.textAlign = "center";
 				ctx.textBaseline = "middle";
@@ -3111,15 +3289,15 @@
 				ctx.fillStyle = "#FFFFFF";
 				ctx.fill();
 				ctx.lineWidth = 2.5;
-				ctx.strokeStyle = INK$3;
+				ctx.strokeStyle = INK$4;
 				ctx.stroke();
-				ctx.fillStyle = INK$3;
+				ctx.fillStyle = INK$4;
 				ctx.font = sansFont(Math.min(barH * .5, 26), 500);
 				ctx.textAlign = "center";
 				ctx.textBaseline = "middle";
 				ctx.fillText(el.label, cx, barY + barH / 2 + 1);
 			}
-			ctx.fillStyle = INK$3;
+			ctx.fillStyle = INK$4;
 			for (const dx of [-.24, .12]) {
 				roundRect(ctx, el.x + el.w * (.5 + dx), el.y + el.h * .88, el.w * .12, el.h * .1, 6);
 				ctx.fill();
@@ -3132,7 +3310,7 @@
 			ctx.fillStyle = body;
 			ctx.fill();
 			ctx.lineWidth = 4;
-			ctx.strokeStyle = INK$3;
+			ctx.strokeStyle = INK$4;
 			ctx.stroke();
 			ctx.beginPath();
 			ctx.moveTo(el.x + el.w - fold, el.y);
@@ -3141,7 +3319,7 @@
 			ctx.closePath();
 			ctx.fillStyle = "#E2E8F0";
 			ctx.fill();
-			ctx.strokeStyle = INK$3;
+			ctx.strokeStyle = INK$4;
 			ctx.stroke();
 			ctx.strokeStyle = "#CBD5E1";
 			ctx.lineWidth = Math.max(3, el.h * .014);
@@ -3163,11 +3341,44 @@
 		if (variant !== "bot") drawNameLabel(ctx, el);
 	}
 	//#endregion
-	//#region src/core/render/chartsGroup.ts
+	//#region src/core/render/chartsCommon.ts
 	/**
-	* 分组柱状图:多系列按组对比(benchmark 图)。
-	* groups[{label, values, deltas}] x groupSeries(系列名图例);竖向;逐柱生长入场。
+	* 图表公共部件:调色板 / 墨色 / 上限取整 / 标题 / 图例芯片。
+	* 独立成文件是为了断开 charts.ts 与 chartsGroup.ts 的双向依赖(拆分图表按系列走不同文件)。
 	*/
+	var CHART_PALETTE = [
+		"#3B82F6",
+		"#F59E0B",
+		"#10B981",
+		"#EF4444",
+		"#8B5CF6",
+		"#EC4899"
+	];
+	var INK$3 = "#1F2937";
+	var MUTED$4 = "#64748B";
+	/** 数值上限取整放大:36 -> 40,170 -> 200,让柱顶/点不顶格 */
+	function niceCeil(v) {
+		if (v <= 0) return 1;
+		const mag = Math.pow(10, Math.floor(Math.log10(v)));
+		const n = v / mag;
+		return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+	}
+	/** 图表标题:画在元素顶边,返回占用的高度(0 = 无标题) */
+	function drawTitle(ctx, el, fontSize, sub) {
+		if (!el.title) return 0;
+		ctx.font = sansFont(fontSize, 700);
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = INK$3;
+		ctx.fillText(el.title, el.x, el.y + fontSize * .9, el.w);
+		if (sub) {
+			ctx.font = sansFont(fontSize * .56, 500);
+			ctx.fillStyle = MUTED$4;
+			ctx.fillText(sub, el.x, el.y + fontSize * 1.72, el.w);
+			return fontSize * 2.5;
+		}
+		return fontSize * 1.9;
+	}
 	/** 图例芯片行:色块 + 名称,返回结束 x;折线图与分组柱图共用同一视觉 */
 	function drawLegendChips(ctx, entries, x, y, fontSize) {
 		ctx.font = sansFont(fontSize * .64, 600);
@@ -3178,15 +3389,24 @@
 			ctx.fillStyle = e.color;
 			roundRect(ctx, lx, y - fontSize * .21, fontSize * .42, fontSize * .42, fontSize * .1);
 			ctx.fill();
-			ctx.fillStyle = INK$2;
+			ctx.fillStyle = INK$3;
 			ctx.fillText(e.label, lx + fontSize * .58, y);
 			lx += fontSize * .58 + ctx.measureText(e.label).width + fontSize * 1;
 		});
 		return lx;
 	}
+	//#endregion
+	//#region src/core/render/chartsGroup.ts
+	/**
+	* 分组柱状图:多系列按组对比(benchmark 图)。
+	* groups[{label, values, deltas}] x groupSeries(系列名图例);竖向;逐柱生长入场。
+	*/
 	function drawGroupedBar(ctx, el, progress) {
 		const fontSize = el.fontSize ?? 28;
-		const groups = (el.groups ?? []).filter((g) => g.values.length > 0);
+		const groups = (el.groups ?? []).filter((g) => g && Array.isArray(g.values) && g.values.length > 0).map((g) => ({
+			...g,
+			values: g.values.map((v) => Number.isFinite(Number(v)) ? Number(v) : 0)
+		}));
 		if (groups.length === 0) return;
 		const seriesNames = el.groupSeries ?? groups[0].values.map((_, i) => `系列 ${i + 1}`);
 		const showValue = el.showValue !== false;
@@ -3195,7 +3415,7 @@
 		const legendH = seriesNames.length > 1 ? fontSize * 1.7 : 0;
 		ctx.save();
 		ctx.textBaseline = "middle";
-		const titleH = drawTitle(ctx, el, fontSize);
+		const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
 		const area = {
 			x: el.x + pad,
 			y: el.y + titleH + legendH + pad * .5,
@@ -3217,7 +3437,7 @@
 				ctx.moveTo(area.x, gy);
 				ctx.lineTo(area.x + area.w, gy);
 				ctx.stroke();
-				ctx.fillStyle = MUTED$3;
+				ctx.fillStyle = MUTED$4;
 				ctx.fillText(String(Math.round(gv)), el.x + fontSize * .1, gy);
 			}
 			ctx.strokeStyle = "#CBD5E1";
@@ -3229,7 +3449,8 @@
 			ctx.stroke();
 		}
 		const groupSlot = area.w / groups.length;
-		const barW = Math.min(groupSlot * .62 / groups[0].values.length, fontSize * 1.5);
+		const seriesCount = Math.max(...groups.map((g) => g.values.length), 1);
+		const barW = Math.min(groupSlot * .62 / seriesCount, fontSize * 2.6);
 		const totalBars = groups.reduce((s, g) => s + g.values.length, 0);
 		let barIndex = 0;
 		groups.forEach((grp, gi) => {
@@ -3241,13 +3462,13 @@
 				barIndex++;
 				const bh = v / cap * area.h * f;
 				const bx = gx + si * barW;
-				roundRect(ctx, bx, Y(v) + (area.h - bh), barW * .82, bh, Math.min(6, barW * .16));
+				roundRect(ctx, bx, area.y + area.h - bh, barW * .82, bh, Math.min(6, barW * .16));
 				ctx.fillStyle = color;
 				ctx.fill();
 				if (showValue && f >= 1) {
 					ctx.font = sansFont(fontSize * .56, 600);
 					ctx.textAlign = "center";
-					ctx.fillStyle = INK$2;
+					ctx.fillStyle = INK$3;
 					ctx.fillText(String(v), bx + barW * .82 / 2, Y(v) - fontSize * .5);
 				}
 				const delta = grp.deltas?.[si];
@@ -3267,7 +3488,7 @@
 			});
 			ctx.font = sansFont(fontSize * .72, 600);
 			ctx.textAlign = "center";
-			ctx.fillStyle = INK$2;
+			ctx.fillStyle = INK$3;
 			ctx.fillText(grp.label, area.x + groupSlot * gi + groupSlot / 2, area.y + area.h + fontSize * .85);
 		});
 		if (seriesNames.length > 1) drawLegendChips(ctx, seriesNames.map((name, si) => ({
@@ -3277,116 +3498,11 @@
 		ctx.restore();
 	}
 	//#endregion
-	//#region src/core/render/charts.ts
+	//#region src/core/render/chartsLine.ts
 	/**
-	* 图表三件套:柱状 / 折线 / 饼图。数据驱动 + 确定性绘制;
-	* 入场动画语义:柱 = 逐柱生长,线 = 沿路径 draw-on,饼 = 扫掠展开,progress 缺省 = 全显。
+	* 折线图:沿路径 draw-on 入场(边界段插值到中间点),smooth = 穿过数据点的平滑曲线,
+	* endLabels = 期刊风线尾标注(替代顶部图例)。从 charts.ts 拆出以守住单文件 300 行铁则。
 	*/
-	var CHART_PALETTE = [
-		"#3B82F6",
-		"#F59E0B",
-		"#10B981",
-		"#EF4444",
-		"#8B5CF6",
-		"#EC4899"
-	];
-	var INK$2 = "#1F2937";
-	var MUTED$3 = "#64748B";
-	/** 数值上限取整放大:36 -> 40,170 -> 200,让柱顶/点不顶格 */
-	function niceCeil(v) {
-		if (v <= 0) return 1;
-		const mag = Math.pow(10, Math.floor(Math.log10(v)));
-		const n = v / mag;
-		return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
-	}
-	function drawTitle(ctx, el, fontSize) {
-		if (!el.title) return 0;
-		ctx.font = sansFont(fontSize, 700);
-		ctx.textAlign = "left";
-		ctx.textBaseline = "middle";
-		ctx.fillStyle = INK$2;
-		ctx.fillText(el.title, el.x, el.y + fontSize * .9, el.w);
-		return fontSize * 1.9;
-	}
-	function drawBarChart(ctx, el, progress) {
-		if (el.groups?.length) {
-			drawGroupedBar(ctx, el, progress);
-			return;
-		}
-		const fontSize = el.fontSize ?? 28;
-		const series = el.series ?? [];
-		if (series.length === 0) return;
-		const showValue = el.showValue !== false;
-		const showAxis = el.axis !== false;
-		const horizontal = el.horizontal === true;
-		const pad = fontSize * .9;
-		ctx.save();
-		ctx.font = sansFont(fontSize * .72, 500);
-		const titleH = drawTitle(ctx, el, fontSize);
-		const area = {
-			x: el.x + pad,
-			y: el.y + titleH + pad * .5,
-			w: el.w - pad * 2,
-			h: el.h - titleH - pad * 1.5
-		};
-		const dataMax = Math.max(...series.map((s) => s.value), 0);
-		const cap = Math.max(el.max ?? niceCeil(dataMax), dataMax, 1);
-		const n = series.length;
-		const slot = (horizontal ? area.h : area.w) / n;
-		const barLong = horizontal ? area.w : area.h;
-		ctx.textBaseline = "middle";
-		series.forEach((s, i) => {
-			const q = progress === void 0 ? 1 : Math.min(1, Math.max(0, progress * n - i));
-			if (q <= 0) return;
-			const e = 1 - Math.pow(1 - q, 3);
-			const len = barLong * Math.min(1, Math.max(0, s.value / cap)) * e;
-			const thick = slot * .56;
-			ctx.fillStyle = s.color ?? CHART_PALETTE[i % CHART_PALETTE.length];
-			let labelX;
-			let labelY;
-			if (horizontal) {
-				const by = area.y + i * slot + (slot - thick) / 2;
-				roundRect(ctx, area.x, by, Math.max(len, 2), thick, thick / 2);
-				ctx.fill();
-				ctx.textAlign = "right";
-				ctx.fillStyle = MUTED$3;
-				ctx.fillText(s.label, area.x - fontSize * .4, by + thick / 2);
-				labelX = area.x + len + fontSize * .35;
-				labelY = by + thick / 2;
-			} else {
-				const bx = area.x + i * slot + (slot - thick) / 2;
-				const by = area.y + area.h - len;
-				roundRect(ctx, bx, by, thick, Math.max(len, 2), thick * .18);
-				ctx.fill();
-				ctx.textAlign = "center";
-				ctx.fillStyle = MUTED$3;
-				ctx.fillText(s.label, bx + thick / 2, area.y + area.h + fontSize * .75, slot);
-				labelX = bx + thick / 2;
-				labelY = by - fontSize * .6;
-			}
-			if (showValue) {
-				ctx.textAlign = horizontal ? "left" : "center";
-				ctx.fillStyle = INK$2;
-				ctx.font = sansFont(fontSize * .72, 700);
-				ctx.fillText(String(s.value), labelX, labelY);
-				ctx.font = sansFont(fontSize * .72, 500);
-			}
-		});
-		if (showAxis) {
-			ctx.strokeStyle = "#CBD5E1";
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			if (horizontal) {
-				ctx.moveTo(area.x, area.y);
-				ctx.lineTo(area.x, area.y + area.h);
-			} else {
-				ctx.moveTo(area.x, area.y + area.h);
-				ctx.lineTo(area.x + area.w, area.y + area.h);
-			}
-			ctx.stroke();
-		}
-		ctx.restore();
-	}
 	function drawLineChart(ctx, el, progress) {
 		const fontSize = el.fontSize ?? 26;
 		const series = (el.series ?? []).slice(0, 3);
@@ -3401,7 +3517,7 @@
 		const hi = Math.max(el.max ?? Math.ceil(dataMax + span * .12), lo + 1e-6);
 		const n = Math.max(...series.map((s) => s.points.length));
 		ctx.save();
-		const titleH = drawTitle(ctx, el, fontSize);
+		const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
 		const legendH = series.length > 1 && el.endLabels !== true ? fontSize * 1.6 : 0;
 		const area = {
 			x: el.x + pad,
@@ -3424,7 +3540,7 @@
 				ctx.moveTo(area.x, gy);
 				ctx.lineTo(area.x + area.w, gy);
 				ctx.stroke();
-				ctx.fillStyle = MUTED$3;
+				ctx.fillStyle = MUTED$4;
 				ctx.fillText(String(Math.round(gv)), el.x + fontSize * .1, gy);
 			}
 		}
@@ -3472,25 +3588,38 @@
 			ctx.lineWidth = fontSize * .18;
 			ctx.lineJoin = "round";
 			ctx.lineCap = "round";
+			if (s.dash === true) ctx.setLineDash([fontSize * .55, fontSize * .45]);
 			if (el.smooth === true && drawn.length > 2) {
-				ctx.moveTo((drawn[0].x + drawn[1].x) / 2, (drawn[0].y + drawn[1].y) / 2);
-				for (let i = 1; i < drawn.length - 1; i++) {
-					const mx = (drawn[i].x + drawn[i + 1].x) / 2;
-					const my = (drawn[i].y + drawn[i + 1].y) / 2;
-					ctx.quadraticCurveTo(drawn[i].x, drawn[i].y, mx, my);
+				ctx.moveTo(drawn[0].x, drawn[0].y);
+				const at = (i) => drawn[Math.min(drawn.length - 1, Math.max(0, i))];
+				for (let i = 0; i < drawn.length - 1; i++) {
+					const p1 = at(i);
+					const p2 = at(i + 1);
+					const p0 = at(i - 1);
+					const p3 = at(i + 2);
+					ctx.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y);
 				}
-				ctx.lineTo(drawn[drawn.length - 1].x, drawn[drawn.length - 1].y);
 			} else {
 				ctx.moveTo(drawn[0].x, drawn[0].y);
 				drawn.forEach((p) => ctx.lineTo(p.x, p.y));
 			}
 			ctx.stroke();
-			if (el.dot !== false) {
-				ctx.fillStyle = color;
+			ctx.setLineDash([]);
+			if (el.dot !== false && s.dot !== false) {
+				const hollow = s.dash === true;
 				drawn.forEach((p) => {
 					ctx.beginPath();
 					ctx.arc(p.x, p.y, fontSize * .16, 0, Math.PI * 2);
-					ctx.fill();
+					if (hollow) {
+						ctx.fillStyle = "#FFFFFF";
+						ctx.fill();
+						ctx.strokeStyle = color;
+						ctx.lineWidth = fontSize * .07;
+						ctx.stroke();
+					} else {
+						ctx.fillStyle = color;
+						ctx.fill();
+					}
 				});
 			}
 			if (el.endLabels === true && (progress === void 0 || f >= segTotal)) {
@@ -3515,6 +3644,92 @@
 		})), area.x, el.y + titleH + fontSize * .8, fontSize);
 		ctx.restore();
 	}
+	//#endregion
+	//#region src/core/render/charts.ts
+	/**
+	* 图表三件套中的柱状 / 饼图(折线在 chartsLine.ts)。数据驱动 + 确定性绘制;
+	* 入场动画语义:柱 = 逐柱生长,线 = 沿路径 draw-on,饼 = 扫掠展开,progress 缺省 = 全显。
+	* 公共部件(调色板/标题/图例/上限取整)在 chartsCommon.ts,避免与 chartsGroup.ts 双向引用。
+	*/
+	function drawBarChart(ctx, el, progress) {
+		if (el.groups?.length) {
+			drawGroupedBar(ctx, el, progress);
+			return;
+		}
+		const fontSize = el.fontSize ?? 28;
+		const series = el.series ?? [];
+		if (series.length === 0) return;
+		const showValue = el.showValue !== false;
+		const showAxis = el.axis !== false;
+		const horizontal = el.horizontal === true;
+		const pad = fontSize * .9;
+		ctx.save();
+		ctx.font = sansFont(fontSize * .72, 500);
+		const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
+		const area = {
+			x: el.x + pad,
+			y: el.y + titleH + pad * .5,
+			w: el.w - pad * 2,
+			h: el.h - titleH - pad * 1.5
+		};
+		const dataMax = Math.max(...series.map((s) => s.value), 0);
+		const cap = Math.max(el.max ?? niceCeil(dataMax), dataMax, 1);
+		const n = series.length;
+		const slot = (horizontal ? area.h : area.w) / n;
+		const barLong = horizontal ? area.w : area.h;
+		ctx.textBaseline = "middle";
+		series.forEach((s, i) => {
+			const q = progress === void 0 ? 1 : Math.min(1, Math.max(0, progress * n - i));
+			if (q <= 0) return;
+			const e = 1 - Math.pow(1 - q, 3);
+			const len = barLong * Math.min(1, Math.max(0, s.value / cap)) * e;
+			const thick = slot * .56;
+			ctx.fillStyle = s.color ?? CHART_PALETTE[i % CHART_PALETTE.length];
+			let labelX;
+			let labelY;
+			if (horizontal) {
+				const by = area.y + i * slot + (slot - thick) / 2;
+				roundRect(ctx, area.x, by, Math.max(len, 2), thick, thick / 2);
+				ctx.fill();
+				ctx.textAlign = "right";
+				ctx.fillStyle = MUTED$4;
+				ctx.fillText(s.label, area.x - fontSize * .4, by + thick / 2);
+				labelX = area.x + len + fontSize * .35;
+				labelY = by + thick / 2;
+			} else {
+				const bx = area.x + i * slot + (slot - thick) / 2;
+				const by = area.y + area.h - len;
+				roundRect(ctx, bx, by, thick, Math.max(len, 2), thick * .18);
+				ctx.fill();
+				ctx.textAlign = "center";
+				ctx.fillStyle = MUTED$4;
+				ctx.fillText(s.label, bx + thick / 2, area.y + area.h + fontSize * .75, slot);
+				labelX = bx + thick / 2;
+				labelY = by - fontSize * .6;
+			}
+			if (showValue) {
+				ctx.textAlign = horizontal ? "left" : "center";
+				ctx.fillStyle = INK$3;
+				ctx.font = sansFont(fontSize * .72, 700);
+				ctx.fillText(String(s.value), labelX, labelY);
+				ctx.font = sansFont(fontSize * .72, 500);
+			}
+		});
+		if (showAxis) {
+			ctx.strokeStyle = "#CBD5E1";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			if (horizontal) {
+				ctx.moveTo(area.x, area.y);
+				ctx.lineTo(area.x, area.y + area.h);
+			} else {
+				ctx.moveTo(area.x, area.y + area.h);
+				ctx.lineTo(area.x + area.w, area.y + area.h);
+			}
+			ctx.stroke();
+		}
+		ctx.restore();
+	}
 	function drawPieChart(ctx, el, progress) {
 		const fontSize = el.fontSize ?? 26;
 		const slices = (el.slices ?? []).filter((s) => s.value > 0);
@@ -3523,7 +3738,7 @@
 		const legend = el.legend ?? "right";
 		const pad = fontSize * .9;
 		ctx.save();
-		const titleH = drawTitle(ctx, el, fontSize);
+		const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
 		const legendW = legend === "right" ? el.w * .34 : 0;
 		const legendH = legend === "bottom" ? fontSize * 1.7 : 0;
 		const cx = el.x + (el.w - legendW) / 2;
@@ -3553,7 +3768,7 @@
 			ctx.font = sansFont(fontSize * .9, 700);
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
-			ctx.fillStyle = INK$2;
+			ctx.fillStyle = INK$3;
 			ctx.fillText(String(Math.round(total)), cx, cy);
 		}
 		ctx.font = sansFont(fontSize * .68, 500);
@@ -3563,7 +3778,7 @@
 			roundRect(ctx, lx, ly - fontSize * .22, fontSize * .44, fontSize * .44, fontSize * .12);
 			ctx.fill();
 			ctx.textAlign = "left";
-			ctx.fillStyle = INK$2;
+			ctx.fillStyle = INK$3;
 			const pct = `${Math.round(s.value / total * 100)}%`;
 			ctx.fillText(`${s.label}  ${pct}`, lx + fontSize * .62, ly, legend === "right" ? legendW - fontSize : el.w);
 		};
@@ -3585,9 +3800,9 @@
 	* 信息图小件:流程卡组 / 规格行卡 / 文档堆叠。
 	* 学术信息图风:白底圆角 + 浅灰边 + accent 单色点缀;纯 (project,t) 绘制,未知字段回落缺省。
 	*/
-	var INK$1 = "#1F2937";
-	var MUTED$2 = "#64748B";
-	var BORDER = "#E2E8F0";
+	var INK$2 = "#1F2937";
+	var MUTED$3 = "#64748B";
+	var BORDER$1 = "#E2E8F0";
 	/** 流程卡组:编号卡横排 + 卡间箭头 + active 高亮 + 底注;typewriter 入场 = 逐卡揭示 */
 	function drawCardFlow(ctx, el, progress) {
 		const fontSize = el.fontSize ?? 26;
@@ -3601,16 +3816,17 @@
 		const reveal = progress === void 0 ? items.length : Math.min(items.length, Math.max(0, progress * items.length));
 		ctx.save();
 		ctx.textBaseline = "middle";
+		const baseAlpha = ctx.globalAlpha;
 		items.forEach((it, i) => {
 			const partial = reveal - i;
 			if (partial <= 0) return;
 			const cx = el.x + i * (cardW + gap);
 			const isActive = i === (el.active ?? -1);
-			ctx.globalAlpha = Math.min(1, partial * 2.5);
+			ctx.globalAlpha = baseAlpha * Math.min(1, partial * 2.5);
 			roundRect(ctx, cx, el.y, cardW, cardH, 16);
 			ctx.fillStyle = isActive ? accent + "0D" : "#FFFFFF";
 			ctx.fill();
-			ctx.strokeStyle = isActive ? accent : BORDER;
+			ctx.strokeStyle = isActive ? accent : BORDER$1;
 			ctx.lineWidth = isActive ? 3 : 2;
 			ctx.stroke();
 			const pad = fontSize * .8;
@@ -3621,7 +3837,7 @@
 				ctx.fillText(it.num, cx + pad, el.y + pad + fontSize * .32);
 			}
 			ctx.font = sansFont(fontSize, 700);
-			ctx.fillStyle = INK$1;
+			ctx.fillStyle = INK$2;
 			ctx.fillText(it.title, cx + pad + (it.num ? fontSize * 1.1 : 0), el.y + pad + fontSize * .34, cardW - pad * 2 - (it.num ? fontSize * 1.1 : 0));
 			let ty = el.y + pad + fontSize * 1.5;
 			if (it.tags?.length) {
@@ -3641,7 +3857,7 @@
 			}
 			if (it.desc) {
 				ctx.font = sansFont(fontSize * .62, 400);
-				ctx.fillStyle = MUTED$2;
+				ctx.fillStyle = MUTED$3;
 				const lines = it.desc.split("\n");
 				for (const line of lines) {
 					ctx.fillText(line, cx + pad, ty, cardW - pad * 2);
@@ -3654,7 +3870,7 @@
 				ctx.fillStyle = accent;
 				ctx.fill();
 			}
-			ctx.globalAlpha = 1;
+			ctx.globalAlpha = baseAlpha;
 			if (i < items.length - 1 && reveal - (i + 1) > 0) {
 				const ax = cx + cardW + gap * .12;
 				const ay = el.y + cardH / 2;
@@ -3690,7 +3906,7 @@
 		roundRect(ctx, el.x, el.y, el.w, el.h, 14);
 		ctx.fillStyle = "#FFFFFF";
 		ctx.fill();
-		ctx.strokeStyle = BORDER;
+		ctx.strokeStyle = BORDER$1;
 		ctx.lineWidth = 2;
 		ctx.stroke();
 		ctx.textBaseline = "middle";
@@ -3704,12 +3920,12 @@
 		ctx.fillText(el.num ?? "C", el.x + pad + chip / 2, el.y + el.h / 2);
 		ctx.textAlign = "left";
 		ctx.font = sansFont(fontSize, 700);
-		ctx.fillStyle = INK$1;
+		ctx.fillStyle = INK$2;
 		const textX = el.x + pad + chip + pad * .6;
 		ctx.fillText(el.title, textX, el.y + el.h / 2 - (el.path ? fontSize * .55 : 0), el.w - (textX - el.x) * 2 - fontSize * 3.5);
 		if (el.path) {
 			ctx.font = monoFont(fontSize * .58);
-			ctx.fillStyle = MUTED$2;
+			ctx.fillStyle = MUTED$3;
 			ctx.fillText(el.path, textX, el.y + el.h / 2 + fontSize * .6, el.w - (textX - el.x) * 2 - fontSize * 3.5);
 		}
 		if (el.badge) {
@@ -3742,7 +3958,7 @@
 			const ox = px + i * 6;
 			const oy = py - i * 7;
 			ctx.fillStyle = "#FFFFFF";
-			ctx.strokeStyle = i === shown - 1 ? accent : BORDER;
+			ctx.strokeStyle = i === shown - 1 ? accent : BORDER$1;
 			ctx.lineWidth = i === shown - 1 ? 2.5 : 2;
 			roundRect(ctx, ox, oy, pw, ph, 8);
 			ctx.fill();
@@ -3765,8 +3981,290 @@
 			ctx.font = sansFont(fontSize * .72, 600);
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
-			ctx.fillStyle = INK$1;
+			ctx.fillStyle = INK$2;
 			ctx.fillText(el.label, el.x + el.w / 2, el.y + el.h - labelH / 2, el.w);
+		}
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/color.ts
+	/**
+	* 颜色工具:把 #RRGGBB / #RGB 追加 alpha 后缀。
+	* 非 hex(命名色 / rgb() / 变量)原样返回——拼错后缀会产出非法颜色,Canvas 会静默沿用上一色。
+	*/
+	function withAlpha(color, alphaHex) {
+		const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(color.trim());
+		if (!m) return color;
+		const h = m[1];
+		if (h.length === 3) return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}${alphaHex}`;
+		return `#${h}${alphaHex}`;
+	}
+	//#endregion
+	//#region src/core/render/infra.ts
+	/**
+	* 信息图小件第二批:胶囊组 / 圆环节点 / 编号叠纸列。
+	* 都服务于「结构图里的小语义单元」:状态变体、抽象角色、K 份样本。
+	* 纯 (el, progress) 绘制,颜色一律走 withAlpha,未知字段回落缺省。
+	*/
+	var INK$1 = "#1F2937";
+	var MUTED$2 = "#64748B";
+	var BORDER = "#E2E8F0";
+	var ACCENT = "#3B82F6";
+	/** 胶囊组:单行横排,宽度按文本自然宽度 + 内边距;style 决定填充/描边;typewriter = 逐个显现 */
+	function drawChipRow(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 22;
+		const items = el.items ?? [];
+		if (items.length === 0) return;
+		const gap = el.gap ?? fontSize * .55;
+		const padX = fontSize * .8;
+		const h = fontSize * 1.75;
+		const reveal = progress === void 0 ? items.length : Math.min(items.length, Math.max(0, progress * items.length));
+		ctx.save();
+		ctx.font = sansFont(fontSize, 600);
+		ctx.textBaseline = "middle";
+		const widths = items.map((it) => Math.max(h, ctx.measureText(it.text).width + padX * 2));
+		const total = widths.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+		const startX = el.align === "center" ? el.x + (el.w - total) / 2 : el.align === "right" ? el.x + el.w - total : el.x;
+		const y = el.y + (el.h - h) / 2;
+		const baseAlpha = ctx.globalAlpha;
+		let x = startX;
+		items.forEach((it, i) => {
+			const partial = reveal - i;
+			if (partial <= 0) return;
+			ctx.globalAlpha = baseAlpha * Math.min(1, partial * 2.2);
+			const color = it.color ?? ACCENT;
+			const style = it.style ?? "tint";
+			roundRect(ctx, x, y, widths[i], h, h / 2);
+			if (style === "solid") {
+				ctx.fillStyle = color;
+				ctx.fill();
+				ctx.fillStyle = "#FFFFFF";
+			} else if (style === "outline" || style === "dashed") {
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fill();
+				ctx.strokeStyle = color;
+				ctx.lineWidth = 2;
+				if (style === "dashed") ctx.setLineDash([fontSize * .3, fontSize * .24]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+				ctx.fillStyle = color;
+			} else {
+				ctx.fillStyle = withAlpha(color, "1F");
+				ctx.fill();
+				ctx.fillStyle = color;
+			}
+			ctx.textAlign = "center";
+			ctx.fillText(it.text, x + widths[i] / 2, y + h / 2 + 1, widths[i] - padX);
+			x += widths[i] + gap;
+		});
+		ctx.globalAlpha = baseAlpha;
+		ctx.restore();
+	}
+	/** 圆环节点:外光晕 + 主圆环 + 内虚环 + 居中主文字/副文字(直径取 min(w,h)) */
+	function drawRingNode(ctx, el) {
+		const fontSize = el.fontSize ?? 34;
+		const accent = el.accent ?? ACCENT;
+		const cx = el.x + el.w / 2;
+		const cy = el.y + el.h / 2;
+		const R = Math.max(12, Math.min(el.w, el.h) / 2);
+		const ringW = Math.max(3, R * .055) * (el.ring ?? 1);
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(cx, cy, R, 0, Math.PI * 2);
+		ctx.fillStyle = withAlpha(accent, "12");
+		ctx.fill();
+		ctx.beginPath();
+		ctx.arc(cx, cy, R - ringW * 1.6, 0, Math.PI * 2);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.strokeStyle = accent;
+		ctx.lineWidth = ringW;
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.arc(cx, cy, (R - ringW * 1.6) * .74, 0, Math.PI * 2);
+		ctx.strokeStyle = withAlpha(accent, "3D");
+		ctx.lineWidth = Math.max(1.5, ringW * .35);
+		ctx.setLineDash([6, 6]);
+		ctx.stroke();
+		ctx.setLineDash([]);
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		const fit = (text, base, maxW) => {
+			ctx.font = sansFont(base, 600);
+			const tw = ctx.measureText(text).width;
+			return tw > maxW ? Math.max(11, base * (maxW / tw)) : base;
+		};
+		const box = R * 1.5;
+		if (el.sub) {
+			const label = el.label ?? "";
+			ctx.font = sansFont(fit(label, fontSize, box), 600);
+			ctx.fillStyle = INK$1;
+			ctx.fillText(label, cx, cy - fontSize * .5);
+			ctx.font = sansFont(fit(el.sub, fontSize * .6, box), 500);
+			ctx.fillStyle = MUTED$2;
+			ctx.fillText(el.sub, cx, cy + fontSize * .75);
+		} else {
+			const label = el.label ?? "";
+			ctx.font = sansFont(fit(label, fontSize, box), 600);
+			ctx.fillStyle = INK$1;
+			ctx.fillText(label, cx, cy + 1);
+		}
+		ctx.restore();
+	}
+	/** 单张纸:白底圆角 + 顶部折角 + 三条文本示意线 */
+	function drawSheet(ctx, x, y, w, h, accent, active) {
+		roundRect(ctx, x, y, w, h, 6);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.strokeStyle = active ? accent : BORDER;
+		ctx.lineWidth = active ? 2 : 1.5;
+		ctx.stroke();
+		const fold = w * .26;
+		ctx.beginPath();
+		ctx.moveTo(x + w - fold, y);
+		ctx.lineTo(x + w, y + fold);
+		ctx.lineTo(x + w - fold, y + fold);
+		ctx.closePath();
+		ctx.fillStyle = withAlpha(accent, "26");
+		ctx.fill();
+		ctx.fillStyle = withAlpha(accent, "59");
+		for (let l = 0; l < 3; l++) {
+			roundRect(ctx, x + w * .16, y + h * (.32 + l * .17), w * (.62 - l * .13), Math.max(2, h * .045), 2);
+			ctx.fill();
+		}
+	}
+	/** 编号叠纸列:每段「编号 + 叠纸」纵向平分,段间画竖向省略号;typewriter = 逐段显现 */
+	function drawStackList(ctx, el, progress) {
+		const fontSize = el.fontSize ?? 24;
+		const accent = el.accent ?? "#8B5CF6";
+		const keys = (el.keys && el.keys.length > 0 ? el.keys : ["1", "K"]).slice(0, 3);
+		const sheets = Math.min(4, Math.max(1, Math.round(el.sheets ?? 2)));
+		const showDots = el.ellipsis !== false && keys.length > 1;
+		const reveal = progress === void 0 ? keys.length : Math.min(keys.length, Math.max(0, progress * keys.length));
+		const labelH = el.label ? fontSize * 2.1 : 0;
+		const dotsH = showDots ? fontSize * 1.9 * (keys.length - 1) : 0;
+		const blockH = (el.h - labelH - dotsH) / keys.length;
+		if (blockH <= 0) return;
+		ctx.save();
+		ctx.textBaseline = "middle";
+		const baseAlpha = ctx.globalAlpha;
+		if (el.label) {
+			ctx.font = sansFont(fontSize * .8, 600);
+			ctx.textAlign = "center";
+			ctx.fillStyle = MUTED$2;
+			ctx.fillText(el.label, el.x + el.w / 2, el.y + fontSize * .9, el.w);
+		}
+		keys.forEach((key, i) => {
+			const partial = reveal - i;
+			if (partial <= 0) return;
+			ctx.globalAlpha = baseAlpha * Math.min(1, partial * 2.2);
+			const top = el.y + labelH + i * (blockH + dotsH / Math.max(1, keys.length - 1));
+			ctx.font = sansFont(fontSize * .85, 600);
+			ctx.textAlign = "center";
+			ctx.fillStyle = MUTED$2;
+			ctx.fillText(key, el.x + fontSize * .7, top + blockH / 2);
+			const areaX = el.x + fontSize * 1.7;
+			const areaW = el.w - fontSize * 1.7;
+			const pw = Math.min(areaW * .62, blockH * .78);
+			const ph = pw * 1.16;
+			const step = Math.min(7, pw * .14);
+			const baseX = areaX + (areaW - pw - step * (sheets - 1)) / 2;
+			const baseY = top + (blockH - ph + step * (sheets - 1)) / 2;
+			for (let s = 0; s < sheets; s++) drawSheet(ctx, baseX + s * step, baseY - s * step, pw, ph, accent, s === sheets - 1);
+			if (showDots && i < keys.length - 1) {
+				const cy = top + blockH + dotsH / Math.max(1, keys.length - 1) / 2;
+				for (let d = -1; d <= 1; d++) {
+					ctx.beginPath();
+					ctx.arc(el.x + el.w / 2, cy + d * fontSize * .45, Math.max(2, fontSize * .1), 0, Math.PI * 2);
+					ctx.fillStyle = MUTED$2;
+					ctx.fill();
+				}
+			}
+		});
+		ctx.globalAlpha = baseAlpha;
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/arrows.ts
+	/**
+	* 回环箭头:U 形折返箭头(反馈 / 下一轮 / 复盘回写)。
+	* 与 connector 的分工:connector 走两点最短路径,loopArrow 强制绕出一圈——
+	* 结构图里「走到底再回到开头」的含义,用最短路径画不出来。
+	*/
+	var DEFAULT_COLOR = "#8B5CF6";
+	function drawLoopArrow(ctx, el) {
+		const [x1, y1] = el.from;
+		const [x2, y2] = el.to;
+		const color = el.color ?? DEFAULT_COLOR;
+		const lineW = el.width ?? 5;
+		const side = el.side ?? "bottom";
+		const vertical = side === "top" || side === "bottom";
+		const sgn = side === "bottom" || side === "right" ? 1 : -1;
+		const span = vertical ? Math.abs(x2 - x1) : Math.abs(y2 - y1);
+		const depth = Math.min(400, Math.max(24, el.depth ?? Math.max(48, span * .26 + 56)));
+		const bend = vertical ? [{
+			x: x1,
+			y: y1 + sgn * depth
+		}, {
+			x: x2,
+			y: y2 + sgn * depth
+		}] : [{
+			x: x1 + sgn * depth,
+			y: y1
+		}, {
+			x: x2 + sgn * depth,
+			y: y2
+		}];
+		const pts = [
+			{
+				x: x1,
+				y: y1
+			},
+			...bend,
+			{
+				x: x2,
+				y: y2
+			}
+		];
+		ctx.save();
+		ctx.strokeStyle = color;
+		ctx.lineWidth = lineW;
+		ctx.lineCap = "round";
+		if (el.dash === true) ctx.setLineDash([lineW * 2.4, lineW * 1.8]);
+		ctx.beginPath();
+		strokeRoundedPolyline(ctx, pts, {
+			x: x2,
+			y: y2
+		}, 1, Math.min(depth * .5, 30));
+		ctx.stroke();
+		ctx.setLineDash([]);
+		if (el.arrow !== false) {
+			const ang = vertical ? sgn > 0 ? -Math.PI / 2 : Math.PI / 2 : sgn > 0 ? Math.PI : 0;
+			const size = lineW * 3.4;
+			ctx.beginPath();
+			ctx.moveTo(x2, y2);
+			ctx.lineTo(x2 - size * Math.cos(ang - .45), y2 - size * Math.sin(ang - .45));
+			ctx.lineTo(x2 - size * Math.cos(ang + .45), y2 - size * Math.sin(ang + .45));
+			ctx.closePath();
+			ctx.fillStyle = color;
+			ctx.fill();
+		}
+		if (el.label) {
+			const fontSize = 24;
+			const mx = vertical ? (x1 + x2) / 2 : x1 + sgn * depth;
+			const my = vertical ? y1 + sgn * depth : (y1 + y2) / 2;
+			const ly = vertical ? my + (sgn > 0 ? -24 * .95 : fontSize * 1.15) : my;
+			const lx = vertical ? mx : mx + (sgn > 0 ? -12 : fontSize * .5);
+			ctx.font = sansFont(fontSize, 600);
+			ctx.textAlign = vertical ? "center" : sgn > 0 ? "right" : "left";
+			ctx.textBaseline = "middle";
+			const tw = ctx.measureText(el.label).width;
+			if (vertical) roundRect(ctx, lx - tw / 2 - 12, ly - fontSize * .85, tw + 24, fontSize * 1.7, fontSize * .85);
+			else roundRect(ctx, sgn > 0 ? lx - tw - 12 : lx - 12, ly - fontSize * .85, tw + 24, fontSize * 1.7, fontSize * .85);
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fill();
+			ctx.fillStyle = color;
+			ctx.fillText(el.label, lx, ly + 1);
 		}
 		ctx.restore();
 	}
@@ -4071,17 +4569,34 @@
 		}
 		ctx.restore();
 	}
-	/** 分组面板:圆角卡片 + 骑跨上边框的标题胶囊(纯视觉归拢,子元素仍绝对坐标) */
+	/** 分组面板:圆角卡片 + 标题(骑跨上边框的胶囊 / 带副标题时改内嵌左上);dash = 弱分组的虚线边 */
 	function drawGroupPanel(ctx, el) {
 		const radius = el.radius ?? 24;
+		const accent = el.accent ?? "#3B82F6";
 		ctx.save();
 		roundRect(ctx, el.x, el.y, el.w, el.h, radius);
 		ctx.fillStyle = el.fill ?? "rgba(255,255,255,0.72)";
 		ctx.fill();
-		ctx.strokeStyle = el.stroke ?? "#E2E8F0";
+		ctx.strokeStyle = el.stroke ?? (el.dash === true ? accent : "#E2E8F0");
 		ctx.lineWidth = 1.5;
+		if (el.dash === true) {
+			ctx.setLineDash([12, 8]);
+			ctx.lineWidth = 2;
+		}
 		ctx.stroke();
-		if (el.title) {
+		ctx.setLineDash([]);
+		if (el.title && el.subtitle) {
+			const fontSize = 24;
+			const pad = Math.max(20, radius * .9);
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			ctx.font = sansFont(fontSize, 700);
+			ctx.fillStyle = accent;
+			ctx.fillText(el.title, el.x + pad, el.y + pad + fontSize * .5, el.w - pad * 2);
+			ctx.font = sansFont(fontSize * .62, 500);
+			ctx.fillStyle = MUTED;
+			ctx.fillText(el.subtitle, el.x + pad, el.y + pad + fontSize * 1.7, el.w - pad * 2);
+		} else if (el.title) {
 			const fontSize = 22;
 			const chipH = fontSize * 1.5;
 			ctx.font = sansFont(fontSize, 600);
@@ -4089,7 +4604,7 @@
 			const chipX = el.x + 28;
 			const chipY = el.y - fontSize * .75;
 			roundRect(ctx, chipX, chipY, ctx.measureText(el.title).width + fontSize * 1.2, chipH, fontSize * .75);
-			ctx.fillStyle = el.accent ?? "#3B82F6";
+			ctx.fillStyle = accent;
 			ctx.fill();
 			ctx.textAlign = "left";
 			ctx.fillStyle = "#FFFFFF";
@@ -4851,7 +5366,19 @@
 			case "specRow":
 				drawSpecRow(ctx, elT);
 				break;
-			case "docStack": drawDocStack(ctx, elT, progress);
+			case "docStack":
+				drawDocStack(ctx, elT, progress);
+				break;
+			case "chipRow":
+				drawChipRow(ctx, elT, progress);
+				break;
+			case "ringNode":
+				drawRingNode(ctx, elT);
+				break;
+			case "stackList":
+				drawStackList(ctx, elT, progress);
+				break;
+			case "loopArrow": drawLoopArrow(ctx, elT);
 		}
 		if (fx.flashAlpha > 0) {
 			ctx.globalAlpha = fx.flashAlpha;
@@ -4876,7 +5403,7 @@
 				const angle = i / 10 * Math.PI * 2 - Math.PI / 2;
 				const px = cx + Math.cos(angle) * reach;
 				const py = cy + Math.sin(angle) * reach;
-				ctx.globalAlpha = (1 - q) * .9;
+				ctx.globalAlpha = alpha * (1 - q) * .9;
 				ctx.fillStyle = i % 2 === 0 ? "#F87171" : "#FBBF24";
 				ctx.beginPath();
 				ctx.moveTo(px + Math.cos(angle) * size, py + Math.sin(angle) * size);

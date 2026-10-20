@@ -46,13 +46,24 @@ export function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void
 }
 
 export function drawTitle(ctx: CanvasRenderingContext2D, el: TitleElement, progress?: number): void {
-  drawRichText(ctx, el.x, el.y, el.w, el.h, el.text, {
-    fontSize: el.fontSize ?? 64,
+  const fontSize = el.fontSize ?? 64;
+  // 有副标题时主标题收进上方 78%,副标题占底部一条(居中小字灰)
+  const subH = el.sub ? fontSize * 0.85 : 0;
+  drawRichText(ctx, el.x, el.y, el.w, el.h - subH, el.text, {
+    fontSize,
     color: el.color ?? "#111827",
     align: "center",
     highlights: el.highlight,
     progress,
   });
+  if (el.sub) {
+    drawRichText(ctx, el.x, el.y + el.h - subH, el.w, subH, el.sub, {
+      fontSize: Math.max(14, fontSize * 0.36),
+      color: "#64748B",
+      align: "center",
+      progress,
+    });
+  }
 }
 
 export function drawArtText(ctx: CanvasRenderingContext2D, el: ArtTextElement, progress?: number): void {

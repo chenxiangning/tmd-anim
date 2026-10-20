@@ -10,6 +10,7 @@ const WIN_PATHS: ProtocolPaths = {
   recipesMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\recipes.md",
   httpExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\http-example.json",
   showcaseExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\showcase-example.json",
+  infographicExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\infographic-example.json",
   xiaoheiStyleMd: "C:\\Users\\rei\\.tmd-anim\\protocol\\xiaohei-style.md",
   xiaoheiExample: "C:\\Users\\rei\\.tmd-anim\\protocol\\xiaohei-example.json",
   projectsDir: "C:\\Users\\rei\\.tmd-anim\\projects\\",

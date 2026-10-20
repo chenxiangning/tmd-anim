@@ -11,6 +11,8 @@ import { drawConfetti } from "./confetti";
 import { drawMascot } from "./mascot";
 import { drawBarChart, drawLineChart, drawPieChart } from "./charts";
 import { drawCardFlow, drawDocStack, drawSpecRow } from "./flow";
+import { drawChipRow, drawRingNode, drawStackList } from "./infra";
+import { drawLoopArrow } from "./arrows";
 import { drawCodeDiff, drawCursor, drawFolderTree } from "./guide";
 import { drawConnector, drawImageEl, resolveConnector } from "./misc";
 import { drawGridBg, drawGroupPanel, drawLane, drawSpotlight } from "./stage";
@@ -239,6 +241,18 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
     case "docStack":
       drawDocStack(ctx, elT, progress);
       break;
+    case "chipRow":
+      drawChipRow(ctx, elT, progress);
+      break;
+    case "ringNode":
+      drawRingNode(ctx, elT);
+      break;
+    case "stackList":
+      drawStackList(ctx, elT, progress);
+      break;
+    case "loopArrow":
+      drawLoopArrow(ctx, elT);
+      break;
   }
   // 强调后置覆盖(元素本地坐标,与内容同变换空间):白闪 / 扩散圈
   if (fx.flashAlpha > 0) {
@@ -266,7 +280,7 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
       const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
       const px = cx + Math.cos(angle) * reach;
       const py = cy + Math.sin(angle) * reach;
-      ctx.globalAlpha = (1 - q) * 0.9;
+      ctx.globalAlpha = alpha * (1 - q) * 0.9;
       ctx.fillStyle = i % 2 === 0 ? "#F87171" : "#FBBF24";
       ctx.beginPath();
       ctx.moveTo(px + Math.cos(angle) * size, py + Math.sin(angle) * size);

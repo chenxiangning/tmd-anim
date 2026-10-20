@@ -3,6 +3,7 @@ import recipesMd from "../../docs/recipes.md?raw";
 import xiaoheiStyleMd from "../../docs/xiaohei-style.md?raw";
 import { protocolPaths, renderSkillMd } from "./agentPaths";
 import httpSample from "../samples/http.json";
+import harnessSample from "../samples/harness-loop.json";
 import showcaseSample from "../samples/showcase.json";
 import xiaoheiSample from "../samples/xiaohei.json";
 
@@ -13,9 +14,10 @@ interface TextFileStore {
 }
 
 /**
- * 协议材料投递:schema.md、xiaohei-style.md、skill.md 与两个示例 JSON 落到
- * 当前用户主目录的 .tmd-anim/protocol/(mac 与 Windows 各自解析,见 agentPaths),
- * 内容与盘上不同才覆写。仅 Tauri 后端;任何失败静默降级,不阻塞应用启动。
+ * 协议材料投递:schema.md、recipes.md、xiaohei-style.md、skill.md 与四个示例 JSON
+ * (http / showcase / xiaohei / infographic)落到当前用户主目录的 .tmd-anim/protocol/
+ * (mac 与 Windows 各自解析,见 agentPaths),内容与盘上不同才覆写。
+ * 仅 Tauri 后端;任何失败静默降级,不阻塞应用启动。
  */
 export async function syncProtocol(): Promise<void> {
   try {
@@ -28,6 +30,7 @@ export async function syncProtocol(): Promise<void> {
     await writeIfChanged(fs, p.recipesMd, recipesMd);
     await writeIfChanged(fs, p.httpExample, JSON.stringify(httpSample, null, 2));
     await writeIfChanged(fs, p.showcaseExample, JSON.stringify(showcaseSample, null, 2));
+    await writeIfChanged(fs, p.infographicExample, JSON.stringify(harnessSample, null, 2));
     await writeIfChanged(fs, p.xiaoheiStyleMd, xiaoheiStyleMd);
     await writeIfChanged(fs, p.xiaoheiExample, JSON.stringify(xiaoheiSample, null, 2));
     await writeIfChanged(fs, p.dir + "skill.md", renderSkillMd(p));

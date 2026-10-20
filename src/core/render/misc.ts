@@ -172,10 +172,12 @@ export function drawConnector(ctx: CanvasRenderingContext2D, el: ConnectorElemen
   ctx.strokeStyle = color;
   ctx.lineWidth = lineW;
   ctx.lineCap = "round";
-  // 强调数据流(emphasis.dashFlow):虚线滚动,速度由 dashOffset 变化率决定
+  // 强调数据流(emphasis.dashFlow):虚线滚动,速度由 dashOffset 变化率决定;静态虚线走 el.dash
   if (dashOffset !== undefined) {
     ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
     ctx.lineDashOffset = dashOffset;
+  } else if (el.dash === true) {
+    ctx.setLineDash([lineW * 2.4, lineW * 1.8]);
   }
   ctx.beginPath();
   if (route.mode === "segments") {

@@ -88,6 +88,35 @@ describe("drawLineChart", () => {
     expect(ctx.arcs.length).toBeLessThan(5);
     expect(ctx.arcs.length).toBeGreaterThan(0);
   });
+
+  it("smooth 曲线穿过每个数据点(圆点不飘在线外)", () => {
+    // 旧实现用「中点二次贝塞尔」:曲线只穿过相邻点的中点,数据点圆点会落在曲线外侧。
+    const dots: Array<{ x: number; y: number }> = [];
+    const ends: Array<{ x: number; y: number }> = [];
+    const r = 26 * 0.16; // 数据点半径(缺省 fontSize 26)
+    const ctx = {
+      ...mockCtx(),
+      arc: (x: number, y: number, radius: number) => {
+        if (Math.abs(radius - r) < 1e-6) dots.push({ x, y });
+      },
+      // 首点由 moveTo 起笔,其余点为各段贝塞尔终点,两者都算「曲线经过的点」
+      moveTo: (x: number, y: number) => ends.push({ x, y }),
+      bezierCurveTo: (_a: number, _b: number, _c: number, _d: number, x: number, y: number) => {
+        ends.push({ x, y });
+      },
+    } as unknown as CanvasRenderingContext2D;
+    drawLineChart(ctx, {
+      id: "l3", kind: "lineChart", x: 0, y: 0, w: 600, h: 400,
+      smooth: true,
+      series: [{ label: "A", points: [3, 7, 2, 8, 5] }],
+      anim,
+    });
+    expect(dots).toHaveLength(5);
+    for (const d of dots) {
+      const hit = ends.some((e) => Math.abs(e.x - d.x) < 0.01 && Math.abs(e.y - d.y) < 0.01);
+      expect(hit).toBe(true);
+    }
+  });
 });
 
 describe("drawPieChart", () => {

@@ -68,11 +68,16 @@
 
 骨架:
 - `barChart` 分组柱状(3-5 根最佳),`title` 给结论式标题
-  (「P95 延迟下降 62%」而不是「压测结果」)
-- 需要趋势就换 `lineChart`(≤3 条线),`smooth:true`,关键拐点用 `emphasis` 的 `ring`/`pulse` 打在对应元素上
+  (「P95 延迟下降 62%」而不是「压测结果」),`subtitle` 交代口径与单位
+- 多方案对比用分组模式:`groups:[{ label, values, deltas }]` + `groupSeries`,
+  `deltas` 自动出柱顶差值药丸(+7.4 这类),省掉一张表
+- 需要趋势就换 `lineChart`(≤3 条线),`smooth:true`(曲线穿过各点),关键拐点用
+  `emphasis` 的 `ring`/`pulse` 打在对应元素上;主角实线 + 对照 `series[].dash:true`(虚线空心点),
+  线名用 `endLabels:true` 直接标在线尾(比顶部图例更像论文插图)
 - 图表旁边 `note` 便签写「为什么」(根因/取舍),`rotate` 保持默认微倾
 
-填槽:数值差拉大才好看;图例标签短于 6 字。
+填槽:数值差拉大才好看;图例标签短于 6 字;`deltas` 只标有差值的组,全标等于噪音。
+完整活例见 `src/samples/harness-loop.json` 第 3、4 幕(bench-chart.json 第 4、5 幕同款)。
 
 ## 6. UI 操作演示
 
@@ -161,4 +166,35 @@
 - 气泡尾巴朝说话角色:`shape:speechBubble` + `rotate` 微调;同刻入场 ≤2 个。
 - 贴纸强调:`note` + `rotate: -6~-10` + `pop`,一句话戳本质(「找资料 ≠ 考古」)。
 - 配色三件套:奶油底 `#FDF3DC` / 深墨字 `#1F2937` / 粉彩色块,整片统一。
+
+## 12. 学术信息图/机制拆解(多面板 + 数据 + 回环)
+
+适用:论文插图、机制讲解、benchmark 汇报——一屏里同时要「结构 + 数据 + 因果」(参考
+`src/samples/harness-loop.json`)。
+
+骨架(4-6 幕,每幕一个论断):
+
+1. **总览**:左右两个 `groupPanel`(左内层循环 `cardFlow`,右外层 `Harness-Level`),
+   `loopArrow`(`side: bottom`,`from`/`to` 指两侧面板下沿)把「任务之间再循环」画成 U 形回环;
+   面板标题写 `title` + `subtitle`(灰小字),正文自然留出 ~64px 顶边距。
+2. **K 份并行**:`stackList`(`keys: ["1","…","K"]`,`sheets: 2-3`)表达「同一件事做 K 份」,
+   段间自动画竖向省略号;右侧 `groupPanel`(`dash: true`)圈住候选集,内部三行
+   `chipRow`(`DOM` / `INV` / `Candidate`)——胶囊自带 solid/tint/outline/dashed 四态。
+3. **量化收益**:`barChart` 用 `groups[{ label, values, deltas }]` + `groupSeries`,
+   `deltas` 渲染成柱顶药丸(写 `+7.2` 这类差值);标题下用 `subtitle` 交代口径,
+   右下 `note` 落一句「所以呢」。
+4. **边际收益**:`lineChart` + `endLabels`(线尾直接标系列名,省图例),
+   对照组系列设 `dash: true`(虚线 + 空心点)与主系列拉开层级。
+5. **机制收口**:`ringNode` 画「冻结的模型」这类不参与迭代的锚点;三个 `groupPanel`
+   分区(上下文 / 中间件 / 本体),`specRow` 逐行列条目,面板间 `connector` 用
+   `dash: true` 表示弱关系、实线表示调用。
+
+要点:
+- 一屏信息多时靠**面板分区**而不是缩小字号:面板内标题 `accent` 700 + `subtitle` 灰,
+  正文统一 24-28px,整片字号阶梯 ≤4 级。
+- 语义固定:`dash` = 候选/参考/弱关系,实线 = 确定调用;`loopArrow` 只画在「跨层回环」,
+  同一面板内的顺序用 `cardFlow` 或 `connector`。
+- `deltas` 只标有意义的组(≥2 组有差值才画),否则柱顶变噪音;`endLabels` 与图例二选一。
+- 回环箭头元素框会被 normalize 按 `from`/`to` + `depth` 回写包围盒,`wipe` 入场不会被裁。
+
 

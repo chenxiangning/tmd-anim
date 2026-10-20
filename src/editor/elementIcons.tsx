@@ -117,6 +117,37 @@ export const ICONS: Record<string, ReactNode> = {
     </>,
     { stroke: true },
   ),
+  chipRow: icon(
+    <>
+      <rect x="2.5" y="8.5" width="7" height="7" rx="3.5" strokeWidth="1.7" />
+      <rect x="11.5" y="8.5" width="7" height="7" rx="3.5" strokeWidth="1.7" />
+      <path d="M19.5 12h2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>,
+    { stroke: true },
+  ),
+  ringNode: icon(
+    <>
+      <circle cx="12" cy="12" r="8.5" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="5" strokeWidth="1.2" opacity="0.55" strokeDasharray="2 2" />
+    </>,
+    { stroke: true },
+  ),
+  stackList: icon(
+    <>
+      <path d="M3.5 9.5h8v9h-8z" strokeWidth="1.5" />
+      <path d="M6 6.5h8v9" fill="none" strokeWidth="1.3" opacity="0.6" />
+      <path d="M16 10.5h1.5M16.8 13h1.5M17.5 15.5h1.5" fill="none" strokeWidth="1.6" strokeLinecap="round" />
+    </>,
+    { stroke: true },
+  ),
+  loopArrow: icon(
+    <>
+      <path d="M5 8v7a3 3 0 0 0 3 3h9" fill="none" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M14 15.2l3 2.8-3 2.8" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 8l0-0.5" fill="none" strokeWidth="1.6" />
+    </>,
+    { stroke: true },
+  ),
   progress: icon(
     <>
       <rect x="3" y="9" width="18" height="6" rx="3" opacity="0.3" />

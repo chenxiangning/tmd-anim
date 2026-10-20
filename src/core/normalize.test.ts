@@ -263,21 +263,6 @@ describe("normalizeProject", () => {
     expect("sketchSeed" in els[1]).toBe(false);
   });
 
-  it("devNode 开发组件合法透传,label/sub 非字符串丢弃", () => {
-    const p = normalizeProject({
-      version: 1,
-      scenes: [{ elements: [
-        { kind: "devNode", dev: "redis", label: "缓存", sub: "主从 3 节点" },
-        { kind: "devNode", dev: "obs", label: 42, sub: null },
-      ] }],
-    });
-    const els = p.scenes[0].elements as Array<{ dev?: string; label?: unknown; sub?: unknown }>;
-    expect(els[0].dev).toBe("redis");
-    expect(els[0].label).toBe("缓存");
-    expect("label" in els[1]).toBe(false);
-    expect("sub" in els[1]).toBe(false);
-  });
-
   it("phone 与 aiChat 合法透传,aiChat 文本字段非字符串丢弃", () => {
     const p = normalizeProject({
       version: 1,

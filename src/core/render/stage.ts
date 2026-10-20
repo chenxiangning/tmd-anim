@@ -74,17 +74,35 @@ export function drawGridBg(ctx: CanvasRenderingContext2D, el: GridBgElement): vo
   ctx.restore();
 }
 
-/** 分组面板:圆角卡片 + 骑跨上边框的标题胶囊(纯视觉归拢,子元素仍绝对坐标) */
+/** 分组面板:圆角卡片 + 标题(骑跨上边框的胶囊 / 带副标题时改内嵌左上);dash = 弱分组的虚线边 */
 export function drawGroupPanel(ctx: CanvasRenderingContext2D, el: GroupPanelElement): void {
   const radius = el.radius ?? 24;
+  const accent = el.accent ?? "#3B82F6";
   ctx.save();
   roundRect(ctx, el.x, el.y, el.w, el.h, radius);
   ctx.fillStyle = el.fill ?? "rgba(255,255,255,0.72)";
   ctx.fill();
-  ctx.strokeStyle = el.stroke ?? "#E2E8F0";
+  ctx.strokeStyle = el.stroke ?? (el.dash === true ? accent : "#E2E8F0");
   ctx.lineWidth = 1.5;
+  if (el.dash === true) {
+    ctx.setLineDash([12, 8]);
+    ctx.lineWidth = 2;
+  }
   ctx.stroke();
-  if (el.title) {
+  ctx.setLineDash([]);
+  if (el.title && el.subtitle) {
+    // 内嵌标题:主标题 accent 加深,副标题灰小字(参照学术图的面板头)
+    const fontSize = 24;
+    const pad = Math.max(20, radius * 0.9);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.font = sansFont(fontSize, 700);
+    ctx.fillStyle = accent;
+    ctx.fillText(el.title, el.x + pad, el.y + pad + fontSize * 0.5, el.w - pad * 2);
+    ctx.font = sansFont(fontSize * 0.62, 500);
+    ctx.fillStyle = MUTED;
+    ctx.fillText(el.subtitle, el.x + pad, el.y + pad + fontSize * 1.7, el.w - pad * 2);
+  } else if (el.title) {
     const fontSize = 22;
     const chipH = fontSize * 1.5;
     ctx.font = sansFont(fontSize, 600);
@@ -92,7 +110,7 @@ export function drawGroupPanel(ctx: CanvasRenderingContext2D, el: GroupPanelElem
     const chipX = el.x + 28;
     const chipY = el.y - fontSize * 0.75;
     roundRect(ctx, chipX, chipY, ctx.measureText(el.title).width + fontSize * 1.2, chipH, fontSize * 0.75);
-    ctx.fillStyle = el.accent ?? "#3B82F6";
+    ctx.fillStyle = accent;
     ctx.fill();
     ctx.textAlign = "left";
     ctx.fillStyle = "#FFFFFF";

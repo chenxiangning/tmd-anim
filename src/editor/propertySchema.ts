@@ -1,3 +1,4 @@
+/** 属性面板字段注册表:file-size-exempt —— 字段按 kind 聚集,拆散会让同 kind 的字段定义与读写逻辑分离。 */
 import type { ArrayCellsElement, CodeElement, ConnectorElement, SceneElement, ShapeElement, TableElement, TextElement } from "../core/types";
 import { KIND_LABELS } from "./defaults";
 import { NEW_KIND_SCHEMAS } from "./propertySchema.new";
@@ -270,6 +271,13 @@ export const SCHEMAS = {
       plain("label", "标签", "text", { placeholder: "可选" }),
       plain("color", "颜色", "color"),
       numberField("width", "线宽", 5),
+      {
+        key: "dash",
+        label: "虚线",
+        type: "bool",
+        read: (el) => str((el as ConnectorElement).dash === true),
+        write: (el, v) => patch(el, { dash: v === "true" }),
+      },
       {
         key: "arrow",
         label: "箭头",

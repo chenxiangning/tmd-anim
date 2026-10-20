@@ -103,6 +103,8 @@ export interface ElementFloat {
 export interface TitleElement extends ElementBase {
   kind: "title";
   text: string;
+  /** 副标题(居中小字灰,占元素底部一条);主标题相应收进上方 */
+  sub?: string;
   /** 命中的短语渲染为黑底白字圆角芯片 */
   highlight?: string[];
   fontSize?: number;
@@ -212,6 +214,8 @@ export interface ConnectorElement extends ElementBase {
   arrow?: boolean;
   /** 路由:smooth 自适应平滑(缺省)/ elbow 直角正交 / straight 直线 */
   route?: "smooth" | "elbow" | "straight";
+  /** 虚线:表达"可选/回写/弱依赖"这类次要关系 */
+  dash?: boolean;
 }
 
 export interface ImageElement extends ElementBase {
@@ -324,6 +328,62 @@ export interface DocStackElement extends ElementBase {
   fontSize?: number;
 }
 
+/** 胶囊组:一排彩色胶囊(状态/变体/字段名),四种风格;单行横排,由 align 决定组内对齐 */
+export interface ChipRowElement extends ElementBase {
+  kind: "chipRow";
+  items: { text: string; color?: string; style?: ChipStyle }[];
+  /** 胶囊间距,缺省字号 0.55 倍 */
+  gap?: number;
+  /** 整组对齐方式,缺省 left(贴 el.x) */
+  align?: "left" | "center" | "right";
+  fontSize?: number;
+}
+
+/** 胶囊风格:solid 实底白字 / tint 浅底同色字(缺省)/ outline 白底描边 / dashed 白底虚线边 */
+export type ChipStyle = "solid" | "tint" | "outline" | "dashed";
+
+/** 圆环节点:同心圆环 + 居中主文字/副文字(模型、内核、中枢这类抽象角色) */
+export interface RingNodeElement extends ElementBase {
+  kind: "ringNode";
+  label?: string;
+  sub?: string;
+  accent?: string;
+  fontSize?: number;
+  /** 环粗细倍数,缺省 1(0.5 更细,2 更粗) */
+  ring?: number;
+}
+
+/** 回环箭头:U 形折返箭头(反馈/下一轮),表达"走到头再回到开头"的循环语义 */
+export interface LoopArrowElement extends ElementBase {
+  kind: "loopArrow";
+  from: [number, number];
+  to: [number, number];
+  /** U 形折返伸向哪一侧,缺省 bottom */
+  side?: "top" | "bottom" | "left" | "right";
+  /** 折返深度(px),缺省按两端跨度自适应,钳 24-400 */
+  depth?: number;
+  label?: string;
+  color?: string;
+  dash?: boolean;
+  width?: number;
+  arrow?: boolean;
+}
+
+/** 编号叠纸列:首段/末段编号 + 叠纸 + 中间省略号(Base Executions 的 1 … K 叙事) */
+export interface StackListElement extends ElementBase {
+  kind: "stackList";
+  /** 顶部标题 */
+  label?: string;
+  /** 各段编号文字,缺省 ["1","K"],最多 3 段 */
+  keys?: string[];
+  /** 每段叠纸张数 1-4,缺省 2 */
+  sheets?: number;
+  /** 中间是否画竖向省略号,缺省 true(仅 2 段以上生效) */
+  ellipsis?: boolean;
+  accent?: string;
+  fontSize?: number;
+}
+
 /** 手机 mock:圆角机身 + 刘海 + 屏幕区(body 底色),后绘制元素可叠加充当界面内容 */
 export interface PhoneElement extends ElementBase {
   kind: "phone";
@@ -345,7 +405,10 @@ export interface AiChatElement extends ElementBase {
 export interface BarChartElement extends ElementBase {
   kind: "barChart";
   title?: string;
-  series: { label: string; value: number; color?: string }[];
+  /** 标题下的副标题(小字灰),占两行标题高度 */
+  subtitle?: string;
+  /** 单系列数据;分组模式(groups)下可省略 */
+  series?: { label: string; value: number; color?: string }[];
   horizontal?: boolean;
   showValue?: boolean;
   axis?: boolean;
@@ -362,7 +425,9 @@ export interface BarChartElement extends ElementBase {
 export interface LineChartElement extends ElementBase {
   kind: "lineChart";
   title?: string;
-  series: { label: string; color?: string; points: number[] }[];
+  /** 标题下的副标题(小字灰),占两行标题高度 */
+  subtitle?: string;
+  series: { label: string; color?: string; points: number[]; dash?: boolean; dot?: boolean }[];
   smooth?: boolean;
   dot?: boolean;
   area?: boolean;
@@ -379,6 +444,8 @@ export interface LineChartElement extends ElementBase {
 export interface PieChartElement extends ElementBase {
   kind: "pieChart";
   title?: string;
+  /** 标题下的副标题(小字灰),占两行标题高度 */
+  subtitle?: string;
   slices: { label: string; value: number; color?: string }[];
   donut?: boolean;
   legend?: "right" | "bottom" | "none";
@@ -435,10 +502,14 @@ export interface GridBgElement extends ElementBase {
 export interface GroupPanelElement extends ElementBase {
   kind: "groupPanel";
   title?: string;
+  /** 标题下的副标题(小字灰);给出时标题改画在面板内左上,不再骑跨上边框 */
+  subtitle?: string;
   accent?: string;
   fill?: string;
   stroke?: string;
   radius?: number;
+  /** 虚线边框:表达"候选/待定"这类弱分组 */
+  dash?: boolean;
 }
 
 /** 泳道:2-4 条平行色带 + 标签(角色/阶段分栏);元素置带内绝对坐标 */
@@ -526,7 +597,8 @@ export type SceneElement =
   | CodeDiffElement | SpotlightElement | GridBgElement | GroupPanelElement | LaneElement
   | QuoteElement | FormulaElement | AvatarElement | PersonElement
   | MascotElement | ConfettiElement
-  | CardFlowElement | SpecRowElement | DocStackElement;
+  | CardFlowElement | SpecRowElement | DocStackElement
+  | ChipRowElement | RingNodeElement | LoopArrowElement | StackListElement;
 
 export interface Scene {
   id: string;

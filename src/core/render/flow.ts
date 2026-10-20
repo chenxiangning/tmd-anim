@@ -23,12 +23,14 @@ export function drawCardFlow(ctx: CanvasRenderingContext2D, el: CardFlowElement,
   const reveal = progress === undefined ? items.length : Math.min(items.length, Math.max(0, progress * items.length));
   ctx.save();
   ctx.textBaseline = "middle";
+  // 入场 alpha 已在 drawElement 乘进 globalAlpha,逐卡揭示只能在其基础上乘,不能覆盖
+  const baseAlpha = ctx.globalAlpha;
   items.forEach((it, i) => {
     const partial = reveal - i;
     if (partial <= 0) return;
     const cx = el.x + i * (cardW + gap);
     const isActive = i === (el.active ?? -1);
-    ctx.globalAlpha = Math.min(1, partial * 2.5);
+    ctx.globalAlpha = baseAlpha * Math.min(1, partial * 2.5);
     roundRect(ctx, cx, el.y, cardW, cardH, 16);
     ctx.fillStyle = isActive ? accent + "0D" : "#FFFFFF";
     ctx.fill();
@@ -76,7 +78,7 @@ export function drawCardFlow(ctx: CanvasRenderingContext2D, el: CardFlowElement,
       ctx.fillStyle = accent;
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = baseAlpha;
     // 卡间箭头:下一张卡已开始揭示才画
     if (i < items.length - 1 && reveal - (i + 1) > 0) {
       const ax = cx + cardW + gap * 0.12;

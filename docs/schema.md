@@ -65,11 +65,11 @@
 | `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
 | `float` | object \| true | 否 | 悬浮:入场结束后从静止渐入(0.6s)持续轻微漂浮,给画面呼吸感;`true` = 缺省参数。参数 `{ amp?, period?, swing? }`:amp 幅度像素(2-40,缺省 8)、period 周期秒(1-10,缺省 3)、swing = 横向椭圆轨迹(否则仅纵向);false/缺省不浮。`connector` 不支持。编辑器属性面板「悬浮」一键开关 |
 
-## 元素类型(40 种)
+## 元素类型(44 种)
 
 | kind | 专有字段 | 说明 |
 |---|---|---|
-| `title` | `text`, `highlight?`, `fontSize?(64)`, `color?` | 标题,默认水平居中;highlight 命中短语渲染为黑底白字圆角芯片 |
+| `title` | `text`, `sub?`, `highlight?`, `fontSize?(64)`, `color?` | 标题,默认水平居中;`sub` 为副标题(居中小字灰,占元素底部一条,主标题相应收进上方);highlight 命中短语渲染为黑底白字圆角芯片 |
 | `artText` | `text`, `fontSize?(120)`, `color?`(填充), `stroke?`(描边) | 艺术字:描边大字,水平居中,无高亮芯片 |
 | `text` | `text`, `highlight?`, `fontSize?(40)`, `color?`, `align?("left")` | 正文段落,自动折行 |
 | `input` | `text`, `fontSize?(34)` | 输入框视觉:白底描边圆角矩形 + 静态光标(不闪烁,保证导出确定性) |
@@ -85,20 +85,20 @@
 | `browser` | `url?`, `fontSize?(26)`, `body?("FFFFFF")` | 浏览器窗口:mac 三点 + 地址栏胶囊;内容区为纯色底,后绘制的元素叠加其上充当页面内容 |
 | `arrayCells` | `cells: string[]`, `colors?`, `cellSize?(88)`, `gap?(14)`, `perRow?`, `fontSize?`, `activeIndex?` | 色块数组(token/字节格),从 (x,y) 起按 perRow 折行;colors 按索引给逐块底色,缺省走粉彩色板;activeIndex(0 起,-1 无)高亮格描边 + 顶部指针,`tweens.field=activeIndex` 可游移 |
 | `shape` | `shape("rect"/"ellipse"/"triangle"/"diamond"/"hexagon"/"star"/"cylinder"/"blockArrow"/"speechBubble")`, `fill?`, `stroke?`, `strokeWidth?`, `radius?`(矩形圆角), `text?`, `fontSize?(28)`, `color?`, `sketch?(false)`, `sketchSeed?` | 基础形状;fill 留空 = 无填充,fill 与描边都缺省时给浅灰底兜底。`text` 为居中内嵌文本,文字色缺省按填充亮度反推(亮色底深字/暗色底白字),`color` 可覆盖;画布上双击可改。`sketch: true` 手绘描边:轮廓按 `sketchSeed` 种子确定性抖动并叠复线——编辑器点击/粘贴时随机生成种子(缺省按元素 id 稳定展开),同种子永远同形状,预览与导出一致;协议侧想换一份手绘就换个种子。菱形(流程判断)/六边形/星形(强调)/圆柱(数据库)/块箭头(流向)/对话框为流程图与架构图常用变体 |
-| `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `fromFocus?`, `toFocus?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省;路径被其他元素遮挡时自动改走直角避让重排,绕开障碍后仍回原语义)/ elbow 直角正交(始终避让:出口方向按绑定元素搜索锥判定,出口段钳到朝对端投影永不相交,被挡时枚举 L/Z 中段取不穿障的最短路径,拐角半径 16 圆滑)/ straight 直线(不避让);非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点实时解析——`fromFocus`/`toFocus`(归一化 [0..1, 0..1])存在则固定在元素上的相对位置(编辑器拖拽吸附绑定时自动记录,元素移动/缩放端点跟随且不滑动不跳边),否则取「元素中心朝另一端」射线与包围盒边界的交点;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关;`emphasis.field=dashFlow` 让其虚线滚动表数据流 |
+| `connector` | `from: [x,y]`, `to: [x,y]`, `fromEl?`, `toEl?`, `fromFocus?`, `toFocus?`, `curve?`(0 或缺省 = 自适应平滑曲线:三次贝塞尔,控制点沿两端相对位移的主轴伸展,入射角随相对位置自动调整;非 0 = 手动弓量,二次控制点垂直偏移像素), `color?`, `label?`, `width?(5)`, `arrow?(true)`, `route?(smooth)`, `dash?(false)` | 连线(直线/二次贝塞尔)+ 切线箭头 + 可选标签胶囊(曲线上 t=0.5 处);`arrow: false` = 纯直线/曲线。`route`:smooth 自适应平滑(缺省;路径被其他元素遮挡时自动改走直角避让重排,绕开障碍后仍回原语义)/ elbow 直角正交(始终避让:出口方向按绑定元素搜索锥判定,出口段钳到朝对端投影永不相交,被挡时枚举 L/Z 中段取不穿障的最短路径,拐角半径 16 圆滑)/ straight 直线(不避让);非法值回落 smooth。`fromEl`/`toEl` 为可选的绑定元素 id:元素存在时该端点实时解析——`fromFocus`/`toFocus`(归一化 [0..1, 0..1])存在则固定在元素上的相对位置(编辑器拖拽吸附绑定时自动记录,元素移动/缩放端点跟随且不滑动不跳边),否则取「元素中心朝另一端」射线与包围盒边界的交点;元素被删或 id 无效时回落到 `from`/`to` 原始坐标。解析与动画状态无关;`emphasis.field=dashFlow` 让其虚线滚动表数据流;`dash: true` 静态虚线,表「可选/回写/弱依赖」这类次要关系(可选/回写) |
 | `image` | `src`, `radius?(12)` | 图片,contain 适配圆角裁剪;src 为绝对路径或 dataURL |
 | `phone` | `body?`, `frame?` | 手机 mock:圆角深色机身 + 顶部刘海胶囊 + 底部 home 指示条,中间为屏幕区(body 底色);后绘制元素可叠加在屏幕上充当界面内容,与 browser 同模式 |
 | `aiChat` | `title?`, `prompt?`, `reply?`, `fontSize?(26)`, `dark?` | AI 对话卡:紫色四角星徽标 + 标题头部;`prompt` 为右对齐用户气泡,`reply` 为左对齐 AI 回复区(支持高亮芯片,`dark: true` 深色模式);画布双击改 reply |
 | `devNode` | `dev("database"/"redis"/"obs"/"cloud"/"server"/"api"/"queue"/"container"/"gateway"/"loadBalancer"/"cdn"/"auth"/"function"/"git")`, `label?`, `sub?`, `fontSize?(26)`, `progress?`(0-1) | 开发组件节点:架构图常用资源;左侧按变体程序化绘制的图标色块 + 主名称 + 副标题(规格/说明),主色随变体(数据库蓝/Redis 红/对象存储橙/云/服务器/API/消息队列/容器);画布上双击改名称。progress>0 时节点内底部画 8 点渐进点阵,前 progress*8 个点亮,表达迭代/完成度叙事 |
-| `barChart` | `title?`, `series: {label, value, color?}[]`, `horizontal?`, `showValue?(true)`, `axis?(true)`, `max?`(缺省按数据 niceCeil), `fontSize?(28)`, `groups?({label, values, deltas?}[])`, `groupSeries?(string[])` | 柱状图:数据驱动,垂直(缺省)或水平条形;typewriter 入场 = 逐柱生长(柱间窗口均分),其余类型一次性全显。分组模式(benchmark 图):groups 每组一组柱(系列色 = 调色板序),groupSeries 为系列名图例(>1 系列自动画),deltas[si] 非空时该柱顶画增益药丸(如 "+7.4");分组时忽略 series/horizontal 只画竖向 |
-| `lineChart` | `title?`, `series: {label, color?, points: number[]}[]`(≤3 条), `smooth?`, `dot?(true)`, `area?`, `axis?(true)`, `grid?(true)`, `min?/max?`(缺省按数据留边), `fontSize?(26)`, `endLabels?` | 折线图:沿路径 draw-on 入场(边界段插值);smooth 中点贝塞尔平滑,area 面积填充;多序列自动图例。endLabels = 期刊风线尾标注:系列名直接画在线尾右侧(替代顶部图例),末点带同色光晕,draw-on 完成后才出现 |
-| `pieChart` | `title?`, `slices: {label, value, color?}[]`, `donut?`, `legend?("right"/"bottom"/"none")`, `startAngle?(-90)`, `fontSize?(26)` | 饼图/环图:扫掠展开入场;donut 中央显示合计;非正值 slice 被过滤 |
+| `barChart` | `title?`, `subtitle?`, `series?: {label, value, color?}[]`(分组模式可省略), `horizontal?`, `showValue?(true)`, `axis?(true)`, `max?`(缺省按数据 niceCeil), `fontSize?(28)`, `groups?({label, values, deltas?}[])`, `groupSeries?(string[])` | 柱状图:数据驱动,垂直(缺省)或水平条形;typewriter 入场 = 逐柱生长(柱间窗口均分),其余类型一次性全显。分组模式(benchmark 图):groups 每组一组柱(系列色 = 调色板序),groupSeries 为系列名图例(>1 系列自动画),deltas[si] 非空时该柱顶画增益药丸(如 "+7.4");分组时忽略 series/horizontal 只画竖向 |
+| `lineChart` | `title?`, `subtitle?`, `series: {label, color?, points: number[], dash?, dot?}[]`(≤3 条), `smooth?`, `dot?(true)`, `area?`, `axis?(true)`, `grid?(true)`, `min?/max?`(缺省按数据留边), `fontSize?(26)`, `endLabels?` | 折线图:沿路径 draw-on 入场(边界段插值);smooth 平滑曲线(Catmull-Rom 转三次贝塞尔,曲线穿过每个数据点,点圆点在线不脱支),area 面积填充;多序列自动图例。endLabels = 期刊风线尾标注:系列名直接画在线尾右侧(替代顶部图例),末点带同色光晕,draw-on 完成后才出现;系列级 `dash: true` 画虚线 + 空心点(主角实线/对照虚线),`dot: false` 只画线不画点 |
+| `pieChart` | `title?`, `subtitle?`, `slices: {label, value, color?}[]`, `donut?`, `legend?("right"/"bottom"/"none")`, `startAngle?(-90)`, `fontSize?(26)` | 饼图/环图:扫掠展开入场;donut 中央显示合计;非正值 slice 被过滤 |
 | `cursor` | `points: [x,y][]`(≥2), `clicks?: number[]`(场景秒,涟漪圈), `hold?: [start,end]`(按压区间) | 鼠标光标(mac 箭头):移动发生在入场窗口内(与 anim.start/duration 绑定,与动画类型无关),p=1 后停在末点;建议入场 duration 拉到 2-3s 让轨迹可读 |
 | `folderTree` | `root?("project")`, `items: {name, depth?, icon?:dir/file, comment?}[]`, `fontSize?(26)` | 文件树:mac 圆角卡 + 根目录头;depth 缺省继承上一行(首行 0);typewriter 入场 = 逐行显现 |
 | `codeDiff` | `filename?`, `hunks: {ctx?, lines: {tag:" "/"+"/"-", text}[]}[]`, `fontSize?(24)`, `dark?(true)` | 代码 diff:+绿/-红 行底与前缀,ctx 行灰色;typewriter 入场 = 逐行显现 |
 | `spotlight` | `shape?("rect"/"ellipse")`, `strength?(0.65)` | 聚光灯:全屏暗角、只亮本元素几何区(圆角矩形/椭圆孔);约定放在 elements 数组末尾(其后的元素暗角盖不住,lint 强制校验) |
 | `gridBg` | `step?(40)`, `color?`, `dot?(false)`, `axis?` | 网格/点阵背景,为流程图垫底;约定放在 elements[0](lint 校验) |
-| `groupPanel` | `title?`, `accent?`, `fill?`, `stroke?`, `radius?(24)` | 分组面板:圆角卡片 + 骑跨上边框的标题芯片;纯视觉归拢,子元素仍绝对坐标置内;lint 警告面板内无元素的孤儿 |
+| `groupPanel` | `title?`, `subtitle?`, `accent?`, `fill?`, `stroke?`, `radius?(24)`, `dash?(false)` | 分组面板:圆角卡片 + 骑跨上边框的标题芯片;给出 `subtitle` 时标题改画在面板内左上(主标题 accent + 副标题灰小字,内容需自行留出 ~64px 顶边距);`dash: true` 虚线边表「候选/待定」弱分组;纯视觉归拢,子元素仍绝对坐标置内;lint 警告面板内无元素的孤儿 |
 | `lane` | `direction?("h"/"v")`, `count?(2-4)`, `labels?: string[]`, `gutter?(6)` | 泳道:平行色带 + 标签(按角色/阶段分栏),元素置带内绝对坐标 |
 | `quote` | `text`, `author?`, `accent?`, `fontSize?(36)` | 引用块:左侧竖条 + 引文,可署名 |
 | `formula` | `text`(TeX 子集), `fontSize?(64)`, `color?` | 数学公式:支持 `\frac{}{}` `\sqrt{}` 上下标(`^`/`_`) `\sum` `\int` 希腊字母等;解析失败回落纯文本 + lint 警告;超界自动缩放到元素框内 |
@@ -109,6 +109,10 @@
 | `cardFlow` | `items({num?, title, tags?, desc?}[])`, `active?`(高亮卡索引,缺省 -1), `note?`, `accent?`, `fontSize?(26)` | 流程卡组:编号卡片横排,卡间箭头;active 卡蓝边浅蓝底 + 底部短进度条;tags 渲染为 accent 药丸芯片(每行放不下自动截断);note 底部居中 accent 结论句。typewriter 入场 = 逐卡揭示(含箭头),其余一次性全显 |
 | `specRow` | `num?`, `title`, `path?`(mono), `badge?`, `accent?`, `fontSize?(24)` | 规格行卡:左侧 accent 编号芯片 + 标题(700)+ 下行等宽路径 + 右侧徽章药丸(accent 14% 底);架构图文档条目,常与 groupPanel 纵向排布组合 |
 | `docStack` | `count?(3,钳1-5)`, `label?`, `accent?`, `fontSize?(24)` | 文档堆叠:min(count,5) 张右上错位叠纸,末张 accent 描边 + 折角 + 文本行示意,label 下方居中;「K 份执行记录/样本」叙事。typewriter 入场 = 逐张出现 |
+| `chipRow` | `items({text, color?, style?("tint")}[])`, `gap?`, `align?("left")`, `fontSize?(22)` | 胶囊组:一排彩色胶囊,宽度按文本自然宽度 + 内边距,单行不折行;style = `solid` 实底白字 / `tint` 浅底同色字(缺省)/ `outline` 白底描边 / `dashed` 白底虚线边(表「候选」);align 为整组对齐(left/center/right,相对元素框);typewriter 入场 = 逐个显现 |
+| `ringNode` | `label?`, `sub?`, `accent?`, `fontSize?(34)`, `ring?(1)` | 圆环节点:外光晕 + 主圆环 + 内虚环,直径取 min(w,h);有 sub 时主文字上移、副文字在下。用于「模型/内核/中枢」这类抽象角色,与 devNode 的方角资源节点对位 |
+| `stackList` | `label?`, `keys?(["1","K"])`, `sheets?(2,钳1-4)`, `ellipsis?(true)`, `accent?`, `fontSize?(24)` | 编号叠纸列:每段「编号 + 叠纸」纵向平分,段间竖排三点省略号,表达「1 … K 份执行记录/样本」;keys 最多 3 段(单段时不画省略号);typewriter 入场 = 逐段显现 |
+| `loopArrow` | `from: [x,y]`, `to: [x,y]`, `side?("bottom")`, `depth?`(缺省按跨度自适应,钳 24-400), `label?`, `color?`, `width?(5)`, `dash?(false)`, `arrow?(true)` | 回环箭头:从 from 沿 side 折返一圈到 to 的 U 形箭头(拐角圆滑),箭头只画在 to;跨面板的「反馈/下一轮」语义,connector 的最短路径画不出来;label 画在折返段外侧(靠画布内一侧)。from/to 缺失或非有限数时该元素被整体丢弃 |
 
 ## 高亮芯片规则
 
@@ -118,10 +122,12 @@
 ## agent 工作流建议
 
 1. 复制 `src/samples/http.json` 为模板改内容,或先查 `docs/recipes.md`(叙事配方库:
-   开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾/拟人科普,
-   拟人科普活例见 `src/samples/explainer.json`,套模板再填槽);
+   开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾/拟人科普/学术信息图,
+   拟人科普活例见 `src/samples/explainer.json`,学术信息图活例见 `src/samples/harness-loop.json`,
+   套模板再填槽);
    桌面版协议副本在 `~/.tmd-anim/protocol/`
-   (`schema.md`、`recipes.md`、`http-example.json`、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,
+   (`schema.md`、`recipes.md`、`http-example.json`、`showcase-example.json`(新元素全家福)、
+   `infographic-example.json`(学术信息图)、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,
    应用启动时自动投递)。需要小黑插画风格(手绘怪诞配图)时先读 `xiaohei-style.md`。
 2. 自查:运行 `pnpm anim validate <文件>` —— 退出码 2 = 结构错误必须修;警告(未知 kind、悬空绑定、
    坐标越界、负 start、空 text、场景稀疏、同刻堆叠、聚光灯次序、网格首位、孤儿面板、

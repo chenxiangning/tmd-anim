@@ -14,6 +14,8 @@ export interface ProtocolPaths {
   recipesMd: string;
   httpExample: string;
   showcaseExample: string;
+  /** 学术信息图活例(分组柱图/胶囊组/叠纸 K/回环箭头),配 recipes #12 */
+  infographicExample: string;
   xiaoheiStyleMd: string;
   xiaoheiExample: string;
   projectsDir: string;
@@ -26,6 +28,7 @@ export const FALLBACK_PROTOCOL_PATHS: ProtocolPaths = {
   recipesMd: "~/.tmd-anim/protocol/recipes.md",
   httpExample: "~/.tmd-anim/protocol/http-example.json",
   showcaseExample: "~/.tmd-anim/protocol/showcase-example.json",
+  infographicExample: "~/.tmd-anim/protocol/infographic-example.json",
   xiaoheiStyleMd: "~/.tmd-anim/protocol/xiaohei-style.md",
   xiaoheiExample: "~/.tmd-anim/protocol/xiaohei-example.json",
   projectsDir: "~/.tmd-anim/projects/",
@@ -50,6 +53,7 @@ export async function protocolPaths(): Promise<ProtocolPaths> {
       recipesMd: root + "protocol" + s + "recipes.md",
       httpExample: root + "protocol" + s + "http-example.json",
       showcaseExample: root + "protocol" + s + "showcase-example.json",
+      infographicExample: root + "protocol" + s + "infographic-example.json",
       xiaoheiStyleMd: root + "protocol" + s + "xiaohei-style.md",
       xiaoheiExample: root + "protocol" + s + "xiaohei-example.json",
       projectsDir: root + "projects" + s,
@@ -67,6 +71,8 @@ export function renderSkillMd(p: ProtocolPaths): string {
     .replaceAll("{{SCHEMA_MD}}", p.schemaMd)
     .replaceAll("{{RECIPES_MD}}", p.recipesMd)
     .replaceAll("{{HTTP_EXAMPLE_JSON}}", p.httpExample)
+    .replaceAll("{{SHOWCASE_EXAMPLE_JSON}}", p.showcaseExample)
+    .replaceAll("{{INFOGRAPHIC_EXAMPLE_JSON}}", p.infographicExample)
     .replaceAll("{{XIAOHEI_STYLE_MD}}", p.xiaoheiStyleMd)
     .replaceAll("{{XIAOHEI_EXAMPLE_JSON}}", p.xiaoheiExample);
 }

@@ -1,34 +1,16 @@
-import type { BarChartElement, LineChartElement, PieChartElement } from "../types";
+import type { BarChartElement, PieChartElement } from "../types";
 import { roundRect, sansFont } from "./text";
-import { drawGroupedBar, drawLegendChips } from "./chartsGroup";
+import { CHART_PALETTE, INK, MUTED, drawTitle, niceCeil } from "./chartsCommon";
+import { drawGroupedBar } from "./chartsGroup";
+
+// 折线图在 chartsLine.ts(独立文件守 300 行铁则),此处统一出口,调用方只认 charts
+export { drawLineChart } from "./chartsLine";
 
 /**
- * 图表三件套:柱状 / 折线 / 饼图。数据驱动 + 确定性绘制;
+ * 图表三件套中的柱状 / 饼图(折线在 chartsLine.ts)。数据驱动 + 确定性绘制;
  * 入场动画语义:柱 = 逐柱生长,线 = 沿路径 draw-on,饼 = 扫掠展开,progress 缺省 = 全显。
+ * 公共部件(调色板/标题/图例/上限取整)在 chartsCommon.ts,避免与 chartsGroup.ts 双向引用。
  */
-
-export const CHART_PALETTE = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899"];
-export const INK = "#1F2937";
-export const MUTED = "#64748B";
-
-/** 数值上限取整放大:36 -> 40,170 -> 200,让柱顶/点不顶格 */
-export function niceCeil(v: number): number {
-  if (v <= 0) return 1;
-  const mag = Math.pow(10, Math.floor(Math.log10(v)));
-  const n = v / mag;
-  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
-  return nice * mag;
-}
-
-export function drawTitle(ctx: CanvasRenderingContext2D, el: { x: number; y: number; w: number; title?: string }, fontSize: number): number {
-  if (!el.title) return 0;
-  ctx.font = sansFont(fontSize, 700);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = INK;
-  ctx.fillText(el.title, el.x, el.y + fontSize * 0.9, el.w);
-  return fontSize * 1.9;
-}
 
 export function drawBarChart(ctx: CanvasRenderingContext2D, el: BarChartElement, progress?: number): void {
   // 分组模式(benchmark 图)走专用渲染;缺省单系列走本文件路径
@@ -45,7 +27,7 @@ export function drawBarChart(ctx: CanvasRenderingContext2D, el: BarChartElement,
   const pad = fontSize * 0.9;
   ctx.save();
   ctx.font = sansFont(fontSize * 0.72, 500);
-  const titleH = drawTitle(ctx, el, fontSize);
+  const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
   const area = { x: el.x + pad, y: el.y + titleH + pad * 0.5, w: el.w - pad * 2, h: el.h - titleH - pad * 1.5 };
   const dataMax = Math.max(...series.map((s) => s.value), 0);
   const cap = Math.max(el.max ?? niceCeil(dataMax), dataMax, 1);
@@ -108,127 +90,6 @@ export function drawBarChart(ctx: CanvasRenderingContext2D, el: BarChartElement,
   ctx.restore();
 }
 
-export function drawLineChart(ctx: CanvasRenderingContext2D, el: LineChartElement, progress?: number): void {
-  const fontSize = el.fontSize ?? 26;
-  const series = (el.series ?? []).slice(0, 3);
-  if (series.length === 0) return;
-  const pad = fontSize * 0.9;
-  const allPts = series.flatMap((s) => s.points);
-  if (allPts.length === 0) return;
-  const dataMin = Math.min(...allPts);
-  const dataMax = Math.max(...allPts);
-  const span = Math.max(dataMax - dataMin, 1e-6);
-  const lo = el.min ?? Math.floor(dataMin - span * 0.12);
-  const hi = Math.max(el.max ?? Math.ceil(dataMax + span * 0.12), lo + 1e-6);
-  const n = Math.max(...series.map((s) => s.points.length));
-  ctx.save();
-  const titleH = drawTitle(ctx, el, fontSize);
-  const legendH = series.length > 1 && el.endLabels !== true ? fontSize * 1.6 : 0;
-  const area = { x: el.x + pad, y: el.y + titleH + legendH + pad * 0.4, w: el.w - pad * 2, h: el.h - titleH - legendH - pad * 1.6 };
-  const X = (i: number) => area.x + (n <= 1 ? area.w / 2 : (i / (n - 1)) * area.w);
-  const Y = (v: number) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h;
-  // 网格 + Y 轴刻度
-  if (el.grid !== false) {
-    ctx.font = sansFont(fontSize * 0.62, 500);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    for (let g = 0; g <= 4; g++) {
-      const gv = lo + ((hi - lo) * g) / 4;
-      const gy = Y(gv);
-      ctx.strokeStyle = "rgba(148,163,184,0.28)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(area.x, gy);
-      ctx.lineTo(area.x + area.w, gy);
-      ctx.stroke();
-      ctx.fillStyle = MUTED;
-      ctx.fillText(String(Math.round(gv)), el.x + fontSize * 0.1, gy);
-    }
-  }
-  if (el.axis !== false) {
-    ctx.strokeStyle = "#CBD5E1";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(area.x, area.y);
-    ctx.lineTo(area.x, area.y + area.h);
-    ctx.lineTo(area.x + area.w, area.y + area.h);
-    ctx.stroke();
-  }
-  series.forEach((s, si) => {
-    const pts = s.points.map((v, i) => ({ x: X(i), y: Y(v) }));
-    if (pts.length === 0) return;
-    const color = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
-    // draw-on:整体进度 p 映射到 (n-1) 段;边界段插值到中间点
-    const segTotal = Math.max(pts.length - 1, 1);
-    const f = progress === undefined ? segTotal : Math.min(segTotal, Math.max(0, progress * segTotal));
-    const full = Math.floor(f);
-    const part = f - full;
-    const drawn: Array<{ x: number; y: number }> = pts.slice(0, full + 1);
-    if (part > 0 && full + 1 < pts.length) {
-      const a = pts[full];
-      const b = pts[full + 1];
-      drawn.push({ x: a.x + (b.x - a.x) * part, y: a.y + (b.y - a.y) * part });
-    }
-    if (drawn.length === 0) return;
-    if (el.area === true && drawn.length > 1) {
-      ctx.beginPath();
-      ctx.moveTo(drawn[0].x, area.y + area.h);
-      drawn.forEach((p) => ctx.lineTo(p.x, p.y));
-      ctx.lineTo(drawn[drawn.length - 1].x, area.y + area.h);
-      ctx.closePath();
-      ctx.fillStyle = color + "33";
-      ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = fontSize * 0.18;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    if (el.smooth === true && drawn.length > 2) {
-      ctx.moveTo((drawn[0].x + drawn[1].x) / 2, (drawn[0].y + drawn[1].y) / 2);
-      for (let i = 1; i < drawn.length - 1; i++) {
-        const mx = (drawn[i].x + drawn[i + 1].x) / 2;
-        const my = (drawn[i].y + drawn[i + 1].y) / 2;
-        ctx.quadraticCurveTo(drawn[i].x, drawn[i].y, mx, my);
-      }
-      ctx.lineTo(drawn[drawn.length - 1].x, drawn[drawn.length - 1].y);
-    } else {
-      ctx.moveTo(drawn[0].x, drawn[0].y);
-      drawn.forEach((p) => ctx.lineTo(p.x, p.y));
-    }
-    ctx.stroke();
-    if (el.dot !== false) {
-      ctx.fillStyle = color;
-      drawn.forEach((p) => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, fontSize * 0.16, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    }
-    // 线尾标签 + 末点光晕:draw-on 完成后才出现(期刊风:系列名直接标在线尾,替代图例)
-    if (el.endLabels === true && (progress === undefined || f >= segTotal)) {
-      const last = drawn[drawn.length - 1];
-      ctx.beginPath();
-      ctx.arc(last.x, last.y, fontSize * 0.42, 0, Math.PI * 2);
-      ctx.fillStyle = color + "2E";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(last.x, last.y, fontSize * 0.2, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.font = sansFont(fontSize * 0.66, 700);
-      ctx.textAlign = "left";
-      ctx.fillStyle = color;
-      // 不限宽:末点贴元素右缘,剩余宽为负会让 fillText 整段不渲染;溢出元素框由画布边界自然裁
-      ctx.fillText(s.label, last.x + fontSize * 0.75, last.y);
-    }
-  });
-  // 图例(多序列时):颜色芯片 + 名称,顶部一行;endLabels 模式由线尾标注替代
-  if (series.length > 1 && el.endLabels !== true) {
-    drawLegendChips(ctx, series.map((s, si) => ({ label: s.label, color: s.color ?? CHART_PALETTE[si % CHART_PALETTE.length] })), area.x, el.y + titleH + fontSize * 0.8, fontSize);
-  }
-  ctx.restore();
-}
 
 export function drawPieChart(ctx: CanvasRenderingContext2D, el: PieChartElement, progress?: number): void {
   const fontSize = el.fontSize ?? 26;
@@ -238,7 +99,7 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, el: PieChartElement,
   const legend = el.legend ?? "right";
   const pad = fontSize * 0.9;
   ctx.save();
-  const titleH = drawTitle(ctx, el, fontSize);
+  const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
   const legendW = legend === "right" ? el.w * 0.34 : 0;
   const legendH = legend === "bottom" ? fontSize * 1.7 : 0;
   const cx = el.x + (el.w - legendW) / 2;

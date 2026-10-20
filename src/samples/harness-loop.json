@@ -1,0 +1,915 @@
+{
+  "version": 1,
+  "name": "Harness 递归:双层迭代怎么长出来",
+  "canvas": {
+    "width": 1920,
+    "height": 1080,
+    "bg": "#F6F7FB"
+  },
+  "scenes": [
+    {
+      "id": "sc-loop",
+      "name": "1. 双层递归总览",
+      "dwell": 5,
+      "caption": "一个任务内循环四次,任务之间再循环一次:Harness 就是这样越用越准。",
+      "elements": [
+        {
+          "kind": "groupPanel",
+          "id": "tl-panel",
+          "x": 90,
+          "y": 140,
+          "w": 1320,
+          "h": 560,
+          "title": "Task-Level Recursion",
+          "subtitle": "单个任务内的迭代:执行 → 编辑 → 探针 → 合成",
+          "accent": "#6366F1",
+          "fill": "#FFFFFF",
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "cardFlow",
+          "id": "tl-flow",
+          "x": 140,
+          "y": 340,
+          "w": 1220,
+          "h": 270,
+          "accent": "#6366F1",
+          "active": 3,
+          "fontSize": 26,
+          "items": [
+            {
+              "num": "01",
+              "title": "执行者",
+              "tags": [
+                "Initial Harness"
+              ],
+              "desc": "先跑一遍看看\n卡在哪一步"
+            },
+            {
+              "num": "02",
+              "title": "编辑 Harness",
+              "tags": [
+                "Invariant",
+                "Domain"
+              ],
+              "desc": "补约束\n再补领域知识"
+            },
+            {
+              "num": "03",
+              "title": "候选探针",
+              "tags": [
+                "Probe"
+              ],
+              "desc": "多方案并行\n比一比"
+            },
+            {
+              "num": "04",
+              "title": "合成收尾",
+              "tags": [
+                "Final Harness"
+              ],
+              "desc": "留下\n能复用的那版"
+            }
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 0.4,
+            "duration": 1.6
+          }
+        },
+        {
+          "kind": "chipRow",
+          "id": "tl-chips",
+          "x": 150,
+          "y": 640,
+          "w": 900,
+          "h": 56,
+          "align": "left",
+          "items": [
+            {
+              "text": "Traj",
+              "color": "#0EA5E9",
+              "style": "tint"
+            },
+            {
+              "text": "Output",
+              "color": "#0EA5E9",
+              "style": "tint"
+            },
+            {
+              "text": "Reflect+",
+              "color": "#8B5CF6",
+              "style": "outline"
+            }
+          ],
+          "anim": {
+            "type": "fade",
+            "start": 1.8,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "groupPanel",
+          "id": "hl-panel",
+          "x": 1450,
+          "y": 180,
+          "w": 390,
+          "h": 520,
+          "title": "Harness-Level",
+          "subtitle": "跨任务沉淀经验",
+          "accent": "#8B5CF6",
+          "fill": "#FFFFFF",
+          "anim": {
+            "type": "slideRight",
+            "start": 2.0,
+            "duration": 0.7
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "hl-reflect",
+          "x": 1480,
+          "y": 320,
+          "w": 330,
+          "h": 96,
+          "num": "R",
+          "title": "Reflect",
+          "path": "reflect.md",
+          "badge": "每任务",
+          "accent": "#8B5CF6",
+          "anim": {
+            "type": "riseUp",
+            "start": 2.4,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "hl-update",
+          "x": 1480,
+          "y": 440,
+          "w": 330,
+          "h": 96,
+          "num": "U",
+          "title": "Update",
+          "path": "improvement.md",
+          "badge": "沉淀",
+          "accent": "#8B5CF6",
+          "anim": {
+            "type": "riseUp",
+            "start": 2.6,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "c-update",
+          "from": [
+            1412,
+            380
+          ],
+          "to": [
+            1448,
+            380
+          ],
+          "color": "#8B5CF6",
+          "width": 5,
+          "anim": {
+            "type": "fade",
+            "start": 2.2,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "loopArrow",
+          "id": "la-next",
+          "from": [
+            1150,
+            700
+          ],
+          "to": [
+            200,
+            700
+          ],
+          "side": "bottom",
+          "depth": 92,
+          "label": "Move to the next task",
+          "color": "#8B5CF6",
+          "width": 5,
+          "dash": true,
+          "anim": {
+            "type": "wipe",
+            "start": 3.0,
+            "duration": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-k",
+      "name": "2. K 份执行与候选集",
+      "dwell": 5,
+      "caption": "一份执行不够,就并行 K 份;每份产出自己的候选,再挑出最好的那次。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "k-title",
+          "x": 520,
+          "y": 70,
+          "w": 880,
+          "text": "K 份执行,三路探针",
+          "sub": "并行跑,候选集合并挑",
+          "fontSize": 56,
+          "anim": {
+            "type": "riseUp",
+            "start": 0,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "stackList",
+          "id": "k-stack",
+          "x": 130,
+          "y": 300,
+          "w": 300,
+          "h": 460,
+          "label": "Base Executions",
+          "keys": [
+            "1",
+            "K"
+          ],
+          "sheets": 2,
+          "accent": "#A855F7",
+          "fontSize": 24,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.4,
+            "duration": 1.2
+          }
+        },
+        {
+          "kind": "groupPanel",
+          "id": "k-candidates",
+          "x": 520,
+          "y": 270,
+          "w": 700,
+          "h": 520,
+          "title": "Candidate Set",
+          "subtitle": "每份执行产出一个候选",
+          "accent": "#8B5CF6",
+          "fill": "#FFFFFF",
+          "dash": true,
+          "anim": {
+            "type": "fade",
+            "start": 0.8,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "chipRow",
+          "id": "k-row1",
+          "x": 560,
+          "y": 400,
+          "w": 620,
+          "h": 56,
+          "gap": 16,
+          "items": [
+            {
+              "text": "DOM 1",
+              "color": "#84CC16",
+              "style": "tint"
+            },
+            {
+              "text": "INV 1",
+              "color": "#3B82F6",
+              "style": "tint"
+            },
+            {
+              "text": "Candidate 1",
+              "color": "#8B5CF6",
+              "style": "dashed"
+            }
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 1.2,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "chipRow",
+          "id": "k-row2",
+          "x": 560,
+          "y": 500,
+          "w": 620,
+          "h": 56,
+          "gap": 16,
+          "items": [
+            {
+              "text": "DOM 2",
+              "color": "#84CC16",
+              "style": "tint"
+            },
+            {
+              "text": "INV 2",
+              "color": "#3B82F6",
+              "style": "tint"
+            },
+            {
+              "text": "Candidate 2",
+              "color": "#8B5CF6",
+              "style": "dashed"
+            }
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 1.5,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "text",
+          "id": "k-dots",
+          "x": 780,
+          "y": 590,
+          "w": 120,
+          "text": "⋮",
+          "fontSize": 44,
+          "color": "#94A3B8",
+          "anim": {
+            "type": "fade",
+            "start": 1.7,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "chipRow",
+          "id": "k-row3",
+          "x": 560,
+          "y": 660,
+          "w": 620,
+          "h": 56,
+          "gap": 16,
+          "items": [
+            {
+              "text": "DOM K",
+              "color": "#84CC16",
+              "style": "tint"
+            },
+            {
+              "text": "INV K",
+              "color": "#3B82F6",
+              "style": "tint"
+            },
+            {
+              "text": "Candidate K",
+              "color": "#8B5CF6",
+              "style": "dashed"
+            }
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 1.9,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "k-arrow",
+          "from": [
+            432,
+            520
+          ],
+          "to": [
+            520,
+            520
+          ],
+          "label": "并行",
+          "width": 5,
+          "color": "#8B5CF6",
+          "anim": {
+            "type": "fade",
+            "start": 1.1,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "badge",
+          "id": "k-final",
+          "x": 1290,
+          "y": 470,
+          "w": 300,
+          "h": 84,
+          "text": "Final Harness",
+          "bg": "#8B5CF6",
+          "color": "#FFFFFF",
+          "fontSize": 30,
+          "anim": {
+            "type": "pop",
+            "start": 2.6,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "k-bot",
+          "x": 1600,
+          "y": 520,
+          "w": 210,
+          "h": 270,
+          "variant": "bot",
+          "mood": "happy",
+          "badge": "HARNESS",
+          "body": "#8B5CF6",
+          "label": "教练",
+          "anim": {
+            "type": "bounce",
+            "start": 2.8,
+            "duration": 0.9
+          },
+          "float": true
+        }
+      ]
+    },
+    {
+      "id": "sc-gain",
+      "name": "3. 三域增益",
+      "dwell": 5,
+      "caption": "同一套 harness 优化,在三类任务上都拿到了 7 个点以上的增益。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "g-title",
+          "x": 560,
+          "y": 30,
+          "w": 800,
+          "text": "三域都涨了",
+          "sub": "k = 5 的并行探针",
+          "fontSize": 46,
+          "anim": {
+            "type": "riseUp",
+            "start": 0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "barChart",
+          "id": "g-bars",
+          "x": 300,
+          "y": 150,
+          "w": 1320,
+          "h": 640,
+          "title": "Stronger across three domains",
+          "subtitle": "Score (%) · 三轮并行探针的平均",
+          "fontSize": 26,
+          "groups": [
+            {
+              "label": "Code",
+              "values": [
+                73.4,
+                75.5,
+                80.8
+              ],
+              "deltas": [
+                null,
+                null,
+                "+7.4"
+              ]
+            },
+            {
+              "label": "Web",
+              "values": [
+                69.9,
+                75.1,
+                78.3
+              ],
+              "deltas": [
+                null,
+                null,
+                "+8.4"
+              ]
+            },
+            {
+              "label": "Office",
+              "values": [
+                74.0,
+                78.6,
+                83.4
+              ],
+              "deltas": [
+                null,
+                null,
+                "+9.4"
+              ]
+            }
+          ],
+          "groupSeries": [
+            "Base harness",
+            "Meta-harness",
+            "Harness² · k = 5"
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 0.5,
+            "duration": 1.8
+          }
+        },
+        {
+          "kind": "note",
+          "id": "g-note",
+          "x": 660,
+          "y": 860,
+          "w": 640,
+          "h": 72,
+          "text": "增益 = 相对 baseline 的点数,三轮取均值",
+          "anim": {
+            "type": "fade",
+            "start": 2.4,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-scale",
+      "name": "4. 预算 k 的边际收益",
+      "dwell": 5,
+      "caption": "预算 k 从 1 加到 4,收益一路上行;另外两条基线基本原地。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "s-title",
+          "x": 560,
+          "y": 30,
+          "w": 800,
+          "text": "预算加到哪里最值",
+          "sub": "递归预算 k 的边际收益",
+          "fontSize": 46,
+          "anim": {
+            "type": "riseUp",
+            "start": 0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "lineChart",
+          "id": "s-lines",
+          "x": 340,
+          "y": 150,
+          "w": 1240,
+          "h": 620,
+          "title": "Scale task-level recursion",
+          "subtitle": "并行递归预算 k",
+          "fontSize": 26,
+          "endLabels": true,
+          "smooth": true,
+          "series": [
+            {
+              "label": "Harness² parallel",
+              "color": "#3B82F6",
+              "points": [
+                76.5,
+                77.0,
+                78.6,
+                79.9,
+                80.6
+              ]
+            },
+            {
+              "label": "Harness Scaling",
+              "color": "#8B5CF6",
+              "dash": true,
+              "points": [
+                74.2,
+                74.6,
+                73.2,
+                75.6,
+                76.4
+              ]
+            },
+            {
+              "label": "ReasoningBank",
+              "color": "#9CA3AF",
+              "dash": true,
+              "points": [
+                72.8,
+                72.4,
+                72.1,
+                73.0,
+                71.6
+              ]
+            }
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 0.5,
+            "duration": 2.0
+          }
+        },
+        {
+          "kind": "note",
+          "id": "s-note",
+          "x": 620,
+          "y": 860,
+          "w": 700,
+          "h": 72,
+          "text": "k 越大越吃算力,边际收益在第 4 轮开始变缓",
+          "anim": {
+            "type": "fade",
+            "start": 2.6,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-arch",
+      "name": "5. 上下文与中间件",
+      "dwell": 6,
+      "caption": "左侧决定什么进上下文,右侧在模型外面挂工具与子代理,模型本身保持冻结。",
+      "elements": [
+        {
+          "kind": "groupPanel",
+          "id": "ctx-panel",
+          "x": 80,
+          "y": 170,
+          "w": 560,
+          "h": 660,
+          "title": "Context construction",
+          "subtitle": "什么进入上下文,以及何时",
+          "accent": "#3B82F6",
+          "fill": "#FFFFFF",
+          "anim": {
+            "type": "slideLeft",
+            "start": 0,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "ctx-1",
+          "x": 110,
+          "y": 300,
+          "w": 500,
+          "h": 96,
+          "num": "C1",
+          "title": "System prompt",
+          "path": "systemprompt.md",
+          "badge": "every call",
+          "accent": "#3B82F6",
+          "anim": {
+            "type": "riseUp",
+            "start": 0.3,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "ctx-2",
+          "x": 110,
+          "y": 420,
+          "w": 500,
+          "h": 96,
+          "num": "C2",
+          "title": "Guards",
+          "path": "guards.md",
+          "badge": "every call",
+          "accent": "#3B82F6",
+          "anim": {
+            "type": "riseUp",
+            "start": 0.45,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "ctx-3",
+          "x": 110,
+          "y": 540,
+          "w": 500,
+          "h": 96,
+          "num": "C3",
+          "title": "Memory",
+          "path": "LongTermMEMORY.md",
+          "badge": "every call",
+          "accent": "#3B82F6",
+          "anim": {
+            "type": "riseUp",
+            "start": 0.6,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "ctx-4",
+          "x": 110,
+          "y": 660,
+          "w": 500,
+          "h": 96,
+          "num": "C6",
+          "title": "Skills",
+          "path": "skills/<n>/SKILL.md",
+          "badge": "on invoke",
+          "accent": "#0EA5E9",
+          "anim": {
+            "type": "riseUp",
+            "start": 0.75,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "ringNode",
+          "id": "model",
+          "x": 740,
+          "y": 330,
+          "w": 330,
+          "h": 330,
+          "label": "Frozen model",
+          "sub": "参数冻结 · 只能靠上下文",
+          "accent": "#0EA5E9",
+          "fontSize": 30,
+          "anim": {
+            "type": "zoomIn",
+            "start": 1.2,
+            "duration": 0.7
+          }
+        },
+        {
+          "kind": "groupPanel",
+          "id": "mw-panel",
+          "x": 1170,
+          "y": 150,
+          "w": 670,
+          "h": 440,
+          "title": "Middleware",
+          "subtitle": "钩住每次工具调用,模型无法绕过",
+          "accent": "#8B5CF6",
+          "fill": "#FFFFFF",
+          "anim": {
+            "type": "slideRight",
+            "start": 1.4,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "mw-plugin",
+          "x": 1200,
+          "y": 260,
+          "w": 610,
+          "h": 96,
+          "num": "C8",
+          "title": "Plugin",
+          "path": "plugin/<name>.ts",
+          "badge": "call",
+          "accent": "#8B5CF6",
+          "anim": {
+            "type": "riseUp",
+            "start": 1.7,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "mw-tool",
+          "x": 1200,
+          "y": 370,
+          "w": 610,
+          "h": 96,
+          "num": "C4",
+          "title": "Tool guidance",
+          "path": "tool_guidance.md",
+          "badge": "every call",
+          "accent": "#10B981",
+          "anim": {
+            "type": "riseUp",
+            "start": 1.85,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "mw-scripts",
+          "x": 1200,
+          "y": 480,
+          "w": 610,
+          "h": 96,
+          "num": "C7",
+          "title": "Scripts",
+          "path": "scripts/<name>.py",
+          "badge": "via bash",
+          "accent": "#10B981",
+          "anim": {
+            "type": "riseUp",
+            "start": 2.0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "groupPanel",
+          "id": "orch-panel",
+          "x": 1170,
+          "y": 620,
+          "w": 670,
+          "h": 230,
+          "title": "Orchestration",
+          "subtitle": "拆活给子代理",
+          "accent": "#F43F5E",
+          "fill": "#FFF7F8",
+          "dash": true,
+          "anim": {
+            "type": "slideRight",
+            "start": 1.9,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "specRow",
+          "id": "orch-sub",
+          "x": 1200,
+          "y": 720,
+          "w": 610,
+          "h": 96,
+          "num": "C5",
+          "title": "Subagents",
+          "path": "sub_agents/<n>/AGENT.md",
+          "badge": "task tool",
+          "accent": "#F43F5E",
+          "anim": {
+            "type": "riseUp",
+            "start": 2.2,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "c-call",
+          "from": [
+            640,
+            470
+          ],
+          "to": [
+            736,
+            470
+          ],
+          "label": "call",
+          "width": 5,
+          "color": "#3B82F6",
+          "route": "straight",
+          "anim": {
+            "type": "fade",
+            "start": 2.0,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "c-result",
+          "from": [
+            1074,
+            700
+          ],
+          "to": [
+            642,
+            700
+          ],
+          "label": "result",
+          "width": 4,
+          "color": "#94A3B8",
+          "dash": true,
+          "curve": -70,
+          "route": "smooth",
+          "anim": {
+            "type": "fade",
+            "start": 2.3,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "c-plugin",
+          "from": [
+            1074,
+            470
+          ],
+          "to": [
+            1168,
+            348
+          ],
+          "label": "",
+          "width": 5,
+          "color": "#8B5CF6",
+          "anim": {
+            "type": "fade",
+            "start": 2.1,
+            "duration": 0.4
+          }
+        }
+      ]
+    }
+  ]
+}

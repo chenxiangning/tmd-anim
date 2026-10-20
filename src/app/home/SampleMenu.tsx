@@ -3,6 +3,7 @@ import benchSample from "../../samples/bench-chart.json";
 import debugSample from "../../samples/debug-story.json";
 import explainerSample from "../../samples/explainer.json";
 import gitSample from "../../samples/git-tutorial.json";
+import harnessSample from "../../samples/harness-loop.json";
 import httpSample from "../../samples/http.json";
 import refactorSample from "../../samples/refactor-diff.json";
 import vitalsSample from "../../samples/web-vitals.json";
@@ -14,7 +15,7 @@ interface SampleMenuProps {
   onCreate(text: string): void;
 }
 
-/** 首页「从示例新建」下拉:内置示例(协议全家福 / 拟人科普 / 五个叙事 demo / 小黑插画风格)。 */
+/** 首页「从示例新建」下拉:内置示例(协议全家福 / 拟人科普 / 六个叙事 demo / 信息图 / 小黑插画风格)。 */
 export function SampleMenu({ onCreate }: SampleMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,6 +38,7 @@ export function SampleMenu({ onCreate }: SampleMenuProps) {
     { key: "bench", label: "性能对比:方案对决", hint: "柱图+折线趋势,配 recipes #5", json: benchSample },
     { key: "debug", label: "报错排查侦探记", hint: "告警→排查→修复,配 recipes #8", json: debugSample },
     { key: "vitals", label: "概念三分图解:性能指标", hint: "聚焦+公式排版,配 recipes #7/#9", json: vitalsSample },
+    { key: "harness", label: "信息图:递归 Harness", hint: "分组柱图+胶囊组+叠纸K+回环箭头,配 recipes #12", json: harnessSample },
     { key: "xiaohei", label: "小黑插画示例", hint: "手绘怪诞风,配 docs/xiaohei-style.md", json: xiaoheiSample },
   ];
 

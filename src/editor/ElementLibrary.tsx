@@ -99,8 +99,12 @@ const GROUPS: ReadonlyArray<LibraryGroup> = [
     label: "图示与媒体",
     items: [
       { kind: "arrayCells" },
+      { kind: "chipRow" },
+      { kind: "ringNode" },
+      { kind: "stackList" },
       { kind: "connector" },
       { kind: "connector", variant: "line", label: "直线" },
+      { kind: "loopArrow" },
       { kind: "image" },
     ],
   },

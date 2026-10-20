@@ -238,6 +238,194 @@
       ]
     },
     {
+      "id": "sc-grouped",
+      "name": "4. 分组对比:三类场景的增益",
+      "dwell": 5,
+      "caption": "同一套优化,在三类场景上都涨了 7 个点以上。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "g1",
+          "text": "三类场景,三次验证",
+          "sub": "基线 / 缓存 / 缓存+预取",
+          "x": 560,
+          "y": 90,
+          "w": 800,
+          "anim": {
+            "type": "riseUp",
+            "start": 0,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "barChart",
+          "id": "g2",
+          "x": 320,
+          "y": 250,
+          "w": 1280,
+          "h": 600,
+          "title": "Stronger across three domains",
+          "fontSize": 26,
+          "showValue": true,
+          "groups": [
+            {
+              "label": "冷启动",
+              "values": [
+                73.4,
+                75.5,
+                80.8
+              ],
+              "deltas": [
+                null,
+                null,
+                "+7.4"
+              ]
+            },
+            {
+              "label": "热启动",
+              "values": [
+                69.9,
+                75.1,
+                78.3
+              ],
+              "deltas": [
+                null,
+                null,
+                "+8.4"
+              ]
+            },
+            {
+              "label": "大列表",
+              "values": [
+                74.0,
+                78.6,
+                83.4
+              ],
+              "deltas": [
+                null,
+                null,
+                "+9.4"
+              ]
+            }
+          ],
+          "groupSeries": [
+            "基线",
+            "缓存",
+            "缓存+预取"
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 0.4,
+            "duration": 1.6
+          }
+        },
+        {
+          "kind": "note",
+          "id": "g3",
+          "text": "同一优化,三类场景全部为正增益",
+          "x": 660,
+          "y": 900,
+          "w": 600,
+          "h": 70,
+          "anim": {
+            "type": "fade",
+            "start": 2.2,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-endlabel",
+      "name": "5. 折线:线尾标注",
+      "dwell": 5,
+      "caption": "随并行预算 k 增大,一条线稳步上升,另外两条基本原地。",
+      "elements": [
+        {
+          "kind": "badge",
+          "id": "l0",
+          "text": "并行预算 k = 1 → 5,逐级加算力",
+          "x": 700,
+          "y": 96,
+          "w": 520,
+          "h": 60,
+          "fontSize": 30,
+          "anim": {
+            "type": "pop",
+            "start": 0.1,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "lineChart",
+          "id": "l1",
+          "x": 360,
+          "y": 180,
+          "w": 1200,
+          "h": 640,
+          "title": "Scale with parallel budget",
+          "subtitle": "递归预算 k",
+          "fontSize": 26,
+          "endLabels": true,
+          "smooth": true,
+          "series": [
+            {
+              "label": "并行 prefetch",
+              "color": "#3B82F6",
+              "points": [
+                76.5,
+                77.0,
+                78.6,
+                79.9,
+                80.6
+              ]
+            },
+            {
+              "label": "缓存",
+              "color": "#8B5CF6",
+              "points": [
+                74.2,
+                74.6,
+                73.2,
+                75.6,
+                76.4
+              ]
+            },
+            {
+              "label": "串行",
+              "color": "#9CA3AF",
+              "points": [
+                72.8,
+                72.4,
+                72.1,
+                73.0,
+                71.6
+              ]
+            }
+          ],
+          "anim": {
+            "type": "typewriter",
+            "start": 0.4,
+            "duration": 1.8
+          }
+        },
+        {
+          "kind": "note",
+          "id": "l2",
+          "text": "k 越大收益越明显,但边际递减",
+          "x": 700,
+          "y": 880,
+          "w": 520,
+          "h": 70,
+          "anim": {
+            "type": "fade",
+            "start": 2.4,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
       "id": "sc-conclude",
       "name": "4. 结论",
       "dwell": 4,

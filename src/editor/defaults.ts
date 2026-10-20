@@ -49,6 +49,10 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   cardFlow: "流程卡组",
   specRow: "规格行",
   docStack: "文档堆",
+  chipRow: "胶囊组",
+  ringNode: "圆环节点",
+  stackList: "编号叠纸",
+  loopArrow: "回环箭头",
 };
 
 export const SHAPE_LABELS: Record<string, string> = {
@@ -104,6 +108,10 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "cardFlow",
   "specRow",
   "docStack",
+  "chipRow",
+  "ringNode",
+  "stackList",
+  "loopArrow",
 ];
 
 /** 元素主色:元素库图标与时间轴条共用,保持「库-画布-时间轴」三者颜色一致 */
@@ -149,6 +157,10 @@ export function kindColor(kind: SceneElement["kind"]): string {
     cardFlow: "#3B82F6",
     specRow: "#6366F1",
     docStack: "#8B5CF6",
+    chipRow: "#0EA5E9",
+    ringNode: "#0F766E",
+    stackList: "#A855F7",
+    loopArrow: "#8B5CF6",
   };
   return map[kind];
 }
@@ -326,6 +338,18 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       return { ...base, kind, w: 640, h: 96, num: "C1", title: "系统提示词", path: "systemprompt.md", badge: "every call", accent: "#3B82F6" };
     case "docStack":
       return { ...base, kind, w: 240, h: 280, count: 3, label: "K 份记录", accent: "#8B5CF6" };
+    case "chipRow":
+      return { ...base, kind, w: 520, h: 56, items: [
+        { text: "DOM 1", color: "#84CC16", style: "tint" },
+        { text: "INV 1", color: "#3B82F6", style: "tint" },
+        { text: "候选 1", color: "#8B5CF6", style: "dashed" },
+      ], align: "left", anim: { type: "typewriter", start: 0, duration: 0.8 } };
+    case "ringNode":
+      return { ...base, kind, w: 320, h: 320, label: "模型", sub: "冻结", accent: "#0EA5E9", fontSize: 34, anim: { type: "zoomIn", start: 0, duration: 0.6 } };
+    case "stackList":
+      return { ...base, kind, w: 260, h: 380, label: "执行记录", keys: ["1", "K"], sheets: 2, accent: "#A855F7", anim: { type: "typewriter", start: 0, duration: 1 } };
+    case "loopArrow":
+      return { ...base, kind, w: 600, h: 200, from: [x - 260, y], to: [x + 260, y], side: "bottom", label: "下一轮", dash: true, color: "#8B5CF6", anim: { type: "wipe", start: 0, duration: 0.6 } };
   }
 }
 
@@ -418,6 +442,18 @@ export function elementLabel(el: SceneElement): string {
       break;
     case "docStack":
       raw = el.label ?? "文档堆";
+      break;
+    case "chipRow":
+      raw = el.items?.map((it) => it.text).join(" / ") ?? "胶囊组";
+      break;
+    case "ringNode":
+      raw = el.label ?? "圆环节点";
+      break;
+    case "stackList":
+      raw = el.label ?? "编号叠纸";
+      break;
+    case "loopArrow":
+      raw = el.label ?? "回环箭头";
       break;
     case "title":
     case "artText":

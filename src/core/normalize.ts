@@ -62,6 +62,10 @@ export const ELEMENT_KINDS: Record<string, true> = {
   cardFlow: true,
   specRow: true,
   docStack: true,
+  chipRow: true,
+  ringNode: true,
+  stackList: true,
+  loopArrow: true,
   quote: true,
   formula: true,
   avatar: true,
@@ -82,6 +86,8 @@ const EMPHASIS_DEFAULT_DURATION: Record<string, number> = {
 /** 补间白名单:percent 仅 progress,activeIndex 仅 arrayCells;不上通用关键帧 */
 const TWEEN_FIELDS: Record<string, true> = { percent: true, activeIndex: true };
 const TWEEN_FIELD_KIND: Record<string, string> = { percent: "progress", activeIndex: "arrayCells" };
+/** 胶囊风格白名单,未知值回落 tint */
+const CHIP_STYLES: Record<string, true> = { solid: true, tint: true, outline: true, dashed: true };
 
 export class ProjectParseError extends Error {
   constructor(message: string) {
@@ -140,7 +146,8 @@ function normalizeScene(raw: Record<string, unknown>, index: number): Scene {
       const record = e as Record<string, unknown>;
       // 未知元素类型跳过不崩,watch 模式下文件可能正处于半成品状态
       if (typeof record.kind !== "string" || ELEMENT_KINDS[record.kind] !== true) return [];
-      return [normalizeElement(record, j)];
+      const el = normalizeElement(record, j);
+      return el ? [el] : [];
     }),
     caption: typeof raw.caption === "string" && raw.caption.trim().length > 0 ? raw.caption.trim() : undefined,
     audio: normalizeSceneAudio(raw.audio),
@@ -242,7 +249,7 @@ function normalizeTweens(raw: unknown, kind: string): Tween[] {
   return out;
 }
 
-function normalizeElement(raw: Record<string, unknown>, index: number): SceneElement {
+function normalizeElement(raw: Record<string, unknown>, index: number): SceneElement | null {
   const anim = typeof raw.anim === "object" && raw.anim !== null ? asRecord(raw.anim, "anim") : {};
   const base = {
     id: str(raw.id, `el-${index + 1}`),
@@ -278,6 +285,10 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     for (const key of ["title", "prompt", "reply"] as const) {
       if (connector[key] !== undefined && typeof connector[key] !== "string") delete connector[key];
     }
+  }
+  // 标题:副标题非字符串丢弃(空串也丢,避免占掉主标题的垂直空间)
+  if (el.kind === "title" && connector.sub !== undefined && (typeof connector.sub !== "string" || connector.sub.length === 0)) {
+    delete connector.sub;
   }
   // 开发组件:label/sub 非字符串丢弃;dev 未知值保留(渲染回落 server 机架)
   if (el.kind === "devNode") {
@@ -315,6 +326,8 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
   if (connector.route !== undefined && !["smooth", "elbow", "straight"].includes(String(connector.route))) {
     delete connector.route;
   }
+  // 连线不可悬浮:端点由元素决定,整体位移会让端点脱钩(schema 已声明不支持,此处落地)
+  if (el.kind === "connector") delete connector.float;
   // 列表条目:非字符串数组一律纠正为空数组,渲染按 0 条处理
   if (el.kind === "list") {
     const items = (el as unknown as Record<string, unknown>).items;
@@ -389,12 +402,166 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
           const pts = Array.isArray(rec.points)
             ? rec.points.map((n) => (Number.isFinite(Number(n)) ? Number(n) : 0))
             : [];
-          return [{ label, ...(color ? { color } : {}), points: pts }];
+          return [{
+            label,
+            ...(color ? { color } : {}),
+            points: pts,
+            ...(rec.dash === true ? { dash: true } : {}),
+            ...(rec.dot === false ? { dot: false } : {}),
+          }];
         }
         const value = Number.isFinite(Number(rec.value)) ? Number(rec.value) : 0;
         return [{ label, value, ...(color ? { color } : {}) }];
       });
     }
+  }
+  // 分组柱图:groups 结构缺失会让渲染读 undefined.length 直接抛错(整帧黑),逐组纠正,空组丢弃
+  if (el.kind === "barChart") {
+    if (timeline.groups !== undefined) {
+      const groups = Array.isArray(timeline.groups) ? timeline.groups : [];
+      const out = groups.flatMap((g): Array<Record<string, unknown>> => {
+        if (typeof g !== "object" || g === null) return [];
+        const rec = g as Record<string, unknown>;
+        const label = typeof rec.label === "string" ? rec.label : "";
+        const values = (Array.isArray(rec.values) ? rec.values : []).map((n) => (Number.isFinite(Number(n)) ? Number(n) : 0));
+        if (values.length === 0) return [];
+        const deltas = Array.isArray(rec.deltas)
+          ? rec.deltas.map((d) => (typeof d === "string" && d.length > 0 ? d : null))
+          : undefined;
+        return [{ label, values, ...(deltas ? { deltas } : {}) }];
+      });
+      if (out.length > 0) timeline.groups = out;
+      else delete timeline.groups;
+    }
+    if (timeline.groupSeries !== undefined) {
+      const gs = Array.isArray(timeline.groupSeries) ? timeline.groupSeries.filter((s) => typeof s === "string" && s.length > 0) : [];
+      if (gs.length > 0) timeline.groupSeries = gs;
+      else delete timeline.groupSeries;
+    }
+  }
+  // 流程卡组:title 必填(缺失则该卡丢弃),tags/num/desc 仅收字符串;active 取整,-1 = 无高亮
+  if (el.kind === "cardFlow") {
+    const items = Array.isArray(timeline.items) ? timeline.items : [];
+    timeline.items = items.flatMap((it): Array<Record<string, unknown>> => {
+      if (typeof it !== "object" || it === null) return [];
+      const rec = it as Record<string, unknown>;
+      if (typeof rec.title !== "string") return [];
+      const tags = Array.isArray(rec.tags) ? rec.tags.filter((t) => typeof t === "string" && t.length > 0) : [];
+      return [{
+        title: rec.title,
+        ...(typeof rec.num === "string" ? { num: rec.num } : {}),
+        ...(tags.length > 0 ? { tags } : {}),
+        ...(typeof rec.desc === "string" ? { desc: rec.desc } : {}),
+      }];
+    });
+    for (const key of ["note", "accent"] as const) {
+      if (timeline[key] !== undefined && typeof timeline[key] !== "string") delete timeline[key];
+    }
+    if (timeline.active != null) {
+      const n = Number(timeline.active);
+      timeline.active = Number.isFinite(n) ? Math.round(n) : -1;
+    }
+  }
+  // 规格行:title 缺省空串,其余文本字段仅收字符串
+  if (el.kind === "specRow") {
+    if (typeof timeline.title !== "string") timeline.title = "";
+    for (const key of ["num", "path", "badge", "accent"] as const) {
+      if (timeline[key] !== undefined && typeof timeline[key] !== "string") delete timeline[key];
+    }
+  }
+  // 文档堆:张数取整钳 1-5,label/accent 仅收字符串
+  if (el.kind === "docStack") {
+    if (timeline.count != null) {
+      const c = Number(timeline.count);
+      if (Number.isFinite(c)) timeline.count = Math.min(5, Math.max(1, Math.round(c)));
+      else delete timeline.count;
+    }
+    for (const key of ["label", "accent"] as const) {
+      if (timeline[key] !== undefined && typeof timeline[key] !== "string") delete timeline[key];
+    }
+  }
+  // 胶囊组:空文本丢弃,style 枚举过滤,color 仅收字符串;align 枚举
+  if (el.kind === "chipRow") {
+    const items = Array.isArray(timeline.items) ? timeline.items : [];
+    timeline.items = items.flatMap((it): Array<Record<string, unknown>> => {
+      if (typeof it !== "object" || it === null) return [];
+      const rec = it as Record<string, unknown>;
+      if (typeof rec.text !== "string" || rec.text.length === 0) return [];
+      const style = typeof rec.style === "string" && CHIP_STYLES[rec.style] === true ? rec.style : undefined;
+      const color = typeof rec.color === "string" ? rec.color : undefined;
+      return [{ text: rec.text, ...(color ? { color } : {}), ...(style ? { style } : {}) }];
+    });
+    if (timeline.align !== undefined && !["left", "center", "right"].includes(String(timeline.align))) delete timeline.align;
+    for (const key of ["gap"] as const) {
+      if (timeline[key] != null) {
+        const n = Number(timeline[key]);
+        if (Number.isFinite(n)) timeline[key] = Math.min(120, Math.max(0, n));
+        else delete timeline[key];
+      }
+    }
+  }
+  // 圆环节点:文本仅收字符串,ring 倍数钳 0.4-3
+  if (el.kind === "ringNode") {
+    for (const key of ["label", "sub", "accent"] as const) {
+      if (timeline[key] !== undefined && typeof timeline[key] !== "string") delete timeline[key];
+    }
+    if (timeline.ring != null) {
+      const r = Number(timeline.ring);
+      if (Number.isFinite(r)) timeline.ring = Math.min(3, Math.max(0.4, r));
+      else delete timeline.ring;
+    }
+  }
+  // 编号叠纸:keys 仅收 1-3 段非空字符串,sheets 钳 1-4
+  if (el.kind === "stackList") {
+    if (timeline.keys !== undefined) {
+      const keys = Array.isArray(timeline.keys) ? timeline.keys.filter((k) => typeof k === "string" && k.length > 0).slice(0, 3) : [];
+      if (keys.length > 0) timeline.keys = keys;
+      else delete timeline.keys;
+    }
+    if (timeline.sheets != null) {
+      const s = Number(timeline.sheets);
+      if (Number.isFinite(s)) timeline.sheets = Math.min(4, Math.max(1, Math.round(s)));
+      else delete timeline.sheets;
+    }
+    for (const key of ["label", "accent"] as const) {
+      if (timeline[key] !== undefined && typeof timeline[key] !== "string") delete timeline[key];
+    }
+  }
+  // 回环箭头:from/to 缺失或非有限数 → 元素整体丢弃(无几何可画);side 枚举,depth/width 钳制
+  if (el.kind === "loopArrow") {
+    const f = timeline.from;
+    const t = timeline.to;
+    const okPt = (p: unknown): p is [number, number] => Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(Number(n)));
+    if (!okPt(f) || !okPt(t)) return null;
+    timeline.from = [Number(f[0]), Number(f[1])];
+    timeline.to = [Number(t[0]), Number(t[1])];
+    if (timeline.side !== undefined && !["top", "bottom", "left", "right"].includes(String(timeline.side))) delete timeline.side;
+    for (const key of ["depth", "width"] as const) {
+      if (timeline[key] != null) {
+        const n = Number(timeline[key]);
+        if (Number.isFinite(n)) timeline[key] = Math.min(key === "depth" ? 400 : 24, Math.max(key === "depth" ? 24 : 1, n));
+        else delete timeline[key];
+      }
+    }
+    for (const key of ["label", "color"] as const) {
+      if (timeline[key] !== undefined && typeof timeline[key] !== "string") delete timeline[key];
+    }
+    // 包围盒由 from/to 决定(w/h 对回环箭头无独立语义):补上折返段,wipe 裁剪/命中测试/选中框才落在箭头上
+    const pFrom = timeline.from as [number, number];
+    const pTo = timeline.to as [number, number];
+    const side = String(timeline.side ?? "bottom");
+    const vertical = side === "top" || side === "bottom";
+    const sgn = side === "bottom" || side === "right" ? 1 : -1;
+    const span = vertical ? Math.abs(pTo[0] - pFrom[0]) : Math.abs(pTo[1] - pFrom[1]);
+    if (timeline.depth === undefined) timeline.depth = Math.round(Math.min(400, Math.max(48, span * 0.26 + 56)));
+    const d = Number(timeline.depth);
+    const xs = vertical ? [pFrom[0], pTo[0]] : [pFrom[0], pTo[0], pFrom[0] + sgn * d, pTo[0] + sgn * d];
+    const ys = vertical ? [pFrom[1], pTo[1], pFrom[1] + sgn * d, pTo[1] + sgn * d] : [pFrom[1], pTo[1]];
+    const pad = 12;
+    timeline.x = Math.min(...xs) - pad;
+    timeline.y = Math.min(...ys) - pad;
+    timeline.w = Math.max(...xs) - Math.min(...xs) + pad * 2;
+    timeline.h = Math.max(...ys) - Math.min(...ys) + pad * 2;
   }
   // 光标:points 仅收有限数坐标对,clicks/hold 数值化(脏数据会让插值 NaN)
   if (el.kind === "cursor") {

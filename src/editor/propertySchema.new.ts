@@ -1,13 +1,14 @@
+/** 属性 schema 注册表(normalize 后新增批次):file-size-exempt —— 字段声明按 kind 聚集,拆散会让同 kind 的字段定义与读写逻辑分离。 */
 import type {
-  AiChatElement, AvatarElement, BarChartElement, CodeDiffElement, CodeElement, ConfettiElement, CursorElement,
-  DevNodeElement, DevNodeVariant, FolderTreeElement, GridBgElement, LaneElement, LineChartElement,
-  MascotElement, PersonElement, PieChartElement, SceneElement, SpotlightElement,
+  AiChatElement, AvatarElement, BarChartElement, ChipRowElement, ChipStyle, CodeDiffElement, CodeElement, ConfettiElement,
+  CursorElement, DevNodeElement, DevNodeVariant, FolderTreeElement, GridBgElement, GroupPanelElement, LaneElement,
+  LineChartElement, LoopArrowElement, MascotElement, PersonElement, PieChartElement, SceneElement, SpotlightElement,
+  StackListElement,
 } from "../core/types";
 import { DEV_META } from "../core/render/devNode";
 import type { FieldDef } from "./propertySchema";
 
-/** 并行批次新增组件的属性 schema:每种元素一组字段的纯数据注册表。
- *  file-size-exempt:字段声明按 kind 聚集,拆散会让同 kind 的字段定义与读写逻辑分离。 */
+/** 并行批次新增组件的属性 schema:每种元素一组字段的纯数据注册表。 */
 
 const str = (v: unknown): string => (v === undefined || v === null ? "" : String(v));
 const numOr = (v: string, fallback: number): number => {
@@ -40,6 +41,27 @@ const boolField = (key: string, label: string, read: (el: SceneElement) => strin
   type: "bool",
   read,
   write: (el, v) => patch(el, { [key]: v === "true" }),
+});
+
+/** 坐标字段:「x, y」文本,非数部分回落原值(回环箭头没有绑定端点,只能填绝对坐标) */
+const pointField = (key: "from" | "to", label: string): FieldDef => ({
+  key,
+  label,
+  type: "point",
+  placeholder: "x, y",
+  read: (el) => {
+    const p = (el as LoopArrowElement)[key];
+    return p ? `${Math.round(p[0])}, ${Math.round(p[1])}` : "";
+  },
+  write: (el, v) => {
+    const parts = v.split(/[,\s]+/).filter(Boolean).map(Number);
+    const fallback = (el as LoopArrowElement)[key] ?? [el.x, el.y];
+    const point: [number, number] = [
+      Number.isFinite(parts[0]) ? parts[0] : fallback[0],
+      Number.isFinite(parts[1]) ? parts[1] : fallback[1],
+    ];
+    return patch(el, { [key]: point });
+  },
 });
 
 export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: string; fields: FieldDef[] }>> = {
@@ -100,6 +122,73 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
       numberField("fontSize", "字号", 24),
     ],
   },
+  chipRow: {
+    title: "胶囊组属性",
+    fields: [
+      {
+        key: "items", label: "胶囊(每行:文本⇥颜色⇥风格)", type: "lines",
+        read: (el) => (el as ChipRowElement).items.map((it) => [it.text, it.color ?? "", it.style ?? ""].filter((v, i) => !(i > 0 && v === "")).join("\t")).join("\n"),
+        write: (el, v) => patch(el, {
+          items: v.split("\n").map((ln) => ln.trim()).filter(Boolean).map((ln) => {
+            const [text = "", color, style] = ln.split("\t");
+            return { text, ...(color ? { color } : {}), ...(style ? { style: style as ChipStyle } : {}) };
+          }),
+        }),
+      },
+      numberField("fontSize", "字号", 22),
+      numberField("gap", "间距(0=自动)", 0),
+      {
+        key: "align", label: "组内对齐", type: "select",
+        options: [{ value: "left", label: "左" }, { value: "center", label: "中" }, { value: "right", label: "右" }],
+        read: (el) => str((el as ChipRowElement).align ?? "left"),
+        write: (el, v) => patch(el, { align: v === "left" ? undefined : (v as ChipRowElement["align"]) }),
+      },
+    ],
+  },
+  ringNode: {
+    title: "圆环节点属性",
+    fields: [
+      plain("label", "主文字", "text", { placeholder: "模型" }),
+      plain("sub", "副文字", "text", { placeholder: "可选" }),
+      plain("accent", "环色", "color"),
+      numberField("fontSize", "字号", 34),
+      numberField("ring", "环粗细倍数", 1),
+    ],
+  },
+  stackList: {
+    title: "编号叠纸属性",
+    fields: [
+      plain("label", "顶部标题", "text", { placeholder: "执行记录" }),
+      {
+        key: "keys", label: "段编号(每行一个,最多 3)", type: "lines",
+        read: (el) => ((el as StackListElement).keys ?? ["1", "K"]).join("\n"),
+        write: (el, v) => patch(el, { keys: v.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3) }),
+      },
+      numberField("sheets", "每段张数(1-4)", 2),
+      boolField("ellipsis", "段间省略号", (el) => str((el as StackListElement).ellipsis !== false)),
+      plain("accent", "强调色", "color"),
+      numberField("fontSize", "字号", 24),
+    ],
+  },
+  loopArrow: {
+    title: "回环箭头属性",
+    fields: [
+      pointField("from", "起点"),
+      pointField("to", "终点"),
+      {
+        key: "side", label: "折返方向", type: "select",
+        options: [{ value: "bottom", label: "向下" }, { value: "top", label: "向上" }, { value: "left", label: "向左" }, { value: "right", label: "向右" }],
+        read: (el) => str((el as LoopArrowElement).side ?? "bottom"),
+        write: (el, v) => patch(el, { side: v as LoopArrowElement["side"] }),
+      },
+      numberField("depth", "折返深度(0=自动)", 0),
+      plain("label", "标签", "text", { placeholder: "可选" }),
+      plain("color", "颜色", "color"),
+      numberField("width", "线宽", 5),
+      boolField("dash", "虚线", (el) => str((el as LoopArrowElement).dash === true)),
+      boolField("arrow", "箭头", (el) => str((el as LoopArrowElement).arrow !== false)),
+    ],
+  },
   terminal: {
     title: "终端属性",
     fields: [
@@ -156,9 +245,10 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
     title: "柱状图属性",
     fields: [
       plain("title", "标题", "text"),
+      plain("subtitle", "副标题", "text", { placeholder: "可留空" }),
       {
-        key: "series", label: "数据(每行:名称⇥值[⇥颜色])", type: "lines",
-        read: (el) => (el as BarChartElement).series.map((s) => [s.label, s.value, s.color ?? ""].filter((v, i) => !(i === 2 && v === "")).join("\t")).join("\n"),
+        key: "series", label: "数据(每行:名称⇥值[⇥颜色];分组模式改用 groups)", type: "lines",
+        read: (el) => ((el as BarChartElement).series ?? []).map((s) => [s.label, s.value, s.color ?? ""].filter((v, i) => !(i === 2 && v === "")).join("\t")).join("\n"),
         write: (el, v) => patch(el, {
           series: v.split("\n").map((ln) => ln.trim()).filter(Boolean).map((ln) => {
             const [label = "", value = "0", color] = ln.split("\t");
@@ -177,6 +267,7 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
     title: "折线图属性",
     fields: [
       plain("title", "标题", "text"),
+      plain("subtitle", "副标题", "text", { placeholder: "可留空" }),
       {
         key: "series", label: "数据(每行:名称⇥逗号数值[⇥颜色])", type: "lines",
         read: (el) => (el as LineChartElement).series.map((s) => [s.label, s.points.join(","), s.color ?? ""].filter((v, i) => !(i === 2 && v === "")).join("\t")).join("\n"),
@@ -197,6 +288,7 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
     title: "饼图属性",
     fields: [
       plain("title", "标题", "text"),
+      plain("subtitle", "副标题", "text", { placeholder: "可留空" }),
       {
         key: "slices", label: "数据(每行:名称⇥值[⇥颜色])", type: "lines",
         read: (el) => (el as PieChartElement).slices.map((s) => [s.label, s.value, s.color ?? ""].filter((v, i) => !(i === 2 && v === "")).join("\t")).join("\n"),
@@ -312,10 +404,18 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
     title: "分组面板属性",
     fields: [
       plain("title", "标题", "text", { placeholder: "可留空" }),
+      plain("subtitle", "副标题", "text", { placeholder: "给出后标题改为内嵌左上" }),
       plain("accent", "标题色", "color"),
       plain("fill", "填充色", "color"),
       plain("stroke", "边框色", "color"),
       numberField("radius", "圆角", 24),
+      {
+        key: "dash",
+        label: "虚线边框",
+        type: "bool",
+        read: (el) => str((el as GroupPanelElement).dash === true),
+        write: (el, v) => patch(el, { dash: v === "true" }),
+      },
     ],
   },
   lane: {

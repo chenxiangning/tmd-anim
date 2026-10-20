@@ -1,5 +1,5 @@
 import type { BarChartElement } from "../types";
-import { CHART_PALETTE, INK, MUTED, drawTitle, niceCeil } from "./charts";
+import { CHART_PALETTE, INK, MUTED, drawLegendChips, drawTitle, niceCeil } from "./chartsCommon";
 import { roundRect, sansFont } from "./text";
 
 /**
@@ -7,26 +7,12 @@ import { roundRect, sansFont } from "./text";
  * groups[{label, values, deltas}] x groupSeries(系列名图例);竖向;逐柱生长入场。
  */
 
-/** 图例芯片行:色块 + 名称,返回结束 x;折线图与分组柱图共用同一视觉 */
-export function drawLegendChips(ctx: CanvasRenderingContext2D, entries: { label: string; color: string }[], x: number, y: number, fontSize: number): number {
-  ctx.font = sansFont(fontSize * 0.64, 600);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  let lx = x;
-  entries.forEach((e) => {
-    ctx.fillStyle = e.color;
-    roundRect(ctx, lx, y - fontSize * 0.21, fontSize * 0.42, fontSize * 0.42, fontSize * 0.1);
-    ctx.fill();
-    ctx.fillStyle = INK;
-    ctx.fillText(e.label, lx + fontSize * 0.58, y);
-    lx += fontSize * 0.58 + ctx.measureText(e.label).width + fontSize * 1.0;
-  });
-  return lx;
-}
-
 export function drawGroupedBar(ctx: CanvasRenderingContext2D, el: BarChartElement, progress?: number): void {
   const fontSize = el.fontSize ?? 28;
-  const groups = (el.groups ?? []).filter((g) => g.values.length > 0);
+  // 渲染层再兜一层:normalize 已结构化 groups,但节流预览可能拿到半成品数据,读 undefined.length 会崩整帧
+  const groups = (el.groups ?? [])
+    .filter((g) => g && Array.isArray(g.values) && g.values.length > 0)
+    .map((g) => ({ ...g, values: g.values.map((v) => (Number.isFinite(Number(v)) ? Number(v) : 0)) }));
   if (groups.length === 0) return;
   const seriesNames = el.groupSeries ?? groups[0].values.map((_, i) => `系列 ${i + 1}`);
   const showValue = el.showValue !== false;
@@ -35,7 +21,7 @@ export function drawGroupedBar(ctx: CanvasRenderingContext2D, el: BarChartElemen
   const legendH = seriesNames.length > 1 ? fontSize * 1.7 : 0;
   ctx.save();
   ctx.textBaseline = "middle";
-  const titleH = drawTitle(ctx, el, fontSize);
+  const titleH = drawTitle(ctx, el, fontSize, el.subtitle);
   const area = { x: el.x + pad, y: el.y + titleH + legendH + pad * 0.5, w: el.w - pad * 2, h: el.h - titleH - legendH - pad * 1.8 };
   const dataMax = Math.max(...groups.flatMap((g) => g.values), 0);
   const cap = Math.max(el.max ?? niceCeil(dataMax), dataMax, 1);
@@ -65,7 +51,9 @@ export function drawGroupedBar(ctx: CanvasRenderingContext2D, el: BarChartElemen
     ctx.stroke();
   }
   const groupSlot = area.w / groups.length;
-  const barW = Math.min((groupSlot * 0.62) / groups[0].values.length, fontSize * 1.5);
+  // 系列宽度按「组内最多柱数」算,组间柱数不一致时不会溢出组槽位
+  const seriesCount = Math.max(...groups.map((g) => g.values.length), 1);
+  const barW = Math.min((groupSlot * 0.62) / seriesCount, fontSize * 2.6);
   const totalBars = groups.reduce((s, g) => s + g.values.length, 0);
   let barIndex = 0;
   groups.forEach((grp, gi) => {
@@ -77,7 +65,8 @@ export function drawGroupedBar(ctx: CanvasRenderingContext2D, el: BarChartElemen
       barIndex++;
       const bh = (v / cap) * area.h * f;
       const bx = gx + si * barW;
-      roundRect(ctx, bx, Y(v) + (area.h - bh), barW * 0.82, bh, Math.min(6, barW * 0.16));
+      // 柱顶 = 基线 - 当前高度(生长动画从基线往上长);Y(v) 已含一次高度,不能再叠加
+      roundRect(ctx, bx, area.y + area.h - bh, barW * 0.82, bh, Math.min(6, barW * 0.16));
       ctx.fillStyle = color;
       ctx.fill();
       if (showValue && f >= 1) {
