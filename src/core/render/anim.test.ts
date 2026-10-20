@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { animVisual, applyTweens, emphasisFx, exitState, exitVisual } from "./anim";
+import { animVisual, applyTweens, emphasisFx, exitState, exitVisual, floatOffset } from "./anim";
 import type { Anim, ArrayCellsElement, ProgressElement } from "../types";
 
 const anim = (over: Partial<Anim>): Anim => ({ type: "fade", start: 0, duration: 1, ...over });
@@ -85,6 +85,42 @@ describe("时间轴三段:离场/强调/补间", () => {
     ]);
     expect(fx.highlightLines?.lines).toEqual([2, 4]);
     expect(fx.dashFlow).toBeGreaterThan(0);
+  });
+
+  it("emphasisFx:burst 窗口内给出进度,窗口外为 null", () => {
+    const fx = emphasisFx(0.5, [{ type: "burst" as const, start: 0, duration: 1 }]);
+    expect(fx.burstQ).toBeGreaterThan(0);
+    expect(fx.burstQ).toBeLessThanOrEqual(1);
+    expect(emphasisFx(2, [{ type: "burst" as const, start: 0, duration: 1 }]).burstQ).toBeNull();
+    expect(emphasisFx(0.5, [{ type: "pulse" as const, start: 0, duration: 1 }]).burstQ).toBeNull();
+  });
+
+  it("戏剧化入场:wobble/swing 落定归零,bounce 弹跳落定,flip 从背面转到正面", () => {
+    const mk = (type: Anim["type"]) => animVisual({ type, start: 0, duration: 1 }, 1);
+    expect(mk("wobble").rotation).toBeCloseTo(0);
+    expect(mk("swing").rotation).toBeCloseTo(0);
+    expect(mk("bounce").dy).toBeCloseTo(0);
+    expect(mk("flip").scaleX).toBe(1);
+    // flip 起点 = 背面镜像;easeOut 下侧立压扁在 p≈0.206(e=0.5);bounce 中段在上方(dy<0)
+    expect(animVisual({ type: "flip", start: 0, duration: 1 }, 0).scaleX).toBe(-1);
+    expect(Math.abs(animVisual({ type: "flip", start: 0, duration: 1 }, 0.206).scaleX ?? 1)).toBeLessThan(0.01);
+    expect(animVisual({ type: "bounce", start: 0, duration: 1 }, 0.3).dy).toBeLessThan(0);
+  });
+
+  it("floatOffset:入场中静止,结束后渐入漂浮,swing 带横向分量", () => {
+    // 入场中(1-1e-6 < entranceEnd):不浮
+    expect(floatOffset(0.99, {}, 1)).toEqual({ dx: 0, dy: 0 });
+    // 刚结束:ramp≈0 幅度极小
+    const just = floatOffset(1.05, {}, 1);
+    expect(Math.abs(just.dy)).toBeLessThan(2);
+    // 充分渐入后的波峰处:幅度接近 amp(localT 3.25 = entranceEnd + 2.25,2.25/3 周期 = 谷底)
+    const mid = floatOffset(3.25, { amp: 8, period: 3 }, 1);
+    expect(Math.abs(mid.dy)).toBeGreaterThan(6);
+    // swing:横向分量存在
+    const sw = floatOffset(3, { amp: 10, period: 3, swing: true }, 1);
+    expect(sw.dx).not.toBe(0);
+    // 无 float:静止
+    expect(floatOffset(5, undefined, 1)).toEqual({ dx: 0, dy: 0 });
   });
 
   it("applyTweens:percent 从静态值插值,窗口外不拷贝原样返回", () => {

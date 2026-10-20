@@ -1,0 +1,315 @@
+{
+  "version": 1,
+  "scenes": [
+    {
+      "id": "sc-intro",
+      "name": "1. 开场:一场对决",
+      "dwell": 4,
+      "caption": "同一个需求,两种实现:全量拉取 vs 分页缓存,谁更快?",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "e1",
+          "text": "方案对决",
+          "sub": "全量拉取 VS 分页缓存",
+          "x": 560,
+          "y": 300,
+          "w": 800,
+          "anim": {
+            "type": "flip",
+            "start": 0.2,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "badge",
+          "id": "e2",
+          "text": "方案 A",
+          "x": 620,
+          "y": 520,
+          "w": 240,
+          "h": 64,
+          "bg": "#EF4444",
+          "color": "#FFF",
+          "anim": {
+            "type": "slideLeft",
+            "start": 1.3,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "artText",
+          "id": "e3",
+          "text": "VS",
+          "fontSize": 64,
+          "color": "#6B7280",
+          "x": 910,
+          "y": 516,
+          "w": 100,
+          "anim": {
+            "type": "pop",
+            "start": 1.7,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "badge",
+          "id": "e4",
+          "text": "方案 B",
+          "x": 1060,
+          "y": 520,
+          "w": 240,
+          "h": 64,
+          "bg": "#10B981",
+          "color": "#FFF",
+          "anim": {
+            "type": "slideRight",
+            "start": 1.5,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "e5",
+          "variant": "doc",
+          "mood": "happy",
+          "badge": "裁判",
+          "x": 900,
+          "y": 660,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "wobble",
+            "start": 2.2,
+            "duration": 0.8
+          },
+          "float": true
+        }
+      ]
+    },
+    {
+      "id": "sc-latency",
+      "name": "2. 首屏耗时",
+      "dwell": 4,
+      "caption": "首屏耗时:方案 A 要 2.4 秒,方案 B 只要 0.6 秒,快 4 倍。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "f1",
+          "text": "首屏耗时",
+          "x": 710,
+          "y": 140,
+          "w": 500,
+          "anim": {
+            "type": "wobble",
+            "start": 0.2,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "barChart",
+          "id": "f2",
+          "title": "首屏加载(毫秒,越低越好)",
+          "series": [
+            {
+              "label": "方案 A 全量",
+              "value": 2400,
+              "color": "#EF4444"
+            },
+            {
+              "label": "方案 B 分页",
+              "value": 600,
+              "color": "#10B981"
+            }
+          ],
+          "showValue": true,
+          "axis": true,
+          "x": 460,
+          "y": 300,
+          "w": 1000,
+          "h": 520,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.8,
+            "duration": 1.4
+          }
+        },
+        {
+          "kind": "note",
+          "id": "f3",
+          "text": "差距 4 倍!",
+          "x": 1250,
+          "y": 250,
+          "w": 260,
+          "rotate": 3,
+          "anim": {
+            "type": "bounce",
+            "start": 2.4,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-trend",
+      "name": "3. 数据量涨了之后",
+      "dwell": 4,
+      "caption": "数据从 1 万涨到 10 万:A 线陡增,B 线几乎水平。",
+      "elements": [
+        {
+          "kind": "artText",
+          "id": "g0",
+          "text": "数据量涨 10 倍之后",
+          "fontSize": 48,
+          "color": "#1F2937",
+          "x": 660,
+          "y": 120,
+          "w": 600,
+          "anim": {
+            "type": "wobble",
+            "start": 0.2,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "lineChart",
+          "id": "g1",
+          "title": "耗时随数据量变化(毫秒)",
+          "series": [
+            {
+              "label": "方案 A",
+              "color": "#EF4444",
+              "points": [
+                2400,
+                3800,
+                6100,
+                9200,
+                15000
+              ]
+            },
+            {
+              "label": "方案 B",
+              "color": "#10B981",
+              "points": [
+                600,
+                620,
+                640,
+                660,
+                700
+              ]
+            }
+          ],
+          "xLabels": [
+            "1万",
+            "3万",
+            "5万",
+            "8万",
+            "10万"
+          ],
+          "smooth": true,
+          "dot": true,
+          "axis": true,
+          "grid": true,
+          "area": true,
+          "x": 260,
+          "y": 260,
+          "w": 1400,
+          "h": 560,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.6,
+            "duration": 2.2
+          }
+        },
+        {
+          "kind": "note",
+          "id": "g2",
+          "text": "A 陡增,B 几乎水平",
+          "x": 1300,
+          "y": 240,
+          "w": 300,
+          "rotate": 3,
+          "anim": {
+            "type": "bounce",
+            "start": 3.0,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-conclude",
+      "name": "4. 结论",
+      "dwell": 4,
+      "caption": "数据量会涨,方案要选那条几乎水平的线。",
+      "elements": [
+        {
+          "kind": "shape",
+          "id": "k1",
+          "variant": "rect",
+          "fill": "#D1FAE5",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "artText",
+          "id": "k2",
+          "text": "选 B:分页 + 缓存",
+          "fontSize": 84,
+          "color": "#065F46",
+          "x": 460,
+          "y": 400,
+          "w": 1000,
+          "anim": {
+            "type": "flip",
+            "start": 0.3,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "list",
+          "id": "k3",
+          "items": [
+            "首屏快 4 倍",
+            "数据量涨 10 倍几乎不变慢",
+            "缓存命中率 92%"
+          ],
+          "marker": "check",
+          "accent": "#10B981",
+          "x": 660,
+          "y": 580,
+          "w": 600,
+          "anim": {
+            "type": "typewriter",
+            "start": 1.4,
+            "duration": 1.6
+          }
+        },
+        {
+          "kind": "confetti",
+          "id": "k4",
+          "mode": "burst",
+          "count": 60,
+          "seed": "bench",
+          "x": 760,
+          "y": 240,
+          "w": 400,
+          "h": 300,
+          "anim": {
+            "type": "fade",
+            "start": 2.0,
+            "duration": 0.5
+          }
+        }
+      ]
+    }
+  ],
+  "name": "性能对比:两种方案谁更快"
+}

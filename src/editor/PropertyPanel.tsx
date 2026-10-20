@@ -153,6 +153,23 @@ export function PropertyPanel({
         {selected.kind !== "connector" && (
           <RotateField value={elementRotate(selected)} onCommit={(n) => patchEl({ rotate: n }, "geo:rotate")} />
         )}
+        {selected.kind !== "connector" && (
+          <label>
+            <span className={labelCls}>悬浮</span>
+            <button
+              type="button"
+              className={`w-full rounded-md border px-2 py-1.5 text-xs transition-colors ${
+                selected.float
+                  ? "border-slate-800 bg-slate-800 text-white"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+              }`}
+              title="入场结束后持续轻微漂浮(呼吸感);幅度/周期在 JSON 里用 float.amp/float.period 调"
+              onClick={() => patchEl({ float: selected.float ? undefined : {} }, "geo:float")}
+            >
+              {selected.float ? "已开启" : "关闭"}
+            </button>
+          </label>
+        )}
       </div>
 
       <div className="mb-4">

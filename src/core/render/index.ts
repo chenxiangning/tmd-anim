@@ -1,18 +1,21 @@
 import type { Project, SceneElement } from "../types";
 import { locate } from "../timeline";
-import { animState, animVisual, applyTweens, emphasisFx, exitState, exitVisual } from "./anim";
+import { animState, animVisual, applyTweens, emphasisFx, exitState, exitVisual, floatOffset } from "./anim";
 import { drawAiChat, drawBrowser, drawPhone, drawStepCard, drawTerminal } from "./cards";
 import { drawArrayCells } from "./cells";
 import { drawCode } from "./code";
 import { drawArtText, drawBadge, drawInput, drawNote, drawShape, drawText, drawTitle } from "./elements";
 import { drawDevNode } from "./devNode";
 import { drawAvatar, drawPerson } from "./actors";
+import { drawConfetti } from "./confetti";
+import { drawMascot } from "./mascot";
 import { drawBarChart, drawLineChart, drawPieChart } from "./charts";
 import { drawCodeDiff, drawCursor, drawFolderTree } from "./guide";
 import { drawConnector, drawImageEl, resolveConnector } from "./misc";
 import { drawGridBg, drawGroupPanel, drawLane, drawSpotlight } from "./stage";
 import { drawQuote, drawFormula } from "./rich";
 import { drawTable } from "./table";
+import { roundRect, sansFont } from "./text";
 import { drawKbd, drawList, drawProgress } from "./widgets";
 
 /**
@@ -31,8 +34,29 @@ export function drawFrame(ctx: CanvasRenderingContext2D, project: Project, t: nu
     for (const el of scene.elements) {
       drawElement(ctx, el, localT, scene.elements);
     }
+    // 场景旁白字幕:底部居中白底描边条,跨幕同位(拟人科普叙事的旁白位)
+    if (scene.caption) drawCaption(ctx, scene.caption, w, h);
   }
   ctx.restore();
+}
+
+/** 旁白字幕条:白底圆角 + 深描边 + 居中文字,固定在画布底部 */
+function drawCaption(ctx: CanvasRenderingContext2D, text: string, w: number, h: number): void {
+  const barH = 84;
+  const marginX = 110;
+  const barY = h - barH - 42;
+  const fontSize = Math.min(32, ((w - marginX * 2) / Math.max(8, text.length)) * 1.9);
+  roundRect(ctx, marginX, barY, w - marginX * 2, barH, barH / 2);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#1F2937";
+  ctx.stroke();
+  ctx.fillStyle = "#1F2937";
+  ctx.font = sansFont(fontSize, 600);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, w / 2, barY + barH / 2 + 1, w - marginX * 2 - 80);
 }
 
 function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: number, sceneElements: SceneElement[]): void {
@@ -58,18 +82,20 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
     if (ev.wipeWidth !== null) wipeWidth = ev.wipeWidth;
   }
   const fx = emphasisFx(localT, elT.emphasis);
+  // 悬浮:入场结束后持续漂浮,叠加进总位移
+  const fl = floatOffset(localT, elT.float, elT.anim.start + elT.anim.duration);
   ctx.save();
   ctx.globalAlpha *= alpha;
-  const tx = dx + fx.dx;
-  const ty = dy + fx.dy;
+  const tx = dx + fx.dx + fl.dx;
+  const ty = dy + fx.dy + fl.dy;
   if (tx !== 0 || ty !== 0) ctx.translate(tx, ty);
   const totalScale = scale * fx.scaleMul;
-  if (totalScale !== 1 || visual.rotation !== 0) {
+  if (totalScale !== 1 || visual.rotation !== 0 || visual.scaleX !== null) {
     const cx = elT.x + elT.w / 2;
     const cy = elT.y + elT.h / 2;
     ctx.translate(cx, cy);
     if (visual.rotation !== 0) ctx.rotate(visual.rotation);
-    if (totalScale !== 1) ctx.scale(totalScale, totalScale);
+    if (totalScale !== 1 || visual.scaleX !== null) ctx.scale((visual.scaleX ?? 1) * totalScale, totalScale);
     ctx.translate(-cx, -cy);
   }
   // 元素静态旋转(通用字段):便签保留历史缺省 -2;与入场动画变换复合。连线端点是绝对坐标,不支持旋转
@@ -197,6 +223,12 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
     case "person":
       drawPerson(ctx, elT);
       break;
+    case "mascot":
+      drawMascot(ctx, elT);
+      break;
+    case "confetti":
+      drawConfetti(ctx, elT, Math.max(0, localT - elT.anim.start));
+      break;
   }
   // 强调后置覆盖(元素本地坐标,与内容同变换空间):白闪 / 扩散圈
   if (fx.flashAlpha > 0) {
@@ -211,6 +243,28 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
     ctx.beginPath();
     ctx.arc(elT.x + elT.w / 2, elT.y + elT.h / 2, (Math.max(elT.w, elT.h) / 2) * (0.35 + 0.85 * fx.ringQ), 0, Math.PI * 2);
     ctx.stroke();
+  }
+  // 星芒迸发:交替双色三角从元素边缘向外射出,先胀后缩
+  if (fx.burstQ !== null) {
+    const q = fx.burstQ;
+    const cx = elT.x + elT.w / 2;
+    const cy = elT.y + elT.h / 2;
+    const inner = (Math.max(elT.w, elT.h) / 2) * 0.72;
+    const reach = inner + Math.max(elT.w, elT.h) * 0.38 * q;
+    const size = Math.max(elT.w, elT.h) * 0.14 * Math.sin(Math.PI * Math.min(1, q * 1.15));
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      const px = cx + Math.cos(angle) * reach;
+      const py = cy + Math.sin(angle) * reach;
+      ctx.globalAlpha = (1 - q) * 0.9;
+      ctx.fillStyle = i % 2 === 0 ? "#F87171" : "#FBBF24";
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(angle) * size, py + Math.sin(angle) * size);
+      ctx.lineTo(px + Math.cos(angle + Math.PI / 2) * size * 0.42, py + Math.sin(angle + Math.PI / 2) * size * 0.42);
+      ctx.lineTo(px + Math.cos(angle - Math.PI / 2) * size * 0.42, py + Math.sin(angle - Math.PI / 2) * size * 0.42);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
   ctx.restore();
 }

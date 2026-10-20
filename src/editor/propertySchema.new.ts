@@ -1,7 +1,7 @@
 import type {
-  AiChatElement, AvatarElement, BarChartElement, CodeDiffElement, CodeElement, CursorElement,
+  AiChatElement, AvatarElement, BarChartElement, CodeDiffElement, CodeElement, ConfettiElement, CursorElement,
   DevNodeElement, DevNodeVariant, FolderTreeElement, GridBgElement, LaneElement, LineChartElement,
-  PersonElement, PieChartElement, SceneElement, SpotlightElement,
+  MascotElement, PersonElement, PieChartElement, SceneElement, SpotlightElement,
 } from "../core/types";
 import { DEV_META } from "../core/render/devNode";
 import type { FieldDef } from "./propertySchema";
@@ -353,6 +353,46 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
         write: (el, v) => patch(el, { pose: v }),
       },
       plain("color", "颜色", "color"),
+    ],
+  },
+  mascot: {
+    title: "吉祥物属性",
+    fields: [
+      {
+        key: "variant", label: "变体", type: "select",
+        options: [{ value: "doc", label: "文档精" }, { value: "bot", label: "机器人" }],
+        read: (el) => str((el as MascotElement).variant ?? "doc"),
+        write: (el, v) => patch(el, { variant: v === "bot" ? "bot" : "doc" }),
+      },
+      {
+        key: "mood", label: "表情", type: "select",
+        options: [{ value: "happy", label: "开心" }, { value: "wink", label: "眨眼" }, { value: "worried", label: "焦虑" }],
+        read: (el) => str((el as MascotElement).mood ?? "happy"),
+        write: (el, v) => patch(el, { mood: v }),
+      },
+      plain("badge", "胸牌/铭牌", "text", { placeholder: "如 PDF / 文枢" }),
+      plain("badgeColor", "胸牌底色", "color"),
+      plain("body", "机身/纸面底色", "color"),
+      plain("label", "名牌(bot 机身内 / doc 脚下)", "text", { placeholder: "如 最终版.pdf" }),
+    ],
+  },
+  confetti: {
+    title: "纸屑属性",
+    fields: [
+      {
+        key: "mode", label: "模式", type: "select",
+        options: [{ value: "rain", label: "飘落(循环)" }, { value: "burst", label: "迸发(一次)" }],
+        read: (el) => str((el as ConfettiElement).mode ?? "rain"),
+        write: (el, v) => patch(el, { mode: v === "burst" ? "burst" : "rain" }),
+      },
+      numberField("count", "粒子数(10-200)", 80),
+      numberField("seed", "随机种子", 42),
+      {
+        key: "colors", label: "色板(逗号分隔,留空默认)", type: "text",
+        placeholder: "#F87171,#FBBF24",
+        read: (el) => ((el as ConfettiElement).colors ?? []).join(","),
+        write: (el, v) => patch(el, { colors: v.split(/[,，]/).map((s) => s.trim()).filter(Boolean) }),
+      },
     ],
   },
 };

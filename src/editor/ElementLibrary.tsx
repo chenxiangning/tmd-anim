@@ -7,8 +7,8 @@ import { usePanelResize } from "./usePanelResize";
 
 interface LibraryItem {
   kind: SceneElement["kind"];
-  /** 形状/连线/开发组件变体(connector:line = 直线);sketch = 手绘标记 */
-  variant?: ShapeVariant | "line" | DevNodeVariant;
+  /** 形状/连线/开发组件/吉祥物/纸屑变体(connector:line = 直线,mascot:bot = 机器人,confetti:burst = 迸发);sketch = 手绘标记 */
+  variant?: ShapeVariant | "line" | DevNodeVariant | "bot" | "burst";
   sketch?: boolean;
   label?: string;
 }
@@ -89,11 +89,11 @@ const GROUPS: ReadonlyArray<LibraryGroup> = [
   },
   {
     label: "舞台",
-    items: [{ kind: "groupPanel" }, { kind: "lane" }, { kind: "gridBg" }, { kind: "spotlight" }],
+    items: [{ kind: "groupPanel" }, { kind: "lane" }, { kind: "gridBg" }, { kind: "spotlight" }, { kind: "confetti" }],
   },
   {
     label: "角色",
-    items: [{ kind: "avatar" }, { kind: "person" }],
+    items: [{ kind: "avatar" }, { kind: "person" }, { kind: "mascot" }, { kind: "mascot", variant: "bot", label: "机器人" }],
   },
   {
     label: "图示与媒体",

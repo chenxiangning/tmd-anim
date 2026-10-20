@@ -1,0 +1,485 @@
+{
+  "version": 1,
+  "scenes": [
+    {
+      "id": "sc-intro",
+      "name": "1. 开场:快不快,谁说了算",
+      "dwell": 4,
+      "caption": "「感觉有点慢」没法优化,拆成三个可度量的指标才行。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "e1",
+          "text": "前端性能三大指标",
+          "sub": "LCP · INP · CLS",
+          "x": 460,
+          "y": 300,
+          "w": 1000,
+          "anim": {
+            "type": "flip",
+            "start": 0.2,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "shape",
+          "id": "e2",
+          "variant": "rect",
+          "fill": "#3B82F6",
+          "x": 560,
+          "y": 560,
+          "w": 240,
+          "h": 90,
+          "anim": {
+            "type": "bounce",
+            "start": 1.3,
+            "duration": 1
+          },
+          "float": true
+        },
+        {
+          "kind": "shape",
+          "id": "e3",
+          "variant": "rect",
+          "fill": "#10B981",
+          "x": 840,
+          "y": 560,
+          "w": 240,
+          "h": 90,
+          "anim": {
+            "type": "bounce",
+            "start": 1.6,
+            "duration": 1
+          },
+          "float": true
+        },
+        {
+          "kind": "shape",
+          "id": "e4",
+          "variant": "rect",
+          "fill": "#F59E0B",
+          "x": 1120,
+          "y": 560,
+          "w": 240,
+          "h": 90,
+          "anim": {
+            "type": "bounce",
+            "start": 1.9,
+            "duration": 1
+          },
+          "float": true
+        },
+        {
+          "kind": "artText",
+          "id": "e5",
+          "text": "LCP",
+          "fontSize": 44,
+          "color": "#FFFFFF",
+          "x": 560,
+          "y": 575,
+          "w": 240,
+          "anim": {
+            "type": "fade",
+            "start": 2.0,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "artText",
+          "id": "e6",
+          "text": "INP",
+          "fontSize": 44,
+          "color": "#FFFFFF",
+          "x": 840,
+          "y": 575,
+          "w": 240,
+          "anim": {
+            "type": "fade",
+            "start": 2.1,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "artText",
+          "id": "e7",
+          "text": "CLS",
+          "fontSize": 44,
+          "color": "#FFFFFF",
+          "x": 1120,
+          "y": 575,
+          "w": 240,
+          "anim": {
+            "type": "fade",
+            "start": 2.2,
+            "duration": 0.4
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-lcp",
+      "name": "2. LCP:主内容多快出现",
+      "dwell": 4,
+      "caption": "LCP 最大内容绘制:主图出现超过 2.5 秒,用户就开始走了。",
+      "elements": [
+        {
+          "kind": "gridBg",
+          "id": "f1",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "browser",
+          "id": "f2",
+          "url": "shop.example.com",
+          "body": "#EEF2FF",
+          "x": 560,
+          "y": 200,
+          "w": 800,
+          "h": 520,
+          "anim": {
+            "type": "zoomIn",
+            "start": 0.4,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "shape",
+          "id": "f3",
+          "variant": "rect",
+          "fill": "#C7D2FE",
+          "x": 640,
+          "y": 330,
+          "w": 640,
+          "h": 260,
+          "anim": {
+            "type": "wipe",
+            "start": 1.0,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "badge",
+          "id": "f4",
+          "text": "LCP = 这块主图出现的时间",
+          "x": 640,
+          "y": 620,
+          "w": 640,
+          "h": 56,
+          "bg": "#3B82F6",
+          "color": "#FFF",
+          "anim": {
+            "type": "riseUp",
+            "start": 1.9,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "formula",
+          "id": "f5",
+          "text": "LCP ≤ 2.5s",
+          "fontSize": 56,
+          "color": "#1E3A8A",
+          "x": 700,
+          "y": 740,
+          "w": 520,
+          "anim": {
+            "type": "pop",
+            "start": 2.5,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "note",
+          "id": "f6",
+          "text": "超过 2.5s,用户就开始走",
+          "x": 1300,
+          "y": 260,
+          "w": 320,
+          "rotate": 3,
+          "anim": {
+            "type": "bounce",
+            "start": 3.0,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-inp",
+      "name": "3. INP:点了有没有反应",
+      "dwell": 4,
+      "caption": "INP 交互延迟:点按钮到有反馈,200 毫秒内才算跟手。",
+      "elements": [
+        {
+          "kind": "gridBg",
+          "id": "g1",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "kbd",
+          "id": "g2",
+          "text": "点击购买",
+          "x": 820,
+          "y": 340,
+          "w": 280,
+          "h": 80,
+          "anim": {
+            "type": "bounce",
+            "start": 0.5,
+            "duration": 1
+          },
+          "emphasis": [
+            {
+              "type": "pulse",
+              "start": 1.6,
+              "duration": 1.2
+            }
+          ]
+        },
+        {
+          "kind": "connector",
+          "id": "g3",
+          "from": "g2",
+          "to": "g4",
+          "label": "200ms 内",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 1.4,
+            "duration": 0.4
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 1.8,
+              "duration": 1.8
+            }
+          ]
+        },
+        {
+          "kind": "badge",
+          "id": "g4",
+          "text": "加载中…",
+          "x": 800,
+          "y": 520,
+          "w": 320,
+          "h": 60,
+          "bg": "#6B7280",
+          "color": "#FFF",
+          "anim": {
+            "type": "pop",
+            "start": 1.7,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "stepCard",
+          "id": "g5",
+          "num": "!",
+          "title": "INP ≤ 200ms",
+          "desc": "超出人眼「跟手」的耐心阈值",
+          "highlight": [
+            "跟手"
+          ],
+          "accent": "#10B981",
+          "x": 660,
+          "y": 680,
+          "w": 600,
+          "anim": {
+            "type": "riseUp",
+            "start": 2.4,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-cls",
+      "name": "4. CLS:页面稳不稳",
+      "dwell": 4,
+      "caption": "CLS 累积布局偏移:正要点「删除」,广告挤进来,你就点错了。",
+      "elements": [
+        {
+          "kind": "gridBg",
+          "id": "h1",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "browser",
+          "id": "h2",
+          "url": "news.example.com",
+          "body": "#FFF7ED",
+          "x": 660,
+          "y": 180,
+          "w": 600,
+          "h": 380,
+          "anim": {
+            "type": "zoomIn",
+            "start": 0.4,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "shape",
+          "id": "h3",
+          "variant": "rect",
+          "fill": "#FDBA74",
+          "x": 700,
+          "y": 560,
+          "w": 520,
+          "h": 120,
+          "anim": {
+            "type": "riseUp",
+            "start": 1.4,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "note",
+          "id": "h4",
+          "text": "广告挤进来,内容全下移!",
+          "x": 1260,
+          "y": 330,
+          "w": 360,
+          "rotate": 2,
+          "anim": {
+            "type": "bounce",
+            "start": 2.0,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "h5",
+          "variant": "doc",
+          "mood": "worried",
+          "badge": "点错了",
+          "x": 380,
+          "y": 560,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "swing",
+            "start": 2.4,
+            "duration": 1
+          },
+          "float": true
+        },
+        {
+          "kind": "formula",
+          "id": "h6",
+          "text": "CLS ≤ 0.1",
+          "fontSize": 56,
+          "color": "#9A3412",
+          "x": 760,
+          "y": 740,
+          "w": 400,
+          "anim": {
+            "type": "pop",
+            "start": 3.0,
+            "duration": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-recap",
+      "name": "5. 总结:一条底线",
+      "dwell": 4,
+      "caption": "主图 2.5 秒内出现、点击 200 毫秒内响应、布局几乎不动。",
+      "elements": [
+        {
+          "kind": "devNode",
+          "id": "k1",
+          "dev": "server",
+          "label": "LCP ≤ 2.5s",
+          "sub": "主内容快",
+          "x": 240,
+          "y": 420,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 0.3,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k2",
+          "dev": "api",
+          "label": "INP ≤ 200ms",
+          "sub": "交互跟手",
+          "x": 770,
+          "y": 420,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 0.9,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k3",
+          "dev": "container",
+          "label": "CLS ≤ 0.1",
+          "sub": "布局稳定",
+          "x": 1300,
+          "y": 420,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 1.5,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "quote",
+          "id": "k4",
+          "text": "性能不是感觉,是可度量的三个数字。",
+          "author": "Web Vitals",
+          "accent": "#3B82F6",
+          "x": 560,
+          "y": 640,
+          "w": 800,
+          "anim": {
+            "type": "riseUp",
+            "start": 2.2,
+            "duration": 0.6
+          }
+        }
+      ]
+    }
+  ],
+  "name": "概念三分图解:前端性能三大指标"
+}

@@ -136,7 +136,7 @@ src/editor/      编辑器(画布交互/属性面板/时间轴/场景条/撤销/
 src/export/      导出链路(JSON/HTML/MP4;MP4 = Worker 渲染编码 + 主线程回退)
 src/app/         主页(项目管理)与视图路由
 src/store/       项目仓库双后端(localStorage / Tauri plugin-fs)
-src/samples/     示例项目(http.json 叙事活例,showcase.json 新元素+时间轴三段活例,xiaohei.json 小黑风格活例)
+src/samples/     示例项目(http.json 叙事活例,explainer.json 拟人科普活例,git-tutorial/refactor-diff/request-flow/bench-chart/debug-story/web-vitals.json 五个叙事 demo,showcase.json 新元素+时间轴三段活例,xiaohei.json 小黑风格活例)
 src-tauri/       Tauri 2 桌面壳(fs 能力仅限 ~/.tmd-anim/)
 docs/schema.md   场景 JSON 契约(agent 协议权威文档)
 docs/recipes.md  叙事配方库(10 个构图模板,agent 套模板填槽)

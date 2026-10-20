@@ -1,0 +1,483 @@
+{
+  "version": 1,
+  "scenes": [
+    {
+      "id": "sc-intro",
+      "name": "1. 开场:点一下「下单」之后",
+      "dwell": 4,
+      "caption": "你点下「下单」只用了 0.1 秒,背后发生了一整套接力。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "e1",
+          "text": "一次下单的旅程",
+          "sub": "从点击到入库,数据都经历了什么",
+          "x": 460,
+          "y": 320,
+          "w": 1000,
+          "anim": {
+            "type": "flip",
+            "start": 0.2,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "phone",
+          "id": "e2",
+          "url": "shop.example.com",
+          "x": 870,
+          "y": 540,
+          "w": 180,
+          "h": 300,
+          "anim": {
+            "type": "riseUp",
+            "start": 1.3,
+            "duration": 0.7
+          },
+          "float": true
+        },
+        {
+          "kind": "badge",
+          "id": "e3",
+          "text": "下单",
+          "x": 1080,
+          "y": 640,
+          "w": 130,
+          "h": 48,
+          "bg": "#10B981",
+          "color": "#FFF",
+          "anim": {
+            "type": "bounce",
+            "start": 2.1,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-gateway",
+      "name": "2. 第一棒:网关",
+      "dwell": 4,
+      "caption": "请求先到网关:验身份、限流量,合格的才放行。",
+      "elements": [
+        {
+          "kind": "browser",
+          "id": "f1",
+          "url": "shop.example.com/checkout",
+          "x": 160,
+          "y": 380,
+          "w": 440,
+          "h": 320,
+          "anim": {
+            "type": "slideLeft",
+            "start": 0.2,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "f2",
+          "from": "f1",
+          "to": "f3",
+          "label": "HTTPS",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 0.9,
+            "duration": 0.4
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 1.3,
+              "duration": 2.4
+            }
+          ]
+        },
+        {
+          "kind": "devNode",
+          "id": "f3",
+          "dev": "gateway",
+          "label": "API 网关",
+          "sub": "鉴权 · 限流",
+          "x": 760,
+          "y": 420,
+          "w": 380,
+          "h": 110,
+          "anim": {
+            "type": "pop",
+            "start": 0.6,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "list",
+          "id": "f4",
+          "items": [
+            "校验登录令牌",
+            "每秒最多 1000 次",
+            "拦截非法请求"
+          ],
+          "marker": "check",
+          "accent": "#10B981",
+          "x": 1240,
+          "y": 400,
+          "w": 480,
+          "anim": {
+            "type": "typewriter",
+            "start": 1.6,
+            "duration": 1.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-service",
+      "name": "3. 第二棒:订单服务",
+      "dwell": 4,
+      "caption": "订单服务算库存、算价格,把订单写进数据库。",
+      "elements": [
+        {
+          "kind": "devNode",
+          "id": "g1",
+          "dev": "api",
+          "label": "订单服务",
+          "sub": "核心逻辑",
+          "x": 760,
+          "y": 300,
+          "w": 400,
+          "h": 110,
+          "anim": {
+            "type": "flip",
+            "start": 0.3,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "g2",
+          "from": "g1",
+          "to": "g3",
+          "label": "SQL 写入",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 1.4,
+            "duration": 0.4
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 1.8,
+              "duration": 2
+            }
+          ]
+        },
+        {
+          "kind": "devNode",
+          "id": "g3",
+          "dev": "database",
+          "label": "订单库",
+          "sub": "MySQL",
+          "x": 800,
+          "y": 620,
+          "w": 320,
+          "h": 110,
+          "anim": {
+            "type": "riseUp",
+            "start": 1.0,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "note",
+          "id": "g4",
+          "text": "事务保证:钱和货必须一致",
+          "x": 1260,
+          "y": 400,
+          "w": 380,
+          "rotate": 2,
+          "anim": {
+            "type": "bounce",
+            "start": 2.4,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "g5",
+          "dev": "redis",
+          "label": "库存缓存",
+          "sub": "先扣缓存再落库",
+          "x": 220,
+          "y": 300,
+          "w": 340,
+          "h": 110,
+          "anim": {
+            "type": "slideRight",
+            "start": 0.7,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-notify",
+      "name": "4. 第三棒:通知",
+      "dwell": 4,
+      "caption": "下单成功的推送,是消息队列慢慢投递的,不阻塞主流程。",
+      "elements": [
+        {
+          "kind": "devNode",
+          "id": "h1",
+          "dev": "queue",
+          "label": "消息队列",
+          "sub": "异步投递",
+          "x": 780,
+          "y": 260,
+          "w": 360,
+          "h": 100,
+          "anim": {
+            "type": "pop",
+            "start": 0.3,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "h2",
+          "from": "h1",
+          "to": "h3",
+          "label": "订阅",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 1.0,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 1.4,
+              "duration": 2
+            }
+          ]
+        },
+        {
+          "kind": "connector",
+          "id": "h3c",
+          "from": "h1",
+          "to": "h4",
+          "label": "订阅",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 1.2,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 1.6,
+              "duration": 2
+            }
+          ]
+        },
+        {
+          "kind": "phone",
+          "id": "h3",
+          "url": "短信推送",
+          "x": 380,
+          "y": 520,
+          "w": 170,
+          "h": 280,
+          "anim": {
+            "type": "swing",
+            "start": 1.5,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "browser",
+          "id": "h4",
+          "url": "邮件通知",
+          "x": 1360,
+          "y": 540,
+          "w": 440,
+          "h": 260,
+          "anim": {
+            "type": "slideRight",
+            "start": 1.8,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "quote",
+          "id": "h5",
+          "text": "主流程 0.1 秒返回,通知慢一点没关系。",
+          "author": "异步设计原则",
+          "accent": "#3B82F6",
+          "x": 560,
+          "y": 880,
+          "w": 800,
+          "anim": {
+            "type": "riseUp",
+            "start": 2.6,
+            "duration": 0.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-all",
+      "name": "5. 全景:一条链路",
+      "dwell": 4,
+      "caption": "网关、服务、数据库、队列,各司其职,这就是架构。",
+      "elements": [
+        {
+          "kind": "devNode",
+          "id": "k1",
+          "dev": "container",
+          "label": "客户端",
+          "sub": "下单按钮",
+          "x": 120,
+          "y": 470,
+          "w": 300,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 0.2,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k2",
+          "dev": "gateway",
+          "label": "网关",
+          "sub": "鉴权限流",
+          "x": 520,
+          "y": 470,
+          "w": 280,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 0.6,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k3",
+          "dev": "api",
+          "label": "订单服务",
+          "sub": "核心逻辑",
+          "x": 900,
+          "y": 470,
+          "w": 300,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 1.0,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k4",
+          "dev": "database",
+          "label": "数据库",
+          "sub": "最终一致",
+          "x": 1300,
+          "y": 470,
+          "w": 300,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 1.4,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "k5",
+          "from": "k1",
+          "to": "k2",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 1.9,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.2,
+              "duration": 2.2
+            }
+          ]
+        },
+        {
+          "kind": "connector",
+          "id": "k6",
+          "from": "k2",
+          "to": "k3",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 2.1,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.4,
+              "duration": 2.2
+            }
+          ]
+        },
+        {
+          "kind": "connector",
+          "id": "k7",
+          "from": "k3",
+          "to": "k4",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 2.3,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.6,
+              "duration": 2.2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "name": "架构数据流:一次下单的旅程"
+}

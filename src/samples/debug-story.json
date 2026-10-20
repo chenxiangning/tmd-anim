@@ -1,0 +1,379 @@
+{
+  "version": 1,
+  "scenes": [
+    {
+      "id": "sc-alarm",
+      "name": "1. 告警:接口 500",
+      "dwell": 4,
+      "caption": "下午三点,告警群炸了:下单接口大面积 500。",
+      "elements": [
+        {
+          "kind": "shape",
+          "id": "e1",
+          "variant": "rect",
+          "fill": "#7F1D1D",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "terminal",
+          "id": "e2",
+          "title": "monitor",
+          "code": "[ALERT] POST /api/order 500\nerror rate: 43%\nsince 15:02:11",
+          "dark": true,
+          "x": 510,
+          "y": 300,
+          "w": 900,
+          "h": 380,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.5,
+            "duration": 1.6
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "e3",
+          "variant": "bot",
+          "mood": "worried",
+          "badge": "值班中",
+          "x": 880,
+          "y": 720,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "swing",
+            "start": 2.2,
+            "duration": 1
+          },
+          "float": true
+        }
+      ]
+    },
+    {
+      "id": "sc-hypo",
+      "name": "2. 三个嫌疑人",
+      "dwell": 4,
+      "caption": "按经验列嫌疑人:新版本发布、数据库慢、下游超时。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "f1",
+          "text": "嫌疑人列表",
+          "x": 710,
+          "y": 140,
+          "w": 500,
+          "anim": {
+            "type": "wobble",
+            "start": 0.2,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "stepCard",
+          "id": "f2",
+          "num": "?",
+          "title": "新版本发布",
+          "desc": "15:00 刚上过线",
+          "accent": "#EF4444",
+          "x": 200,
+          "y": 340,
+          "w": 480,
+          "anim": {
+            "type": "slideLeft",
+            "start": 0.8,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "stepCard",
+          "id": "f3",
+          "num": "?",
+          "title": "数据库慢查询",
+          "desc": "最近有慢 SQL 告警",
+          "accent": "#F59E0B",
+          "x": 720,
+          "y": 340,
+          "w": 480,
+          "anim": {
+            "type": "slideLeft",
+            "start": 1.2,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "stepCard",
+          "id": "f4",
+          "num": "?",
+          "title": "下游库存服务",
+          "desc": "上周抖过两次",
+          "accent": "#3B82F6",
+          "x": 1240,
+          "y": 340,
+          "w": 480,
+          "anim": {
+            "type": "slideLeft",
+            "start": 1.6,
+            "duration": 0.6
+          }
+        },
+        {
+          "kind": "note",
+          "id": "f5",
+          "text": "一个一个排查!",
+          "x": 810,
+          "y": 620,
+          "w": 300,
+          "rotate": -2,
+          "anim": {
+            "type": "bounce",
+            "start": 2.4,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-check",
+      "name": "3. 逐个排查",
+      "dwell": 4,
+      "caption": "版本回滚无效,慢查询为空,最后在下游日志里抓到了超时。",
+      "elements": [
+        {
+          "kind": "list",
+          "id": "g1",
+          "items": [
+            "回滚新版本 → 依然 500,排除",
+            "慢查询日志 → 空的,排除",
+            "库存服务日志 → 大量超时!"
+          ],
+          "marker": "number",
+          "accent": "#EF4444",
+          "x": 260,
+          "y": 260,
+          "w": 700,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.5,
+            "duration": 2.2
+          }
+        },
+        {
+          "kind": "terminal",
+          "id": "g2",
+          "title": "inventory-service.log",
+          "code": "15:02:11 timeout after 3000ms\n15:02:12 timeout after 3000ms\n15:02:14 timeout after 3000ms",
+          "dark": true,
+          "x": 1040,
+          "y": 280,
+          "w": 660,
+          "h": 340,
+          "anim": {
+            "type": "typewriter",
+            "start": 2.0,
+            "duration": 1.4
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "g3",
+          "variant": "bot",
+          "mood": "wink",
+          "badge": "就是它",
+          "x": 1180,
+          "y": 680,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "pop",
+            "start": 3.4,
+            "duration": 0.5
+          },
+          "emphasis": [
+            {
+              "type": "burst",
+              "start": 3.5,
+              "duration": 1.2
+            }
+          ],
+          "float": true
+        }
+      ]
+    },
+    {
+      "id": "sc-fix",
+      "name": "4. 修复:加重试与降级",
+      "dwell": 4,
+      "caption": "给库存调用加上超时重试和兜底价,再抖也不影响下单。",
+      "elements": [
+        {
+          "kind": "codeDiff",
+          "id": "h1",
+          "filename": "order-service.ts",
+          "hunks": [
+            {
+              "lines": [
+                {
+                  "tag": "-",
+                  "text": "const stock = await inventory.get(sku);"
+                },
+                {
+                  "tag": "+",
+                  "text": "const stock = await withRetry("
+                },
+                {
+                  "tag": "+",
+                  "text": "  () => inventory.get(sku),"
+                },
+                {
+                  "tag": "+",
+                  "text": "  { timeout: 800, fallback: DEFAULT_STOCK }"
+                },
+                {
+                  "tag": "+",
+                  "text": ");"
+                }
+              ]
+            }
+          ],
+          "dark": true,
+          "x": 360,
+          "y": 220,
+          "w": 1200,
+          "h": 440,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.5,
+            "duration": 2
+          }
+        },
+        {
+          "kind": "badge",
+          "id": "h2",
+          "text": "错误率 43% → 0%",
+          "x": 760,
+          "y": 720,
+          "w": 400,
+          "h": 60,
+          "bg": "#10B981",
+          "color": "#FFF",
+          "anim": {
+            "type": "bounce",
+            "start": 2.7,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "note",
+          "id": "h3",
+          "text": "超时 + 兜底价,再抖也不怕",
+          "x": 420,
+          "y": 740,
+          "w": 360,
+          "rotate": -2,
+          "anim": {
+            "type": "bounce",
+            "start": 3.2,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-recap",
+      "name": "5. 复盘",
+      "dwell": 4,
+      "caption": "排查三板斧:先回滚、再查日志、最后盯下游。",
+      "elements": [
+        {
+          "kind": "shape",
+          "id": "k1",
+          "variant": "rect",
+          "fill": "#FEF3C7",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k2",
+          "dev": "auth",
+          "label": "1. 回滚止血",
+          "sub": "先恢复线上",
+          "x": 240,
+          "y": 420,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 0.3,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k3",
+          "dev": "obs",
+          "label": "2. 查监控日志",
+          "sub": "用数据排除",
+          "x": 770,
+          "y": 420,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 0.9,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "k4",
+          "dev": "function",
+          "label": "3. 修复兜底",
+          "sub": "重试 + 降级",
+          "x": 1300,
+          "y": 420,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "wobble",
+            "start": 1.5,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "k5",
+          "variant": "bot",
+          "mood": "happy",
+          "badge": "复盘完成",
+          "x": 905,
+          "y": 600,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "flip",
+            "start": 2.2,
+            "duration": 1
+          },
+          "float": true
+        }
+      ]
+    }
+  ],
+  "name": "报错排查:线上 500 侦探记"
+}

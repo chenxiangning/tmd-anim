@@ -17,8 +17,8 @@ const STATUS_COLOR: Record<"online" | "busy" | "offline", string> = {
   offline: "#94A3B8",
 };
 
-/** 斜向肢体:从 (x1,y1) 画到 (x2,y2) 的圆角矩形(竖/横/斜统一) */
-function drawLimb(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, w: number, r: number): void {
+/** 斜向肢体:从 (x1,y1) 画到 (x2,y2) 的圆角矩形(竖/横/斜统一);mascot 复用 */
+export function drawLimb(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, w: number, r: number): void {
   ctx.save();
   ctx.translate(x1, y1);
   ctx.rotate(Math.atan2(y2 - y1, x2 - x1));

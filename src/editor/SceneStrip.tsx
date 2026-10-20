@@ -14,6 +14,7 @@ interface SceneStripProps {
   onMoveScene: (delta: -1 | 1) => void;
   onRenameScene: (name: string) => void;
   onDwell: (seconds: number) => void;
+  onCaption: (caption: string) => void;
   onSetAudio: (audio: Scene["audio"] | undefined) => void;
 }
 
@@ -127,6 +128,7 @@ export function SceneStrip({
   onMoveScene,
   onRenameScene,
   onDwell,
+  onCaption,
   onSetAudio,
 }: SceneStripProps) {
   const scene = project.scenes[sceneIdx];
@@ -182,6 +184,14 @@ export function SceneStrip({
             onChange={(e) => onDwell(Number(e.target.value) || 0)}
           />
           秒
+          <input
+            type="text"
+            className="w-44 rounded-md border border-neutral-200 px-1.5 py-0.5 text-[10px] outline-none focus:border-slate-400"
+            value={scene.caption ?? ""}
+            placeholder="旁白字幕(画在底部)"
+            title="场景旁白字幕:固定画在画布底部居中,每幕一句"
+            onChange={(e) => onCaption(e.target.value)}
+          />
           <span className="ml-1 font-mono text-neutral-400">本幕 {sceneDuration(scene).toFixed(1)}s</span>
         </label>
       )}

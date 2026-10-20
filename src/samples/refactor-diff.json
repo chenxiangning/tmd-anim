@@ -1,0 +1,426 @@
+{
+  "version": 1,
+  "scenes": [
+    {
+      "id": "sc-pain",
+      "name": "1. 痛点:500 行的函数",
+      "dwell": 4,
+      "caption": "这个函数 500 行,改一处崩三处,没人敢动。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "e1",
+          "text": "一个不敢动的函数",
+          "x": 560,
+          "y": 160,
+          "w": 800,
+          "anim": {
+            "type": "swing",
+            "start": 0.2,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "terminal",
+          "id": "e2",
+          "title": "handleOrder.ts",
+          "code": "function handleOrder(order) {\n  // ... 500 行 if/else ...\n  // 改一处崩三处\n}",
+          "dark": true,
+          "x": 360,
+          "y": 300,
+          "w": 1200,
+          "h": 400,
+          "anim": {
+            "type": "typewriter",
+            "start": 1.2,
+            "duration": 1.8
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "e3",
+          "variant": "doc",
+          "mood": "worried",
+          "badge": "祖传代码",
+          "x": 240,
+          "y": 560,
+          "w": 120,
+          "h": 140,
+          "anim": {
+            "type": "wobble",
+            "start": 3.0,
+            "duration": 0.8
+          },
+          "float": true
+        }
+      ]
+    },
+    {
+      "id": "sc-plan",
+      "name": "2. 手术方案",
+      "dwell": 4,
+      "caption": "拆!按职责切成三个纯函数,每个都能单独测试。",
+      "elements": [
+        {
+          "kind": "devNode",
+          "id": "f1",
+          "dev": "function",
+          "label": "validate",
+          "sub": "校验参数",
+          "x": 240,
+          "y": 460,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "flip",
+            "start": 0.3,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "f2",
+          "dev": "function",
+          "label": "price",
+          "sub": "算价优惠",
+          "x": 770,
+          "y": 460,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "flip",
+            "start": 0.8,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "devNode",
+          "id": "f3",
+          "dev": "function",
+          "label": "notify",
+          "sub": "发通知",
+          "x": 1300,
+          "y": 460,
+          "w": 380,
+          "h": 100,
+          "anim": {
+            "type": "flip",
+            "start": 1.3,
+            "duration": 0.9
+          }
+        },
+        {
+          "kind": "connector",
+          "id": "f4",
+          "from": "f1",
+          "to": "f2",
+          "label": "数据",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 1.8,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.1,
+              "duration": 2
+            }
+          ]
+        },
+        {
+          "kind": "connector",
+          "id": "f5",
+          "from": "f2",
+          "to": "f3",
+          "label": "结果",
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "anim": {
+            "type": "fade",
+            "start": 2.0,
+            "duration": 0.3
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.3,
+              "duration": 2
+            }
+          ]
+        },
+        {
+          "kind": "note",
+          "id": "f6",
+          "text": "每个函数都能单独测试",
+          "x": 790,
+          "y": 640,
+          "w": 340,
+          "rotate": -2,
+          "anim": {
+            "type": "bounce",
+            "start": 2.8,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-diff",
+      "name": "3. 改动长这样",
+      "dwell": 4,
+      "caption": "删除大泥球,换成三行清晰调用,行数从 500 到 30。",
+      "elements": [
+        {
+          "kind": "codeDiff",
+          "id": "g1",
+          "filename": "handleOrder.ts",
+          "hunks": [
+            {
+              "lines": [
+                {
+                  "tag": "-",
+                  "text": "function handleOrder(order) {"
+                },
+                {
+                  "tag": "-",
+                  "text": "  // 500 行 if/else ..."
+                },
+                {
+                  "tag": "+",
+                  "text": "function handleOrder(order) {"
+                },
+                {
+                  "tag": "+",
+                  "text": "  const req = validate(order);"
+                },
+                {
+                  "tag": "+",
+                  "text": "  const bill = price(req);"
+                },
+                {
+                  "tag": "+",
+                  "text": "  return notify(bill);"
+                },
+                {
+                  "tag": "+",
+                  "text": "}"
+                }
+              ]
+            }
+          ],
+          "dark": true,
+          "x": 260,
+          "y": 220,
+          "w": 1400,
+          "h": 560,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.5,
+            "duration": 2.2
+          }
+        },
+        {
+          "kind": "badge",
+          "id": "g2",
+          "text": "-470 行",
+          "x": 1560,
+          "y": 160,
+          "w": 200,
+          "h": 56,
+          "bg": "#EF4444",
+          "color": "#FFF",
+          "anim": {
+            "type": "pop",
+            "start": 2.9,
+            "duration": 0.5
+          }
+        },
+        {
+          "kind": "note",
+          "id": "g3",
+          "text": "一个函数只做一件事",
+          "x": 300,
+          "y": 830,
+          "w": 320,
+          "rotate": -2,
+          "anim": {
+            "type": "bounce",
+            "start": 3.1,
+            "duration": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-metric",
+      "name": "4. 收益对比",
+      "dwell": 4,
+      "caption": "改一行的时间从半天到十分钟,测试覆盖率从零到 80%。",
+      "elements": [
+        {
+          "kind": "title",
+          "id": "h1",
+          "text": "重构前后",
+          "x": 710,
+          "y": 120,
+          "w": 500,
+          "anim": {
+            "type": "wobble",
+            "start": 0.2,
+            "duration": 0.8
+          }
+        },
+        {
+          "kind": "barChart",
+          "id": "h2",
+          "title": "改一行平均耗时(分钟)",
+          "series": [
+            {
+              "label": "重构前",
+              "value": 240,
+              "color": "#EF4444"
+            },
+            {
+              "label": "重构后",
+              "value": 10,
+              "color": "#10B981"
+            }
+          ],
+          "showValue": true,
+          "x": 240,
+          "y": 260,
+          "w": 680,
+          "h": 460,
+          "anim": {
+            "type": "typewriter",
+            "start": 0.8,
+            "duration": 1.2
+          }
+        },
+        {
+          "kind": "barChart",
+          "id": "h3",
+          "title": "测试覆盖率(%)",
+          "series": [
+            {
+              "label": "重构前",
+              "value": 0,
+              "color": "#EF4444"
+            },
+            {
+              "label": "重构后",
+              "value": 80,
+              "color": "#10B981"
+            }
+          ],
+          "showValue": true,
+          "x": 1000,
+          "y": 260,
+          "w": 680,
+          "h": 460,
+          "anim": {
+            "type": "typewriter",
+            "start": 1.6,
+            "duration": 1.2
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-end",
+      "name": "5. 落版",
+      "dwell": 4,
+      "caption": "重构不是炫技,是给未来的自己留条活路。",
+      "elements": [
+        {
+          "kind": "shape",
+          "id": "k1",
+          "variant": "rect",
+          "fill": "#FCD34D",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.4
+          }
+        },
+        {
+          "kind": "artText",
+          "id": "k2",
+          "text": "小步重构,常常测试。",
+          "fontSize": 88,
+          "color": "#1F2937",
+          "x": 360,
+          "y": 420,
+          "w": 1200,
+          "anim": {
+            "type": "flip",
+            "start": 0.3,
+            "duration": 1
+          }
+        },
+        {
+          "kind": "mascot",
+          "id": "k3",
+          "variant": "doc",
+          "mood": "happy",
+          "badge": "干净",
+          "x": 500,
+          "y": 620,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "wobble",
+            "start": 1.4,
+            "duration": 0.8
+          },
+          "float": true
+        },
+        {
+          "kind": "mascot",
+          "id": "k4",
+          "variant": "bot",
+          "mood": "happy",
+          "badge": "可靠",
+          "x": 1300,
+          "y": 620,
+          "w": 110,
+          "h": 130,
+          "anim": {
+            "type": "wobble",
+            "start": 1.7,
+            "duration": 0.8
+          },
+          "float": true
+        },
+        {
+          "kind": "confetti",
+          "id": "k5",
+          "mode": "rain",
+          "count": 70,
+          "seed": "refactor",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "anim": {
+            "type": "fade",
+            "start": 1.2,
+            "duration": 0.6
+          }
+        }
+      ]
+    }
+  ],
+  "name": "前后对比:一次重构的救赎"
+}

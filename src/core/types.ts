@@ -12,10 +12,12 @@ export type ShapeVariant =
   | "rect" | "ellipse" | "triangle" | "diamond" | "hexagon"
   | "star" | "cylinder" | "blockArrow" | "speechBubble";
 
-/** 入场动画:pop 弹出/fade 淡入/riseUp 上浮/slideLeft|slideRight 侧滑/dropDown 落入/wipe 擦除/typewriter 打字机/zoomIn 缩放/spinIn 旋转 */
+/** 入场动画:pop 弹出/fade 淡入/riseUp 上浮/slideLeft|slideRight 侧滑/dropDown 落入/wipe 擦除/typewriter 打字机/zoomIn 缩放/spinIn 旋转;
+ *  戏剧化四件套:wobble 果冻摆动落定/bounce 弹跳落地/flip 翻面入场/swing 吊摆进人 */
 export type AnimType =
   | "pop" | "fade" | "riseUp" | "slideLeft" | "slideRight" | "dropDown"
-  | "wipe" | "typewriter" | "zoomIn" | "spinIn";
+  | "wipe" | "typewriter" | "zoomIn" | "spinIn"
+  | "wobble" | "bounce" | "flip" | "swing";
 
 /** 缓动:缺省(auto)时按动画类型取默认(pop/spinIn/dropDown 回弹,typewriter 线性,其余缓出) */
 export type EasingKind = "linear" | "easeOut" | "easeInOut" | "back";
@@ -43,9 +45,9 @@ export interface ExitAnim {
   easing?: EasingKind;
 }
 
-/** 强调事件类型:通用 pulse 缩放 / shake 抖动 / glow 发光 / flash 白闪 / ring 扩散圈;
+/** 强调事件类型:通用 pulse 缩放 / shake 抖动 / glow 发光 / flash 白闪 / ring 扩散圈 / burst 星芒迸发;
  *  专用 highlightLines(code/terminal 行区间高亮)、dashFlow(connector 虚线数据流) */
-export type EmphasisType = "pulse" | "shake" | "glow" | "flash" | "ring" | "highlightLines" | "dashFlow";
+export type EmphasisType = "pulse" | "shake" | "glow" | "flash" | "ring" | "burst" | "highlightLines" | "dashFlow";
 
 export interface EmphasisEvent {
   type: EmphasisType;
@@ -87,6 +89,15 @@ interface ElementBase {
   emphasis?: EmphasisEvent[];
   /** 属性补间(可选,可多个):白名单字段随时间变化 */
   tweens?: Tween[];
+  /** 悬浮(可选):入场结束后持续轻微漂浮,呼吸感;true = 缺省参数 */
+  float?: ElementFloat;
+}
+
+/** 悬浮参数:amp 幅度像素(2-40,缺省 8)/ period 秒(1-10,缺省 3)/ swing = 横向椭圆轨迹 */
+export interface ElementFloat {
+  amp?: number;
+  period?: number;
+  swing?: boolean;
 }
 
 export interface TitleElement extends ElementBase {
@@ -432,6 +443,36 @@ export interface PersonElement extends ElementBase {
   color?: string;
 }
 
+/** 吉祥物:有脸的拟人生物(doc 文档精 / bot 机器人),表情 + 胸牌 + 脚下名牌,拟人化叙事主角 */
+export interface MascotElement extends ElementBase {
+  kind: "mascot";
+  /** doc = 折角纸片精,bot = 圆角机器人(天线 + 铭牌) */
+  variant?: "doc" | "bot";
+  /** happy 笑脸 / wink 眨眼 / worried 焦虑(扁嘴 + 汗滴) */
+  mood?: "happy" | "wink" | "worried";
+  /** 胸牌/铭牌文字(doc 左上芯片,bot 顶部铭牌条) */
+  badge?: string;
+  /** 胸牌底色;缺省 doc 红 / bot 黄 */
+  badgeColor?: string;
+  /** 机身/纸面底色;缺省 doc 白 / bot 蓝 */
+  body?: string;
+  /** 名牌:doc 画在脚下元素外(构图预留 ~46px),bot 画在机身内底部白条 */
+  label?: string;
+}
+
+/** 纸屑:种子确定性粒子(rain 全区循环飘落 / burst 自中心一次性迸发),庆祝/落版用 */
+export interface ConfettiElement extends ElementBase {
+  kind: "confetti";
+  /** rain 持续飘落(循环)/ burst 迸发一次后归于寂静 */
+  mode?: "rain" | "burst";
+  /** 粒子数,10-200,缺省 80 */
+  count?: number;
+  /** 随机种子:同种子同帧恒同画面(渲染纯函数的前提) */
+  seed?: number;
+  /** 粒子色板;缺省六色粉彩 */
+  colors?: string[];
+}
+
 export type SceneElement =
   | TitleElement | ArtTextElement | TextElement | ShapeElement | InputElement | CodeElement
   | TableElement | NoteElement | BadgeElement | ArrayCellsElement | ConnectorElement | ImageElement
@@ -439,13 +480,16 @@ export type SceneElement =
   | DevNodeElement | PhoneElement | AiChatElement
   | BarChartElement | LineChartElement | PieChartElement | CursorElement | FolderTreeElement
   | CodeDiffElement | SpotlightElement | GridBgElement | GroupPanelElement | LaneElement
-  | QuoteElement | FormulaElement | AvatarElement | PersonElement;
+  | QuoteElement | FormulaElement | AvatarElement | PersonElement
+  | MascotElement | ConfettiElement;
 
 export interface Scene {
   id: string;
   name: string;
   dwell?: number; // 末元素结束后的停留秒数(默认 1.5)
   elements: SceneElement[];
+  /** 场景旁白字幕:固定画在画布底部居中的白底描边条(每幕一句,跨幕同位);空 = 不画 */
+  caption?: string;
   /** 场景配音:src 为 dataURL 或本地路径,volume 0-2(默认 1);rate 播放速率 0.25-4(默认 1,
    *  >1 压缩 / <1 拉伸,变速不变调);duration 为探测的原始时长(秒,编辑器自动回填)。
    *  配音有效时长(duration/rate)超过画面时场景自动延长,保证播完再切幕。 */

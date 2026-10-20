@@ -1,0 +1,619 @@
+{
+  "version": 1,
+  "name": "拟人科普活例:文枢式产品介绍",
+  "canvas": {
+    "width": 1920,
+    "height": 1080,
+    "bg": "#FDF3DC"
+  },
+  "scenes": [
+    {
+      "id": "sc-conflict",
+      "name": "冲突:谁才是最终版",
+      "dwell": 4,
+      "caption": "公司的资料,个个都有戏。最终版,还有最终版的最终版。",
+      "elements": [
+        {
+          "id": "el-s1-title",
+          "kind": "title",
+          "x": 360,
+          "y": 60,
+          "w": 1200,
+          "h": 90,
+          "text": "谁才是「最终版」?",
+          "highlight": [
+            "最终版"
+          ],
+          "fontSize": 60,
+          "anim": {
+            "type": "pop",
+            "start": 0,
+            "duration": 0.6
+          }
+        },
+        {
+          "id": "el-s1-doc1",
+          "kind": "mascot",
+          "x": 240,
+          "y": 340,
+          "w": 240,
+          "h": 300,
+          "variant": "doc",
+          "mood": "happy",
+          "badge": "PDF",
+          "badgeColor": "#EF5350",
+          "label": "最终版.pdf",
+          "anim": {
+            "type": "wobble",
+            "start": 0.5,
+            "duration": 0.8
+          }
+        },
+        {
+          "id": "el-s1-doc2",
+          "kind": "mascot",
+          "x": 810,
+          "y": 340,
+          "w": 240,
+          "h": 300,
+          "variant": "doc",
+          "mood": "happy",
+          "badge": "WORD",
+          "badgeColor": "#3B82F6",
+          "label": "最终版_改.pdf",
+          "anim": {
+            "type": "wobble",
+            "start": 1.1,
+            "duration": 0.8
+          }
+        },
+        {
+          "id": "el-s1-doc3",
+          "kind": "mascot",
+          "x": 1380,
+          "y": 340,
+          "w": 240,
+          "h": 300,
+          "variant": "doc",
+          "mood": "wink",
+          "badge": "V8",
+          "badgeColor": "#22C55E",
+          "label": "最终版_真的不改了.pdf",
+          "anim": {
+            "type": "wobble",
+            "start": 1.7,
+            "duration": 0.8
+          }
+        },
+        {
+          "id": "el-s1-bub1",
+          "kind": "shape",
+          "shape": "speechBubble",
+          "x": 180,
+          "y": 170,
+          "w": 360,
+          "h": 110,
+          "fill": "#FDE8E8",
+          "stroke": "#EF5350",
+          "strokeWidth": 4,
+          "text": "我才是最终版!",
+          "fontSize": 30,
+          "anim": {
+            "type": "pop",
+            "start": 2.3,
+            "duration": 0.45
+          }
+        },
+        {
+          "id": "el-s1-bub2",
+          "kind": "shape",
+          "shape": "speechBubble",
+          "x": 760,
+          "y": 170,
+          "w": 360,
+          "h": 110,
+          "fill": "#E8EDFB",
+          "stroke": "#3B82F6",
+          "strokeWidth": 4,
+          "text": "我昨天刚改的!",
+          "fontSize": 30,
+          "anim": {
+            "type": "pop",
+            "start": 2.65,
+            "duration": 0.45
+          }
+        },
+        {
+          "id": "el-s1-bub3",
+          "kind": "shape",
+          "shape": "speechBubble",
+          "x": 1330,
+          "y": 170,
+          "w": 400,
+          "h": 110,
+          "fill": "#E4F4EA",
+          "stroke": "#22C55E",
+          "strokeWidth": 4,
+          "text": "你们先聊,我还在改…",
+          "fontSize": 30,
+          "anim": {
+            "type": "pop",
+            "start": 3.0,
+            "duration": 0.45
+          }
+        },
+        {
+          "id": "el-s1-note",
+          "kind": "note",
+          "x": 1470,
+          "y": 740,
+          "w": 330,
+          "h": 100,
+          "text": "找资料 ≠ 考古",
+          "bg": "#F7C948",
+          "fontSize": 34,
+          "rotate": -8,
+          "anim": {
+            "type": "bounce",
+            "start": 3.4,
+            "duration": 1.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-empathy",
+      "name": "共鸣:救救搜索框",
+      "dwell": 4,
+      "caption": "别让同事天天考古。谁来救场?",
+      "elements": [
+        {
+          "id": "el-s2-p1",
+          "kind": "person",
+          "x": 520,
+          "y": 300,
+          "w": 220,
+          "h": 460,
+          "pose": "stand",
+          "color": "#3B82F6",
+          "anim": {
+            "type": "swing",
+            "start": 0.2,
+            "duration": 1.2
+          }
+        },
+        {
+          "id": "el-s2-bub",
+          "kind": "shape",
+          "shape": "speechBubble",
+          "x": 860,
+          "y": 330,
+          "w": 560,
+          "h": 140,
+          "fill": "#FFFFFF",
+          "stroke": "#1F2937",
+          "strokeWidth": 4,
+          "text": "救救我的搜索框!",
+          "fontSize": 40,
+          "anim": {
+            "type": "pop",
+            "start": 1.1,
+            "duration": 0.5
+          }
+        },
+        {
+          "id": "el-s2-note",
+          "kind": "note",
+          "x": 640,
+          "y": 700,
+          "w": 640,
+          "h": 100,
+          "text": "翻 10 个群 = 半天没了",
+          "bg": "#FDE8E8",
+          "fontSize": 34,
+          "rotate": -4,
+          "anim": {
+            "type": "bounce",
+            "start": 1.8,
+            "duration": 1.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-hero",
+      "name": "主角登场:文枢",
+      "dwell": 4,
+      "caption": "主角登场:让文件有序变成知识。",
+      "elements": [
+        {
+          "id": "el-s3-bg",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "fill": "#F7C948",
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.3
+          }
+        },
+        {
+          "id": "el-s3-bot",
+          "kind": "mascot",
+          "x": 750,
+          "y": 260,
+          "w": 420,
+          "h": 460,
+          "variant": "bot",
+          "mood": "happy",
+          "badge": "文 枢",
+          "body": "#3B82F6",
+          "label": "知识加工站 · 今日营业",
+          "anim": {
+            "type": "flip",
+            "start": 0.3,
+            "duration": 1.0
+          },
+          "emphasis": [
+            {
+              "type": "burst",
+              "start": 0.35,
+              "duration": 1.4
+            }
+          ],
+          "float": {}
+        },
+        {
+          "id": "el-s3-title",
+          "kind": "title",
+          "x": 460,
+          "y": 110,
+          "w": 1000,
+          "h": 90,
+          "text": "这题,文枢会。",
+          "fontSize": 64,
+          "anim": {
+            "type": "wobble",
+            "start": 1.5,
+            "duration": 0.8
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-graph",
+      "name": "能力:知识图谱",
+      "dwell": 4,
+      "caption": "内容之外,关系也连成了网。",
+      "elements": [
+        {
+          "id": "el-s4-title",
+          "kind": "title",
+          "x": 460,
+          "y": 60,
+          "w": 1000,
+          "h": 90,
+          "text": "知识图谱:看关系",
+          "highlight": [
+            "关系"
+          ],
+          "fontSize": 56,
+          "anim": {
+            "type": "pop",
+            "start": 0,
+            "duration": 0.6
+          }
+        },
+        {
+          "id": "el-s4-n1",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 810,
+          "y": 480,
+          "w": 300,
+          "h": 110,
+          "radius": 55,
+          "fill": "#DBEAFE",
+          "stroke": "#3B82F6",
+          "strokeWidth": 5,
+          "text": "报销流程",
+          "fontSize": 36,
+          "anim": {
+            "type": "pop",
+            "start": 0.4,
+            "duration": 0.5
+          }
+        },
+        {
+          "id": "el-s4-n2",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 240,
+          "y": 280,
+          "w": 260,
+          "h": 100,
+          "radius": 50,
+          "fill": "#DCFCE7",
+          "stroke": "#16A34A",
+          "strokeWidth": 5,
+          "text": "财务部",
+          "fontSize": 34,
+          "anim": {
+            "type": "pop",
+            "start": 0.75,
+            "duration": 0.5
+          }
+        },
+        {
+          "id": "el-s4-n3",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 1420,
+          "y": 280,
+          "w": 260,
+          "h": 100,
+          "radius": 50,
+          "fill": "#FEE2E2",
+          "stroke": "#EF4444",
+          "strokeWidth": 5,
+          "text": "报销制度",
+          "fontSize": 34,
+          "anim": {
+            "type": "pop",
+            "start": 1.1,
+            "duration": 0.5
+          }
+        },
+        {
+          "id": "el-s4-n4",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 830,
+          "y": 760,
+          "w": 260,
+          "h": 100,
+          "radius": 50,
+          "fill": "#FEF3C7",
+          "stroke": "#F59E0B",
+          "strokeWidth": 5,
+          "text": "差旅报销",
+          "fontSize": 34,
+          "anim": {
+            "type": "pop",
+            "start": 1.4499999999999997,
+            "duration": 0.5
+          }
+        },
+        {
+          "id": "el-s4-c1",
+          "kind": "connector",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "from": [
+            500,
+            330
+          ],
+          "to": [
+            810,
+            535
+          ],
+          "fromEl": "el-s4-n2",
+          "toEl": "el-s4-n1",
+          "label": "负责",
+          "color": "#475569",
+          "width": 5,
+          "anim": {
+            "type": "fade",
+            "start": 1.9,
+            "duration": 0.4
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.0,
+              "duration": 2.5
+            }
+          ]
+        },
+        {
+          "id": "el-s4-c2",
+          "kind": "connector",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "from": [
+            1110,
+            535
+          ],
+          "to": [
+            1550,
+            380
+          ],
+          "fromEl": "el-s4-n1",
+          "toEl": "el-s4-n3",
+          "label": "遵循",
+          "color": "#475569",
+          "width": 5,
+          "anim": {
+            "type": "fade",
+            "start": 2.15,
+            "duration": 0.4
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.2,
+              "duration": 2.5
+            }
+          ]
+        },
+        {
+          "id": "el-s4-c3",
+          "kind": "connector",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "from": [
+            960,
+            810
+          ],
+          "to": [
+            960,
+            590
+          ],
+          "fromEl": "el-s4-n4",
+          "toEl": "el-s4-n1",
+          "label": "适用",
+          "color": "#475569",
+          "width": 5,
+          "anim": {
+            "type": "fade",
+            "start": 2.4,
+            "duration": 0.4
+          },
+          "emphasis": [
+            {
+              "type": "dashFlow",
+              "start": 2.4,
+              "duration": 2.5
+            }
+          ]
+        },
+        {
+          "id": "el-s4-bub",
+          "kind": "shape",
+          "shape": "speechBubble",
+          "x": 1360,
+          "y": 620,
+          "w": 440,
+          "h": 120,
+          "fill": "#FFFFFF",
+          "stroke": "#1F2937",
+          "strokeWidth": 4,
+          "text": "原来大家是一个业务圈的!",
+          "fontSize": 30,
+          "anim": {
+            "type": "pop",
+            "start": 3.0,
+            "duration": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "sc-finale",
+      "name": "落版:让知识上岗",
+      "dwell": 4,
+      "caption": "资料不再各自躺平。",
+      "elements": [
+        {
+          "id": "el-s5-bg",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "fill": "#F7C948",
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.3
+          }
+        },
+        {
+          "id": "el-s5-slogan",
+          "kind": "artText",
+          "x": 460,
+          "y": 170,
+          "w": 1000,
+          "h": 170,
+          "text": "让知识上岗。",
+          "fontSize": 110,
+          "color": "#1F2937",
+          "anim": {
+            "type": "flip",
+            "start": 0.3,
+            "duration": 1.0
+          }
+        },
+        {
+          "id": "el-s5-sub",
+          "kind": "text",
+          "x": 560,
+          "y": 400,
+          "w": 800,
+          "h": 60,
+          "text": "文枢 · 企业 AI 的知识底座",
+          "fontSize": 40,
+          "align": "center",
+          "anim": {
+            "type": "fade",
+            "start": 1.5,
+            "duration": 0.5
+          }
+        },
+        {
+          "id": "el-s5-doc1",
+          "kind": "mascot",
+          "x": 300,
+          "y": 560,
+          "w": 240,
+          "h": 300,
+          "variant": "doc",
+          "mood": "happy",
+          "badge": "知识",
+          "badgeColor": "#3B82F6",
+          "anim": {
+            "type": "wobble",
+            "start": 2.0,
+            "duration": 0.8
+          },
+          "float": {}
+        },
+        {
+          "id": "el-s5-doc2",
+          "kind": "mascot",
+          "x": 1380,
+          "y": 560,
+          "w": 240,
+          "h": 300,
+          "variant": "doc",
+          "mood": "wink",
+          "badge": "关系",
+          "badgeColor": "#EF5350",
+          "anim": {
+            "type": "wobble",
+            "start": 2.35,
+            "duration": 0.8
+          },
+          "float": {}
+        },
+        {
+          "id": "el-s5-confetti",
+          "kind": "confetti",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "mode": "rain",
+          "count": 90,
+          "seed": 7,
+          "anim": {
+            "type": "fade",
+            "start": 2.3,
+            "duration": 0.6
+          }
+        }
+      ]
+    }
+  ]
+}

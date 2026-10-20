@@ -36,6 +36,48 @@ describe("normalizeProject", () => {
     expect(p.scenes[0].elements).toHaveLength(1);
   });
 
+  it("mascot/confetti 收录为合法 kind,纸屑字段钳边界,caption 非空才保留", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [
+        {
+          caption: "一句旁白",
+          elements: [
+            { kind: "mascot", variant: "bot", mood: "worried", badge: "文枢", label: "加工站" },
+            { kind: "confetti", mode: "burst", count: 9999, seed: "x", colors: ["#fff", 3] },
+          ],
+        },
+        { caption: "  ", elements: [] },
+        { caption: 42, elements: [] },
+      ],
+    });
+    expect(p.scenes.map((s) => s.caption)).toEqual(["一句旁白", undefined, undefined]);
+    const scene = p.scenes[0];
+    expect(scene.elements.map((e) => e.kind)).toEqual(["mascot", "confetti"]);
+    const c = scene.elements[1] as { count?: number; seed?: number; colors?: unknown[]; mode?: string };
+    expect([c.count, c.seed, c.colors, c.mode]).toEqual([200, undefined, undefined, "burst"]);
+  });
+
+  it("float 悬浮:true 简写转空对象,对象钳参数,脏值丢弃,新入场类型收录", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [
+        {
+          elements: [
+            { kind: "badge", text: "a", float: true, anim: { type: "flip", start: 0, duration: 0.5 } },
+            { kind: "badge", text: "b", float: { amp: 999, period: 0.1, swing: "yes" }, anim: { type: "wobble" } },
+            { kind: "badge", text: "c", float: "yes", anim: { type: "swing" } },
+            { kind: "badge", text: "d", float: false, anim: { type: "bounce" } },
+          ],
+        },
+      ],
+    });
+    const els = p.scenes[0].elements as unknown as Array<Record<string, unknown>>;
+    expect([els[0].float, els[1].float]).toEqual([{}, { amp: 40, period: 1 }]);
+    expect([els[2].float, els[3].float]).toEqual([undefined, undefined]);
+    expect(els.map((e) => (e.anim as { type: string }).type)).toEqual(["flip", "wobble", "swing", "bounce"]);
+  });
+
   it("连线绑定字段:合法字符串保留,非字符串丢弃", () => {
     const p = normalizeProject({
       version: 1,

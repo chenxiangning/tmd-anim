@@ -44,6 +44,8 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   formula: "公式",
   avatar: "头像",
   person: "人物",
+  mascot: "吉祥物",
+  confetti: "纸屑",
 };
 
 export const SHAPE_LABELS: Record<string, string> = {
@@ -94,6 +96,8 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "formula",
   "avatar",
   "person",
+  "mascot",
+  "confetti",
 ];
 
 /** 元素主色:元素库图标与时间轴条共用,保持「库-画布-时间轴」三者颜色一致 */
@@ -134,6 +138,8 @@ export function kindColor(kind: SceneElement["kind"]): string {
     formula: "#7C3AED",
     avatar: "#F59E0B",
     person: "#3B82F6",
+    mascot: "#EC4899",
+    confetti: "#F59E0B",
   };
   return map[kind];
 }
@@ -297,6 +303,10 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       return { ...base, kind, w: 260, h: 72, name: "王小黑", status: "online", color: "#3B82F6" };
     case "person":
       return { ...base, kind, w: 160, h: 340, pose: "stand", color: "#3B82F6" };
+    case "mascot":
+      return { ...base, kind, w: 260, h: 340, variant: ((variant ?? "doc") as "doc" | "bot"), mood: "happy", badge: "NEW", label: "新朋友" };
+    case "confetti":
+      return { ...base, kind, w: 1920, h: 1080, x: 0, y: 0, mode: (variant === "burst" ? "burst" : "rain"), count: 80, seed: Math.round(Math.random() * 1e9) };
   }
 }
 
@@ -363,7 +373,10 @@ export function elementLabel(el: SceneElement): string {
       raw = el.labels?.join("/") ?? "泳道";
       break;
     case "quote":
+      raw = el.text;
+      break;
     case "formula":
+      // formula 的 text 即 TeX 源,直出;缺省由尾部兜底转中文名
       raw = el.text;
       break;
     case "avatar":
@@ -371,6 +384,12 @@ export function elementLabel(el: SceneElement): string {
       break;
     case "person":
       raw = el.pose ?? "人物";
+      break;
+    case "mascot":
+      raw = el.badge ?? el.label ?? (el.variant === "bot" ? "机器人" : "文档精");
+      break;
+    case "confetti":
+      raw = el.mode === "burst" ? "纸屑迸发" : "纸屑飘落";
       break;
     case "title":
     case "artText":
@@ -386,7 +405,8 @@ export function elementLabel(el: SceneElement): string {
       raw = KIND_LABELS[el.kind];
       break;
   }
-  return raw.replace(/\s+/g, " ").slice(0, 12) || KIND_LABELS[el.kind];
+  // shape 等 text 可选的 kind 可能是 undefined:统一兜底,空结果回落中文名
+  return (raw ?? "").replace(/\s+/g, " ").slice(0, 12) || KIND_LABELS[el.kind];
 }
 
 export function createStarterProject(name: string): Project {

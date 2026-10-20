@@ -12,6 +12,7 @@ export interface SceneOps {
   move(delta: -1 | 1): void;
   rename(name: string): void;
   setDwell(seconds: number): void;
+  setCaption(caption: string): void;
 }
 
 /** 场景级操作:统一走播放头定位(场景切换 = 移动 t),选中元素随切换清空。 */
@@ -74,5 +75,11 @@ export function useSceneOps(
     },
     [projectRef, idxRef, commit],
   );
-  return { selectScene, addScene, duplicate, remove, move, rename, setDwell };
+  const setCaption = useCallback(
+    (caption: string) => {
+      commit(updateScene(projectRef.current, idxRef.current, { caption: caption.trim() || undefined }), "sceneCaption");
+    },
+    [projectRef, idxRef, commit],
+  );
+  return { selectScene, addScene, duplicate, remove, move, rename, setDwell, setCaption };
 }

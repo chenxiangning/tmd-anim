@@ -27,6 +27,7 @@
 | `name` | string | 否 | 场景名,默认「场景 N」 |
 | `dwell` | number | 否 | 末元素结束后的停留秒数,默认 1.5,负值归 0 |
 | `elements` | Element[] | 是 | 元素列表,数组顺序即绘制顺序(后者在上) |
+| `caption` | string | 否 | 场景旁白字幕:固定画在画布底部居中的白底描边条(高 84px,距底 42px),每幕一句、跨幕同位,是拟人科普叙事的旁白位;空/缺省不画 |
 | `audio` | object | 否 | 场景配音 `{ src, volume?, rate?, duration? }`:src 为 dataURL 或本地音频路径,volume 0-2 默认 1;rate 播放速率 0.25-4 默认 1(>1 压缩 / <1 拉伸,变速不变调);duration 为原始媒体时长(秒,编辑器探测后自动回填,可省)。编辑器播放、导出 HTML 与导出 MP4 均随场景起点对齐;配音有效时长(duration/rate)超过元素+dwell 时场景自动延长到配音结束,不会中途截断;src 非字符串视为无配音 |
 
 时间模型:`场景时长 = max(max(元素 anim.start + anim.duration) + dwell, 配音有效时长 duration/rate)`(空场景保底 0.1s,无配音或未探测 duration 时退化为前者);
@@ -38,8 +39,8 @@
 |---|---|---|---|
 | `start` | number | 否 | 场景内开始时刻(秒),默认 0,负值归 0 |
 | `duration` | number | 否 | 动画时长(秒),默认 0.5,下限 0.05 |
-| `type` | string | 否 | `pop` 弹出 / `fade` 淡入 / `riseUp` 上浮 / `dropDown` 顶部落入 / `slideLeft` 左侧滑入 / `slideRight` 右侧滑入 / `zoomIn` 缩放入场 / `spinIn` 旋转入场 / `wipe` 左向右擦除 / `typewriter` 打字机(仅文本类元素生效,其余元素回落快速淡入) |
-| `easing` | string | 否 | `linear` 线性 / `easeOut` 缓出 / `easeInOut` 缓入缓出 / `back` 回弹;缺省时按类型取默认(pop/spinIn/dropDown 回弹,typewriter 线性,其余缓出),非法值丢弃 |
+| `type` | string | 否 | `pop` 弹出 / `fade` 淡入 / `riseUp` 上浮 / `dropDown` 顶部落入 / `slideLeft` 左侧滑入 / `slideRight` 右侧滑入 / `zoomIn` 缩放入场 / `spinIn` 旋转入场 / `wipe` 左向右擦除 / `typewriter` 打字机(仅文本类元素生效,其余元素回落快速淡入);戏剧化四件套:`wobble` 果冻摆动落定 / `bounce` 弹跳落地(多次触地)/ `flip` 翻面入场(经侧立压扁转到正面)/ `swing` 吊摆进人(钟摆衰减) |
+| `easing` | string | 否 | `linear` 线性 / `easeOut` 缓出 / `easeInOut` 缓入缓出 / `back` 回弹;缺省时按类型取默认(pop/spinIn/dropDown 回弹,typewriter/bounce 线性,其余缓出),非法值丢弃 |
 
 `typewriter` 也是分段显现开关:列表(list)/表格(table)/柱状图(barChart)/折线图(lineChart)/饼图(pieChart)/文件树(folderTree)/代码对比(codeDiff) 在其入场窗口内逐行/逐段/逐柱显现;其余动画类型这些元素一次性全显。
 
@@ -49,7 +50,7 @@
 
 **exit 离场动画**:`{ type, start, duration?, easing? }`。type = `fadeOut` 淡出 / `slideOutLeft|slideOutRight|slideOutUp|slideOutDown` 四向滑出 / `zoomOut` 缩小消失 / `wipeOut` 右向左擦除;start 钳到不早于入场结束;默认缓入缓出。
 
-**emphasis 强调事件**(数组,可多个,常驻期间叠加):`{ type, start, duration?, easing?, strength?, lines? }`。type = `pulse` 缩放脉动 / `shake` 抖动 / `glow` 发光 / `flash` 白闪 / `ring` 扩散圈 / `highlightLines`(仅 code/terminal,lines=[起,止] 行区间 1 起,扫过式高亮) / `dashFlow`(仅 connector,虚线滚动表数据流);strength 强度 0.1-3 默认 1;落在离场开始后的事件被丢弃。
+**emphasis 强调事件**(数组,可多个,常驻期间叠加):`{ type, start, duration?, easing?, strength?, lines? }`。type = `pulse` 缩放脉动 / `shake` 抖动 / `glow` 发光 / `flash` 白闪 / `ring` 扩散圈 / `burst` 星芒迸发(10 道双色三角从元素边缘向外射出,主角登场配 pop 入场)/ `highlightLines`(仅 code/terminal,lines=[起,止] 行区间 1 起,扫过式高亮) / `dashFlow`(仅 connector,虚线滚动表数据流);strength 强度 0.1-3 默认 1;落在离场开始后的事件被丢弃。
 
 **tweens 属性补间**(数组,白名单字段随时间插值,不上通用关键帧):`{ field, from?, to, start, duration, easing? }`。field = `percent`(仅 progress,进度从 from/静态值走到 to) / `activeIndex`(仅 arrayCells,高亮格从 from/静态值游移到 to,渲染取整)。
 
@@ -62,8 +63,9 @@
 | `x` `y` `w` `h` | number | 否 | 画布坐标(逻辑像素),缺省 0/0/200/80;`arrayCells`/`connector` 的 w/h 不参与布局(仅占位) |
 | `anim` | Anim | 否 | 见上 |
 | `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
+| `float` | object \| true | 否 | 悬浮:入场结束后从静止渐入(0.6s)持续轻微漂浮,给画面呼吸感;`true` = 缺省参数。参数 `{ amp?, period?, swing? }`:amp 幅度像素(2-40,缺省 8)、period 周期秒(1-10,缺省 3)、swing = 横向椭圆轨迹(否则仅纵向);false/缺省不浮。`connector` 不支持。编辑器属性面板「悬浮」一键开关 |
 
-## 元素类型(35 种)
+## 元素类型(37 种)
 
 | kind | 专有字段 | 说明 |
 |---|---|---|
@@ -102,6 +104,8 @@
 | `formula` | `text`(TeX 子集), `fontSize?(64)`, `color?` | 数学公式:支持 `\frac{}{}` `\sqrt{}` 上下标(`^`/`_`) `\sum` `\int` 希腊字母等;解析失败回落纯文本 + lint 警告;超界自动缩放到元素框内 |
 | `avatar` | `name?`, `src?`(图片) 或 `initials?`, `status?("online"/"offline"/"busy")`, `color?` | 头像:圆形(图片 contain 裁剪,未就绪回退 initials)+ 名称胶囊 + 右下状态点 |
 | `person` | `pose?("stand"/"point"/"think")`, `color?` | 方块人:极简扁平角色,服务「用户/系统/我们」叙事站位;think 姿态带头侧思考泡 |
+| `mascot` | `variant?("doc"/"bot")`, `mood?("happy"/"wink"/"worried")`, `badge?`, `badgeColor?`, `body?`, `label?` | 吉祥物:有脸的拟人生物,拟人化叙事主角。doc = 折角纸片精(胸牌芯片 + 正文灰线 + 四肢,badge 缺省红);bot = 圆角机器人(天线绿灯 + 顶部铭牌条 + 机身内底部白条,badge 缺省黄、body 缺省蓝)。mood 驱动表情:wink 眨眼、worried 扁嘴 + 汗滴 + 双臂上举。label:doc 画在脚下元素外底部(构图预留 ~46px),bot 画在机身内底部白条。variant/mood 未知值回落 doc/happy |
+| `confetti` | `mode?("rain"/"burst")`, `count?(80,钳10-200)`, `seed?(42)`, `colors?`(六色粉彩缺省) | 纸屑:种子确定性粒子,x/y/w/h 为撒布区。rain 全区循环飘落(左右摆动 + 自转,随场景时长持续);burst 自中心一次性迸发(1.6s,带重力抛物线后归于寂静)。同 seed 同帧恒同画面,预览与导出一致;想换一种撒法就换 seed |
 
 ## 高亮芯片规则
 
@@ -111,7 +115,8 @@
 ## agent 工作流建议
 
 1. 复制 `src/samples/http.json` 为模板改内容,或先查 `docs/recipes.md`(叙事配方库:
-   开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾,套模板再填槽);
+   开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾/拟人科普,
+   拟人科普活例见 `src/samples/explainer.json`,套模板再填槽);
    桌面版协议副本在 `~/.tmd-anim/protocol/`
    (`schema.md`、`recipes.md`、`http-example.json`、`xiaohei-style.md`、`xiaohei-example.json`、`skill.md`,
    应用启动时自动投递)。需要小黑插画风格(手绘怪诞配图)时先读 `xiaohei-style.md`。

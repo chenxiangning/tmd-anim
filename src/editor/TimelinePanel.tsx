@@ -42,6 +42,7 @@ interface TimelinePanelProps {
   onMoveScene(delta: -1 | 1): void;
   onRenameScene(name: string): void;
   onDwell(seconds: number): void;
+  onCaption(caption: string): void;
   onSetAudio(audio: Scene["audio"] | undefined): void;
 }
 
@@ -58,7 +59,7 @@ export function TimelinePanel({
   project, sceneIdx, t, localT, selIds, playing,
   onSelect, onSeekLocal, onLivePatch, onGestureBegin, onGestureEnd,
   onTogglePlay, onPrevScene, onNextScene, onToggleCollapse,
-  onSelectScene, onAddScene, onDuplicateScene, onRemoveScene, onMoveScene, onRenameScene, onDwell, onSetAudio,
+  onSelectScene, onAddScene, onDuplicateScene, onRemoveScene, onMoveScene, onRenameScene, onDwell, onCaption, onSetAudio,
 }: TimelinePanelProps) {
   const scene = project.scenes[sceneIdx];
   const { size: height, startResize, resetSize: resetHeight } = usePanelResize({
@@ -196,6 +197,7 @@ export function TimelinePanel({
           onMoveScene={onMoveScene}
           onRenameScene={onRenameScene}
           onDwell={onDwell}
+          onCaption={onCaption}
           onSetAudio={onSetAudio}
         />
       </div>

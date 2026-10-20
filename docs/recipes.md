@@ -133,3 +133,32 @@
 - 背景可叠极浅 `gridBg`(step 80,color 透明感)增质感
 
 填槽:每条 ≤14 字;最后一条给行动指令(「动手试试」)。
+
+## 11. 拟人科普/产品介绍(8 幕完整弧线)
+
+适用:工具/库/理念的产品介绍片,把抽象物画成角色演故事(参考 `src/samples/explainer.json`)。
+
+幕序(每幕 5-8s,`scene.caption` 写一句旁白,跨幕同位形成「翻书感」):
+
+1. **冲突**:2-3 个 `mascot`(doc)摆一排,各配 `shape:speechBubble` 吵架短句,
+   badge 写格式/版本(PDF/V8),label 写文件名;旁白点破荒谬。
+2. **共鸣**:单个 `person`(或 worried mascot)居中 + 一句求救 speechBubble;
+   旁白替观众说出痛点。
+3. **主角登场**:整屏 `shape` 矩形垫底换底色,`mascot`(bot)`pop` 入场 +
+   `emphasis: burst` 星芒 + `title` 一句话人设;旁白报上名字。
+4. **原理(可选)**:`shape` 药丸 + `connector`(label + `dashFlow`)摆流程,
+   或 lane 分步骤;旁白讲「它怎么工作」。
+5. **场景演示**:问题 speechBubble → 白卡(stepCard/shape)+ 绿 `badge`(✓ 找到)
+   给答案;旁白「以前 vs 现在」。
+6. **能力图谱**:`shape` 药丸节点 + `connector` 连线(label 写关系动词),
+   逐个 `pop` 错峰入场;旁白总结关系。
+7. **总结**:大 `title` 一句收拢 + 两侧 `mascot` 站台;旁白重复核心价值。
+8. **落版**:整屏暖色矩形垫底 + `artText` 大字 slogan + 两个 `mascot`(doc)
+   举手 + `confetti`(rain)飘落;旁白留一句行动指令。
+
+要点:
+- 每幕底部 `caption` 一句(≤22 字),幕与幕之间旁白连读成完整文案。
+- 气泡尾巴朝说话角色:`shape:speechBubble` + `rotate` 微调;同刻入场 ≤2 个。
+- 贴纸强调:`note` + `rotate: -6~-10` + `pop`,一句话戳本质(「找资料 ≠ 考古」)。
+- 配色三件套:奶油底 `#FDF3DC` / 深墨字 `#1F2937` / 粉彩色块,整片统一。
+

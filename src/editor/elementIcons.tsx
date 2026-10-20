@@ -201,5 +201,25 @@ export const ICONS: Record<string, ReactNode> = {
       <rect x="6.7" y="9.6" width="1.8" height="5" rx="0.9" />
     </>,
   ),
+  mascot: icon(
+    <>
+      <path d="M6 4.5h9.5L19 8v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19V6a1.5 1.5 0 011-1.5z" strokeWidth="1.8" />
+      <path d="M15.5 4.5V8H19" fill="none" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="9.6" cy="11.4" r="0.9" />
+      <circle cx="14.4" cy="11.4" r="0.9" />
+      <path d="M9.8 14.2c.6.9 3.8.9 4.4 0" fill="none" strokeWidth="1.6" strokeLinecap="round" />
+      <rect x="7.4" y="6" width="4.4" height="2.4" rx="0.8" opacity="0.7" />
+    </>,
+    { stroke: true },
+  ),
+  confetti: icon(
+    <>
+      <rect x="4" y="4.5" width="3.4" height="2.6" rx="0.6" transform="rotate(18 5.7 5.8)" />
+      <rect x="16.5" y="4" width="3.4" height="2.6" rx="0.6" transform="rotate(-24 18.2 5.3)" opacity="0.7" />
+      <rect x="10.2" y="9.5" width="3.6" height="2.7" rx="0.6" transform="rotate(40 12 10.8)" opacity="0.85" />
+      <rect x="5" y="14.5" width="3.4" height="2.6" rx="0.6" transform="rotate(-30 6.7 15.8)" opacity="0.55" />
+      <rect x="15.5" y="16" width="3.6" height="2.7" rx="0.6" transform="rotate(22 17.3 17.3)" opacity="0.7" />
+    </>,
+  ),
   ...DEV_ICONS,
 };

@@ -168,18 +168,22 @@
 	* 契约的权威描述在 docs/schema.md,两者必须同步改。
 	* file-size-exempt:归一化入口集中所有 kind 的字段钳制,拆分会让同类守卫散落多处。
 	*/
-	var ANIM_TYPES = /* @__PURE__ */ new Set([
-		"pop",
-		"fade",
-		"riseUp",
-		"slideLeft",
-		"slideRight",
-		"dropDown",
-		"wipe",
-		"typewriter",
-		"zoomIn",
-		"spinIn"
-	]);
+	var ANIM_TYPES = {
+		pop: true,
+		fade: true,
+		riseUp: true,
+		slideLeft: true,
+		slideRight: true,
+		dropDown: true,
+		wipe: true,
+		typewriter: true,
+		zoomIn: true,
+		spinIn: true,
+		wobble: true,
+		bounce: true,
+		flip: true,
+		swing: true
+	};
 	var EASINGS = /* @__PURE__ */ new Set([
 		"linear",
 		"easeOut",
@@ -219,6 +223,8 @@
 		gridBg: true,
 		groupPanel: true,
 		lane: true,
+		mascot: true,
+		confetti: true,
 		quote: true,
 		formula: true,
 		avatar: true,
@@ -239,6 +245,7 @@
 		glow: true,
 		flash: true,
 		ring: true,
+		burst: true,
 		highlightLines: true,
 		dashFlow: true
 	};
@@ -249,6 +256,7 @@
 		glow: .9,
 		flash: .4,
 		ring: .9,
+		burst: .9,
 		highlightLines: 1.4,
 		dashFlow: 2.5
 	};
@@ -306,6 +314,7 @@
 				if (typeof record.kind !== "string" || ELEMENT_KINDS[record.kind] !== true) return [];
 				return [normalizeElement(record, j)];
 			}),
+			caption: typeof raw.caption === "string" && raw.caption.trim().length > 0 ? raw.caption.trim() : void 0,
 			audio: normalizeSceneAudio(raw.audio)
 		};
 	}
@@ -323,7 +332,7 @@
 		};
 	}
 	function normalizeAnim(raw) {
-		const type = typeof raw.type === "string" && ANIM_TYPES.has(raw.type) ? raw.type : "fade";
+		const type = typeof raw.type === "string" && ANIM_TYPES[raw.type] === true ? raw.type : "fade";
 		const easing = typeof raw.easing === "string" && EASINGS.has(raw.easing) ? raw.easing : void 0;
 		return {
 			type,
@@ -441,6 +450,23 @@
 			if (typeof connector.rotate !== "boolean" && Number.isFinite(deg)) connector.rotate = Math.round(deg * 10) / 10;
 			else delete connector.rotate;
 		}
+		if (connector.float !== void 0) {
+			const f = connector.float;
+			if (f === true) connector.float = {};
+			else if (typeof f === "object" && f !== null && !Array.isArray(f)) {
+				const out = {};
+				if (f.amp !== void 0) {
+					const a = Number(f.amp);
+					if (Number.isFinite(a)) out.amp = Math.min(40, Math.max(2, Math.round(a * 10) / 10));
+				}
+				if (f.period !== void 0) {
+					const t = Number(f.period);
+					if (Number.isFinite(t)) out.period = Math.min(10, Math.max(1, Math.round(t * 10) / 10));
+				}
+				if (f.swing === true) out.swing = true;
+				connector.float = out;
+			} else delete connector.float;
+		}
 		if (connector.route !== void 0 && ![
 			"smooth",
 			"elbow",
@@ -480,6 +506,18 @@
 				else delete timeline.count;
 			}
 			if (timeline.direction !== void 0 && !["h", "v"].includes(String(timeline.direction))) delete timeline.direction;
+		}
+		if (el.kind === "confetti") {
+			if (timeline.mode !== void 0 && !["rain", "burst"].includes(String(timeline.mode))) delete timeline.mode;
+			if (timeline.count != null) {
+				const c = Number(timeline.count);
+				if (Number.isFinite(c)) timeline.count = Math.min(200, Math.max(10, Math.round(c)));
+				else delete timeline.count;
+			}
+			if (timeline.seed != null && (typeof timeline.seed !== "number" || !Number.isFinite(timeline.seed))) delete timeline.seed;
+			if (timeline.colors !== void 0) {
+				if (!(Array.isArray(timeline.colors) && timeline.colors.every((v) => typeof v === "string" && v.length > 0)) || timeline.colors.length === 0) delete timeline.colors;
+			}
 		}
 		if (el.kind === "barChart" || el.kind === "lineChart" || el.kind === "pieChart") {
 			const key = el.kind === "pieChart" ? "slices" : "series";
@@ -578,10 +616,20 @@
 		easeInOut: easeInOutCubic,
 		back: easeOutBack
 	};
+	/** 标准弹跳缓出: bounce 公式自含多次触地,作 bounce 入场的驱动曲线 */
+	function bounceOut(p) {
+		const n1 = 7.5625;
+		const d1 = 2.75;
+		if (p < 1 / d1) return n1 * p * p;
+		if (p < 2 / d1) return n1 * (p - 1.5 / d1) * (p - 1.5 / d1) + .75;
+		if (p < 2.5 / d1) return n1 * (p - 2.25 / d1) * (p - 2.25 / d1) + .9375;
+		return n1 * (p - 2.625 / d1) * (p - 2.625 / d1) + .984375;
+	}
 	function resolveEasing(anim) {
 		if (anim.easing) return EASING_FNS[anim.easing] ?? easeOutCubic;
 		switch (anim.type) {
-			case "typewriter": return EASING_FNS.linear;
+			case "typewriter":
+			case "bounce": return EASING_FNS.linear;
 			case "pop":
 			case "spinIn":
 			case "dropDown": return EASING_FNS.back;
@@ -601,6 +649,7 @@
 				dy: 0,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "pop": return {
@@ -609,6 +658,7 @@
 				dy: 0,
 				rotation: 0,
 				scale: .6 + .4 * e,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "riseUp": return {
@@ -617,6 +667,7 @@
 				dy: (1 - e) * 46,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "slideLeft": return {
@@ -625,6 +676,7 @@
 				dy: 0,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "slideRight": return {
@@ -633,6 +685,7 @@
 				dy: 0,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "dropDown": return {
@@ -641,6 +694,7 @@
 				dy: -(1 - e) * 160,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "zoomIn": return {
@@ -649,6 +703,7 @@
 				dy: 0,
 				rotation: 0,
 				scale: .82 + .18 * e,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "spinIn": return {
@@ -657,6 +712,7 @@
 				dy: 0,
 				rotation: -(1 - e) * 1.8,
 				scale: .7 + .3 * e,
+				scaleX: null,
 				wipeWidth: null
 			};
 			case "wipe": return {
@@ -665,6 +721,7 @@
 				dy: 0,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: e
 			};
 			case "typewriter": return {
@@ -673,10 +730,64 @@
 				dy: 0,
 				rotation: 0,
 				scale: 1,
+				scaleX: null,
 				wipeWidth: null,
 				progress: p
 			};
+			case "wobble": return {
+				alpha: Math.min(1, p * 3),
+				dx: 0,
+				dy: 0,
+				rotation: Math.sin(e * Math.PI * 3) * (1 - e) * .21,
+				scale: 1,
+				scaleX: null,
+				wipeWidth: null
+			};
+			case "bounce": return {
+				alpha: Math.min(1, p * 4),
+				dx: 0,
+				dy: -(1 - bounceOut(p)) * 160,
+				rotation: 0,
+				scale: 1,
+				scaleX: null,
+				wipeWidth: null
+			};
+			case "flip": return {
+				alpha: Math.min(1, p * 2),
+				dx: 0,
+				dy: 0,
+				rotation: 0,
+				scale: 1,
+				scaleX: -Math.cos(Math.PI * e),
+				wipeWidth: null
+			};
+			case "swing": return {
+				alpha: e,
+				dx: 0,
+				dy: -(1 - Math.min(1, p * 2)) * 40,
+				rotation: Math.sin(e * Math.PI * 2) * (1 - e) * .42,
+				scale: 1,
+				scaleX: null,
+				wipeWidth: null
+			};
 		}
+	}
+	var NO_FLOAT = {
+		dx: 0,
+		dy: 0
+	};
+	/** 悬浮求值:入场结束后从静止渐入(0.6s),沿周期做纵向正弦漂浮;swing 时叠加横向椭圆轨迹。
+	*  纯函数,同一 (localT, float, entranceEnd) 恒同结果。 */
+	function floatOffset(localT, float, entranceEnd) {
+		if (!float || localT <= entranceEnd) return NO_FLOAT;
+		const amp = Math.min(40, Math.max(2, float.amp ?? 8));
+		const period = Math.min(10, Math.max(1, float.period ?? 3));
+		const ramp = Math.min(1, (localT - entranceEnd) / .6);
+		const phase = (localT - entranceEnd) * 2 * Math.PI / period;
+		return {
+			dx: float.swing ? Math.cos(phase) * amp * .6 * ramp : 0,
+			dy: Math.sin(phase) * amp * ramp
+		};
 	}
 	/** 离场求值:in = 未开始(常驻),out = 离场窗口内(q 为 [0,1] 进度),gone = 已离场(元素不存在) */
 	function exitState(localT, exit) {
@@ -759,6 +870,7 @@
 		glow: 0,
 		flashAlpha: 0,
 		ringQ: null,
+		burstQ: null,
 		highlightLines: null,
 		dashFlow: null
 	};
@@ -793,6 +905,9 @@
 					break;
 				case "ring":
 					fx.ringQ = e;
+					break;
+				case "burst":
+					fx.burstQ = e;
 					break;
 				case "highlightLines":
 					fx.highlightLines = {
@@ -2593,7 +2708,7 @@
 	* 角色元素:头像(圆形图片/initials + 名称胶囊 + 状态点)与方块人(stand/point/think 三姿态)。
 	* 纯 (project,t) 绘制,无外部状态;src 图片未就绪时回退 initials,不闪空。
 	*/
-	var INK$2 = "#1F2937";
+	var INK$3 = "#1F2937";
 	var MUTED$3 = "#64748B";
 	var BLUE$1 = "#3B82F6";
 	var STATUS_COLOR = {
@@ -2601,7 +2716,7 @@
 		busy: "#F59E0B",
 		offline: "#94A3B8"
 	};
-	/** 斜向肢体:从 (x1,y1) 画到 (x2,y2) 的圆角矩形(竖/横/斜统一) */
+	/** 斜向肢体:从 (x1,y1) 画到 (x2,y2) 的圆角矩形(竖/横/斜统一);mascot 复用 */
 	function drawLimb(ctx, x1, y1, x2, y2, w, r) {
 		ctx.save();
 		ctx.translate(x1, y1);
@@ -2675,7 +2790,7 @@
 			ctx.strokeStyle = "#E2E8F0";
 			ctx.stroke();
 			ctx.textAlign = "left";
-			ctx.fillStyle = INK$2;
+			ctx.fillStyle = INK$3;
 			ctx.fillText(el.name, px + 14, cy);
 		}
 		ctx.restore();
@@ -2737,6 +2852,297 @@
 			ctx.fillText("?", bx, by);
 		}
 		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/confetti.ts
+	/**
+	* 纸屑粒子:种子确定性,rain 全区循环飘落 / burst 自中心迸发一次。
+	* 同 (seed, age) 恒同画面,满足「渲染是 (project,t) 纯函数」;乘法散列足够,不上重量级 PRNG。
+	*/
+	var DEFAULT_COLORS = [
+		"#F87171",
+		"#FBBF24",
+		"#34D399",
+		"#60A5FA",
+		"#F472B6",
+		"#A78BFA"
+	];
+	var BURST_DURATION = 1.6;
+	/** mulberry32:32 位种子 -> [0,1) 确定性序列 */
+	function rng32(seed) {
+		let a = Math.floor(seed) >>> 0;
+		return () => {
+			a = a + 1831565813 >>> 0;
+			let t = a;
+			t = Math.imul(t ^ t >>> 15, t | 1);
+			t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+			return ((t ^ t >>> 14) >>> 0) / 4294967296;
+		};
+	}
+	function drawPiece(ctx, x, y, size, rot, color, alpha) {
+		ctx.save();
+		ctx.globalAlpha *= alpha;
+		ctx.translate(x, y);
+		ctx.rotate(rot);
+		ctx.fillStyle = color;
+		ctx.fillRect(-size / 2, -size * .35, size, size * .7);
+		ctx.restore();
+	}
+	function drawConfetti(ctx, el, age) {
+		const rain = (el.mode ?? "rain") !== "burst";
+		const count = Math.min(200, Math.max(10, Math.round(el.count ?? 80)));
+		const colors = el.colors && el.colors.length > 0 ? el.colors : DEFAULT_COLORS;
+		const rng = rng32(el.seed ?? 42);
+		if (!rain) {
+			const q = Math.min(1, age / BURST_DURATION);
+			if (q >= 1) return;
+			const cx = el.x + el.w / 2;
+			const cy = el.y + el.h / 2;
+			const reach = Math.max(el.w, el.h) * .6 + 60;
+			for (let i = 0; i < count; i++) {
+				const angle = rng() * Math.PI * 2;
+				const travel = (.3 + rng() * .7) * reach * q;
+				drawPiece(ctx, cx + Math.cos(angle) * travel, cy + Math.sin(angle) * travel * .7 + 300 * q * q, 8 + rng() * 8, rng() * Math.PI * 2 + q * 3, colors[i % colors.length], 1 - q);
+			}
+			return;
+		}
+		for (let i = 0; i < count; i++) {
+			const x0 = rng() * el.w;
+			const y0 = rng() * el.h;
+			const speed = 90 + rng() * 150;
+			const size = 7 + rng() * 9;
+			const rot0 = rng() * Math.PI * 2;
+			const rotSpeed = (rng() - .5) * 5;
+			const phase = rng() * Math.PI * 2;
+			const y = el.y + (y0 + age * speed) % el.h;
+			drawPiece(ctx, el.x + x0 + Math.sin(age * 1.4 + phase) * 16, y, size, rot0 + age * rotSpeed, colors[i % colors.length], 1);
+		}
+	}
+	//#endregion
+	//#region src/core/render/mascot.ts
+	/**
+	* 吉祥物:有脸的拟人生物,拟人化叙事(doc 文档精 / bot 机器人)。
+	* 纯 (project,t) 绘制;variant/mood 未知值回落 doc/happy(devNode 先例)。
+	*/
+	var INK$2 = "#1F2937";
+	var BLUSH = "#F9C6D0";
+	var SWEAT = "#7DD3FC";
+	/** 顶部切角的纸片路径(右上折角),替代普通圆角矩形 */
+	function traceDocBody(ctx, x, y, w, h, r, fold) {
+		ctx.beginPath();
+		ctx.moveTo(x + r, y);
+		ctx.lineTo(x + w - fold, y);
+		ctx.lineTo(x + w, y + fold);
+		ctx.lineTo(x + w, y + h - r);
+		ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+		ctx.lineTo(x + r, y + h);
+		ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+		ctx.lineTo(x, y + r);
+		ctx.quadraticCurveTo(x, y, x + r, y);
+		ctx.closePath();
+	}
+	/** 脸:两点眼(wink 左眼闭合线)+ 嘴 + 腮红;dark 底时眼嘴换白 */
+	function drawFace(ctx, cx, cy, u, mood, dark) {
+		const ink = dark ? "#FFFFFF" : INK$2;
+		const eyeY = cy - u * .02;
+		const eyeDx = u * .11;
+		const eyeR = Math.max(3, u * .035);
+		ctx.fillStyle = ink;
+		ctx.strokeStyle = ink;
+		ctx.lineWidth = Math.max(2.5, u * .03);
+		ctx.lineCap = "round";
+		if (mood === "wink") {
+			ctx.beginPath();
+			ctx.arc(cx - eyeDx, eyeY + eyeR, eyeR * 1.2, Math.PI * 1.15, Math.PI * 1.85);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.arc(cx + eyeDx, eyeY, eyeR, 0, Math.PI * 2);
+			ctx.fill();
+		} else for (const dx of [-eyeDx, eyeDx]) {
+			ctx.beginPath();
+			ctx.arc(cx + dx, eyeY, eyeR, 0, Math.PI * 2);
+			ctx.fill();
+		}
+		ctx.beginPath();
+		if (mood === "worried") ctx.arc(cx, cy + u * .14, u * .07, Math.PI * 1.15, Math.PI * 1.85);
+		else ctx.arc(cx, cy + u * .06, u * .09, Math.PI * .15, Math.PI * .85);
+		ctx.stroke();
+		ctx.fillStyle = dark ? "#FDE68A" : BLUSH;
+		for (const dx of [-1, 1]) {
+			ctx.beginPath();
+			ctx.ellipse(cx + dx * u * .19, cy + u * .06, u * .05, u * .032, 0, 0, Math.PI * 2);
+			ctx.fill();
+		}
+		if (mood === "worried") {
+			ctx.save();
+			ctx.translate(cx + u * .3, cy - u * .34);
+			ctx.rotate(Math.PI / 4);
+			ctx.fillStyle = SWEAT;
+			ctx.strokeStyle = INK$2;
+			ctx.lineWidth = Math.max(2, u * .02);
+			roundRect(ctx, -u * .035, -u * .035, u * .07, u * .07, u * .015);
+			ctx.fill();
+			ctx.stroke();
+			ctx.restore();
+		}
+	}
+	/** 胸牌芯片:圆角矩形 + 自适应字号白色文字 + 描边 */
+	function drawBadgeChip(ctx, x, y, text, bg, maxW, h) {
+		let fontSize = h * .52;
+		ctx.font = sansFont(fontSize, 700);
+		while (ctx.measureText(text).width > maxW - h * .5 && fontSize > 10) {
+			fontSize -= 2;
+			ctx.font = sansFont(fontSize, 700);
+		}
+		const w = Math.min(maxW, ctx.measureText(text).width + h * .5);
+		roundRect(ctx, x, y, w, h, h * .28);
+		ctx.fillStyle = bg;
+		ctx.fill();
+		ctx.lineWidth = Math.max(2.5, h * .09);
+		ctx.strokeStyle = INK$2;
+		ctx.stroke();
+		ctx.fillStyle = "#FFFFFF";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(text, x + w / 2, y + h / 2 + 1);
+	}
+	/** 四肢:两臂斜下伸展 + 两腿;pose 由 mood 派生(worried 双臂上举慌张) */
+	function drawLimbs(ctx, el, insetX, armY, bottom, lw) {
+		ctx.fillStyle = INK$2;
+		const up = (el.mood ?? "happy") === "worried";
+		const len = el.w * .16;
+		drawLimb(ctx, el.x + insetX, armY, el.x + insetX - len, up ? armY - len * .8 : armY + len, lw, lw * .45);
+		drawLimb(ctx, el.x + el.w - insetX, armY, el.x + el.w - insetX + len, up ? armY - len * .8 : armY + len, lw, lw * .45);
+		const legTop = bottom - el.h * .1;
+		for (const dx of [-.18, .06]) drawLimb(ctx, el.x + el.w * (.5 + dx), legTop, el.x + el.w * (.5 + dx), bottom, lw, lw * .45);
+		const footW = el.w * .09;
+		const footH = lw * .8;
+		for (const dx of [-.18, .06]) {
+			roundRect(ctx, el.x + el.w * (.5 + dx) - footW / 2, bottom - footH / 2, footW, footH, footH / 2);
+			ctx.fill();
+		}
+	}
+	/** 脚下名牌:画在元素包围盒外底部(构图需预留),白底描边圆角胶囊 */
+	function drawNameLabel(ctx, el) {
+		if (!el.label) return;
+		ctx.font = sansFont(26, 500);
+		const w = ctx.measureText(el.label).width + 28;
+		const h = 36;
+		const x = el.x + el.w / 2 - w / 2;
+		const y = el.y + el.h + 8;
+		roundRect(ctx, x, y, w, h, h / 2);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.lineWidth = 2.5;
+		ctx.strokeStyle = INK$2;
+		ctx.stroke();
+		ctx.fillStyle = INK$2;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(el.label, x + w / 2, y + h / 2 + 1);
+	}
+	function drawMascot(ctx, el) {
+		const variant = el.variant ?? "doc";
+		const mood = el.mood ?? "happy";
+		ctx.save();
+		ctx.lineJoin = "round";
+		if (variant === "bot") {
+			const body = el.body ?? "#3B82F6";
+			const bodyH = el.h * .82;
+			const r = Math.min(28, el.w * .12);
+			const cx = el.x + el.w / 2;
+			ctx.strokeStyle = INK$2;
+			ctx.lineWidth = Math.max(3, el.w * .02);
+			ctx.beginPath();
+			ctx.moveTo(cx, el.y + r * .4);
+			ctx.lineTo(cx, el.y + el.h * .06 + r * .4);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.arc(cx, el.y + el.h * .045, Math.max(5, el.w * .028), 0, Math.PI * 2);
+			ctx.fillStyle = "#22C55E";
+			ctx.fill();
+			ctx.stroke();
+			roundRect(ctx, el.x, el.y + el.h * .06, el.w, bodyH, r);
+			ctx.fillStyle = body;
+			ctx.fill();
+			ctx.lineWidth = 4;
+			ctx.strokeStyle = INK$2;
+			ctx.stroke();
+			const by = el.y + el.h * .06;
+			if (el.badge) {
+				const plateW = el.w * .66;
+				const plateH = bodyH * .2;
+				roundRect(ctx, cx - plateW / 2, by + bodyH * .08, plateW, plateH, plateH * .24);
+				ctx.fillStyle = el.badgeColor ?? "#F7C948";
+				ctx.fill();
+				ctx.lineWidth = 3;
+				ctx.strokeStyle = INK$2;
+				ctx.stroke();
+				ctx.fillStyle = INK$2;
+				ctx.font = sansFont(Math.min(plateH * .52, 40), 700);
+				ctx.textAlign = "center";
+				ctx.textBaseline = "middle";
+				ctx.fillText(el.badge, cx, by + bodyH * .08 + plateH / 2 + 1);
+			}
+			drawFace(ctx, cx, by + bodyH * .47, el.h * .62, mood, true);
+			if (el.label) {
+				const barW = el.w * .74;
+				const barH = bodyH * .16;
+				const barY = by + bodyH * .76;
+				roundRect(ctx, cx - barW / 2, barY, barW, barH, barH / 2);
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fill();
+				ctx.lineWidth = 2.5;
+				ctx.strokeStyle = INK$2;
+				ctx.stroke();
+				ctx.fillStyle = INK$2;
+				ctx.font = sansFont(Math.min(barH * .5, 26), 500);
+				ctx.textAlign = "center";
+				ctx.textBaseline = "middle";
+				ctx.fillText(el.label, cx, barY + barH / 2 + 1);
+			}
+			ctx.fillStyle = INK$2;
+			for (const dx of [-.24, .12]) {
+				roundRect(ctx, el.x + el.w * (.5 + dx), el.y + el.h * .88, el.w * .12, el.h * .1, 6);
+				ctx.fill();
+			}
+		} else {
+			const body = el.body ?? "#FFFFFF";
+			const fold = Math.min(el.w, el.h) * .2;
+			const r = Math.min(16, el.w * .08);
+			traceDocBody(ctx, el.x, el.y, el.w, el.h, r, fold);
+			ctx.fillStyle = body;
+			ctx.fill();
+			ctx.lineWidth = 4;
+			ctx.strokeStyle = INK$2;
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(el.x + el.w - fold, el.y);
+			ctx.lineTo(el.x + el.w - fold, el.y + fold);
+			ctx.lineTo(el.x + el.w, el.y + fold);
+			ctx.closePath();
+			ctx.fillStyle = "#E2E8F0";
+			ctx.fill();
+			ctx.strokeStyle = INK$2;
+			ctx.stroke();
+			ctx.strokeStyle = "#CBD5E1";
+			ctx.lineWidth = Math.max(3, el.h * .014);
+			ctx.lineCap = "round";
+			const lineY = el.y + el.h * .78;
+			const lineW = el.w * .52;
+			for (let i = 0; i < 3; i++) {
+				const w_i = i === 2 ? lineW * .6 : lineW;
+				ctx.beginPath();
+				ctx.moveTo(el.x + el.w * .2, lineY + i * el.h * .055);
+				ctx.lineTo(el.x + el.w * .2 + w_i, lineY + i * el.h * .055);
+				ctx.stroke();
+			}
+			drawFace(ctx, el.x + el.w / 2, el.y + el.h * .38, el.h * .5, mood, false);
+			if (el.badge) drawBadgeChip(ctx, el.x + el.w * .1, el.y + el.h * .1, el.badge, el.badgeColor ?? "#EF5350", el.w * .62, el.h * .13);
+			drawLimbs(ctx, el, el.w * .02, el.y + el.h * .42, el.y + el.h, Math.max(6, el.h * .045));
+		}
+		ctx.restore();
+		if (variant !== "bot") drawNameLabel(ctx, el);
 	}
 	//#endregion
 	//#region src/core/render/charts.ts
@@ -3918,8 +4324,29 @@
 		ctx.fillRect(0, 0, w, h);
 		const { index, localT } = locate(project, t);
 		const scene = project.scenes[index];
-		if (scene) for (const el of scene.elements) drawElement(ctx, el, localT, scene.elements);
+		if (scene) {
+			for (const el of scene.elements) drawElement(ctx, el, localT, scene.elements);
+			if (scene.caption) drawCaption(ctx, scene.caption, w, h);
+		}
 		ctx.restore();
+	}
+	/** 旁白字幕条:白底圆角 + 深描边 + 居中文字,固定在画布底部 */
+	function drawCaption(ctx, text, w, h) {
+		const barH = 84;
+		const marginX = 110;
+		const barY = h - barH - 42;
+		const fontSize = Math.min(32, (w - 220) / Math.max(8, text.length) * 1.9);
+		roundRect(ctx, marginX, barY, w - 220, barH, barH / 2);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fill();
+		ctx.lineWidth = 3;
+		ctx.strokeStyle = "#1F2937";
+		ctx.stroke();
+		ctx.fillStyle = "#1F2937";
+		ctx.font = sansFont(fontSize, 600);
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(text, w / 2, barY + barH / 2 + 1, w - 220 - 80);
 	}
 	function drawElement(ctx, el, localT, sceneElements) {
 		const elT = applyTweens(el, localT);
@@ -3942,18 +4369,19 @@
 			if (ev.wipeWidth !== null) wipeWidth = ev.wipeWidth;
 		}
 		const fx = emphasisFx(localT, elT.emphasis);
+		const fl = floatOffset(localT, elT.float, elT.anim.start + elT.anim.duration);
 		ctx.save();
 		ctx.globalAlpha *= alpha;
-		const tx = dx + fx.dx;
-		const ty = dy + fx.dy;
+		const tx = dx + fx.dx + fl.dx;
+		const ty = dy + fx.dy + fl.dy;
 		if (tx !== 0 || ty !== 0) ctx.translate(tx, ty);
 		const totalScale = scale * fx.scaleMul;
-		if (totalScale !== 1 || visual.rotation !== 0) {
+		if (totalScale !== 1 || visual.rotation !== 0 || visual.scaleX !== null) {
 			const cx = elT.x + elT.w / 2;
 			const cy = elT.y + elT.h / 2;
 			ctx.translate(cx, cy);
 			if (visual.rotation !== 0) ctx.rotate(visual.rotation);
-			if (totalScale !== 1) ctx.scale(totalScale, totalScale);
+			if (totalScale !== 1 || visual.scaleX !== null) ctx.scale((visual.scaleX ?? 1) * totalScale, totalScale);
 			ctx.translate(-cx, -cy);
 		}
 		const rotateDeg = elT.kind === "connector" ? 0 : elT.rotate ?? (elT.kind === "note" ? -2 : 0);
@@ -4077,7 +4505,13 @@
 			case "avatar":
 				drawAvatar(ctx, elT);
 				break;
-			case "person": drawPerson(ctx, elT);
+			case "person":
+				drawPerson(ctx, elT);
+				break;
+			case "mascot":
+				drawMascot(ctx, elT);
+				break;
+			case "confetti": drawConfetti(ctx, elT, Math.max(0, localT - elT.anim.start));
 		}
 		if (fx.flashAlpha > 0) {
 			ctx.globalAlpha = fx.flashAlpha;
@@ -4091,6 +4525,26 @@
 			ctx.beginPath();
 			ctx.arc(elT.x + elT.w / 2, elT.y + elT.h / 2, Math.max(elT.w, elT.h) / 2 * (.35 + .85 * fx.ringQ), 0, Math.PI * 2);
 			ctx.stroke();
+		}
+		if (fx.burstQ !== null) {
+			const q = fx.burstQ;
+			const cx = elT.x + elT.w / 2;
+			const cy = elT.y + elT.h / 2;
+			const reach = Math.max(elT.w, elT.h) / 2 * .72 + Math.max(elT.w, elT.h) * .38 * q;
+			const size = Math.max(elT.w, elT.h) * .14 * Math.sin(Math.PI * Math.min(1, q * 1.15));
+			for (let i = 0; i < 10; i++) {
+				const angle = i / 10 * Math.PI * 2 - Math.PI / 2;
+				const px = cx + Math.cos(angle) * reach;
+				const py = cy + Math.sin(angle) * reach;
+				ctx.globalAlpha = (1 - q) * .9;
+				ctx.fillStyle = i % 2 === 0 ? "#F87171" : "#FBBF24";
+				ctx.beginPath();
+				ctx.moveTo(px + Math.cos(angle) * size, py + Math.sin(angle) * size);
+				ctx.lineTo(px + Math.cos(angle + Math.PI / 2) * size * .42, py + Math.sin(angle + Math.PI / 2) * size * .42);
+				ctx.lineTo(px + Math.cos(angle - Math.PI / 2) * size * .42, py + Math.sin(angle - Math.PI / 2) * size * .42);
+				ctx.closePath();
+				ctx.fill();
+			}
 		}
 		ctx.restore();
 	}

@@ -7,18 +7,22 @@ import type { Anim, EmphasisEvent, ExitAnim, Project, Scene, SceneElement, Tween
  * file-size-exempt:归一化入口集中所有 kind 的字段钳制,拆分会让同类守卫散落多处。
  */
 
-const ANIM_TYPES = new Set<string>([
-  "pop",
-  "fade",
-  "riseUp",
-  "slideLeft",
-  "slideRight",
-  "dropDown",
-  "wipe",
-  "typewriter",
-  "zoomIn",
-  "spinIn",
-]);
+const ANIM_TYPES: Record<string, true> = {
+  pop: true,
+  fade: true,
+  riseUp: true,
+  slideLeft: true,
+  slideRight: true,
+  dropDown: true,
+  wipe: true,
+  typewriter: true,
+  zoomIn: true,
+  spinIn: true,
+  wobble: true,
+  bounce: true,
+  flip: true,
+  swing: true,
+};
 const EASINGS = new Set<string>(["linear", "easeOut", "easeInOut", "back"]);
 /** 全部合法元素 kind 表:归一化据此跳过未知类型;CLI lint 也用它报「会被静默吞掉」的 kind */
 export const ELEMENT_KINDS: Record<string, true> = {
@@ -53,6 +57,8 @@ export const ELEMENT_KINDS: Record<string, true> = {
   gridBg: true,
   groupPanel: true,
   lane: true,
+  mascot: true,
+  confetti: true,
   quote: true,
   formula: true,
   avatar: true,
@@ -64,11 +70,11 @@ const EXIT_TYPES: Record<string, true> = {
   zoomOut: true, wipeOut: true,
 };
 const EMPHASIS_TYPES: Record<string, true> = {
-  pulse: true, shake: true, glow: true, flash: true, ring: true, highlightLines: true, dashFlow: true,
+  pulse: true, shake: true, glow: true, flash: true, ring: true, burst: true, highlightLines: true, dashFlow: true,
 };
 /** 强调事件缺省时长(秒):未声明 duration 时按类型取 */
 const EMPHASIS_DEFAULT_DURATION: Record<string, number> = {
-  pulse: 0.6, shake: 0.5, glow: 0.9, flash: 0.4, ring: 0.9, highlightLines: 1.4, dashFlow: 2.5,
+  pulse: 0.6, shake: 0.5, glow: 0.9, flash: 0.4, ring: 0.9, burst: 0.9, highlightLines: 1.4, dashFlow: 2.5,
 };
 /** 补间白名单:percent 仅 progress,activeIndex 仅 arrayCells;不上通用关键帧 */
 const TWEEN_FIELDS: Record<string, true> = { percent: true, activeIndex: true };
@@ -133,6 +139,7 @@ function normalizeScene(raw: Record<string, unknown>, index: number): Scene {
       if (typeof record.kind !== "string" || ELEMENT_KINDS[record.kind] !== true) return [];
       return [normalizeElement(record, j)];
     }),
+    caption: typeof raw.caption === "string" && raw.caption.trim().length > 0 ? raw.caption.trim() : undefined,
     audio: normalizeSceneAudio(raw.audio),
   };
 }
@@ -152,7 +159,7 @@ function normalizeSceneAudio(raw: unknown): { src: string; volume: number; rate:
 }
 
 function normalizeAnim(raw: Record<string, unknown>): Anim {
-  const type = typeof raw.type === "string" && ANIM_TYPES.has(raw.type) ? raw.type : "fade";
+  const type = typeof raw.type === "string" && ANIM_TYPES[raw.type] === true ? raw.type : "fade";
   const easing = typeof raw.easing === "string" && EASINGS.has(raw.easing) ? raw.easing : undefined;
   return {
     type: type as Anim["type"],
@@ -280,6 +287,27 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     if (typeof connector.rotate !== "boolean" && Number.isFinite(deg)) connector.rotate = Math.round(deg * 10) / 10;
     else delete connector.rotate;
   }
+  // 悬浮:true = 缺省参数;对象收 amp(2-40)/period(1-10)/swing;false/脏值丢弃
+  if (connector.float !== undefined) {
+    const f = connector.float as Record<string, unknown> | boolean | null;
+    if (f === true) {
+      connector.float = {};
+    } else if (typeof f === "object" && f !== null && !Array.isArray(f)) {
+      const out: Record<string, unknown> = {};
+      if (f.amp !== undefined) {
+        const a = Number(f.amp);
+        if (Number.isFinite(a)) out.amp = Math.min(40, Math.max(2, Math.round(a * 10) / 10));
+      }
+      if (f.period !== undefined) {
+        const t = Number(f.period);
+        if (Number.isFinite(t)) out.period = Math.min(10, Math.max(1, Math.round(t * 10) / 10));
+      }
+      if (f.swing === true) out.swing = true;
+      connector.float = out;
+    } else {
+      delete connector.float;
+    }
+  }
   // 连线路由:仅接受合法枚举,其余回落自动平滑
   if (connector.route !== undefined && !["smooth", "elbow", "straight"].includes(String(connector.route))) {
     delete connector.route;
@@ -327,6 +355,20 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
       else delete timeline.count;
     }
     if (timeline.direction !== undefined && !["h", "v"].includes(String(timeline.direction))) delete timeline.direction;
+  }
+  // 纸屑:模式枚举 / 粒子数钳 10-200 / 种子须有限数 / 色板仅收字符串
+  if (el.kind === "confetti") {
+    if (timeline.mode !== undefined && !["rain", "burst"].includes(String(timeline.mode))) delete timeline.mode;
+    if (timeline.count != null) {
+      const c = Number(timeline.count);
+      if (Number.isFinite(c)) timeline.count = Math.min(200, Math.max(10, Math.round(c)));
+      else delete timeline.count;
+    }
+    if (timeline.seed != null && (typeof timeline.seed !== "number" || !Number.isFinite(timeline.seed))) delete timeline.seed;
+    if (timeline.colors !== undefined) {
+      const ok = Array.isArray(timeline.colors) && timeline.colors.every((v) => typeof v === "string" && v.length > 0);
+      if (!ok || (timeline.colors as string[]).length === 0) delete timeline.colors;
+    }
   }
   // 图表数据:series/slices 结构性纠正,value/points 非有限数会污染路径计算,纠正为 0
   if (el.kind === "barChart" || el.kind === "lineChart" || el.kind === "pieChart") {

@@ -1,4 +1,4 @@
-import type { Anim, EmphasisEvent, ExitAnim, SceneElement } from "../types";
+import type { Anim, ElementFloat, EmphasisEvent, ExitAnim, SceneElement } from "../types";
 import { easeInOutCubic, easeOutBack, easeOutCubic } from "../timeline";
 
 /**
@@ -26,10 +26,21 @@ const EASING_FNS: Record<string, EasingFn> = {
   back: easeOutBack,
 };
 
+/** 标准弹跳缓出: bounce 公式自含多次触地,作 bounce 入场的驱动曲线 */
+function bounceOut(p: number): number {
+  const n1 = 7.5625;
+  const d1 = 2.75;
+  if (p < 1 / d1) return n1 * p * p;
+  if (p < 2 / d1) return n1 * (p - 1.5 / d1) * (p - 1.5 / d1) + 0.75;
+  if (p < 2.5 / d1) return n1 * (p - 2.25 / d1) * (p - 2.25 / d1) + 0.9375;
+  return n1 * (p - 2.625 / d1) * (p - 2.625 / d1) + 0.984375;
+}
+
 function resolveEasing(anim: Anim): EasingFn {
   if (anim.easing) return EASING_FNS[anim.easing] ?? easeOutCubic;
   switch (anim.type) {
     case "typewriter":
+    case "bounce": // 弹跳轨迹公式自含,缓动会破坏触地节奏
       return EASING_FNS.linear;
     case "pop":
     case "spinIn":
@@ -47,6 +58,8 @@ export interface AnimVisual {
   /** 弧度,绕元素中心旋转 */
   rotation: number;
   scale: number;
+  /** 非空 = 独立横向缩放(flip 翻面,经 0 与负值),null = 横向同 scale */
+  scaleX: number | null;
   /** 非空 = 按宽度擦除(wipe),值为止显宽度比例 */
   wipeWidth: number | null;
   /** typewriter 的字符显露比例;非 typewriter 为 undefined */
@@ -61,26 +74,61 @@ export function animVisual(anim: Anim, p: number): AnimVisual {
   const e = resolveEasing(anim)(p);
   switch (anim.type) {
     case "fade":
-      return { alpha: e, dx: 0, dy: 0, rotation: 0, scale: 1, wipeWidth: null };
+      return { alpha: e, dx: 0, dy: 0, rotation: 0, scale: 1, scaleX: null, wipeWidth: null };
     case "pop":
-      return { alpha: Math.min(1, p * 2.5), dx: 0, dy: 0, rotation: 0, scale: 0.6 + 0.4 * e, wipeWidth: null };
+      return { alpha: Math.min(1, p * 2.5), dx: 0, dy: 0, rotation: 0, scale: 0.6 + 0.4 * e, scaleX: null, wipeWidth: null };
     case "riseUp":
-      return { alpha: e, dx: 0, dy: (1 - e) * 46, rotation: 0, scale: 1, wipeWidth: null };
+      return { alpha: e, dx: 0, dy: (1 - e) * 46, rotation: 0, scale: 1, scaleX: null, wipeWidth: null };
     case "slideLeft":
-      return { alpha: e, dx: -(1 - e) * 320, dy: 0, rotation: 0, scale: 1, wipeWidth: null };
+      return { alpha: e, dx: -(1 - e) * 320, dy: 0, rotation: 0, scale: 1, scaleX: null, wipeWidth: null };
     case "slideRight":
-      return { alpha: e, dx: (1 - e) * 320, dy: 0, rotation: 0, scale: 1, wipeWidth: null };
+      return { alpha: e, dx: (1 - e) * 320, dy: 0, rotation: 0, scale: 1, scaleX: null, wipeWidth: null };
     case "dropDown":
-      return { alpha: e, dx: 0, dy: -(1 - e) * 160, rotation: 0, scale: 1, wipeWidth: null };
+      return { alpha: e, dx: 0, dy: -(1 - e) * 160, rotation: 0, scale: 1, scaleX: null, wipeWidth: null };
     case "zoomIn":
-      return { alpha: e, dx: 0, dy: 0, rotation: 0, scale: 0.82 + 0.18 * e, wipeWidth: null };
+      return { alpha: e, dx: 0, dy: 0, rotation: 0, scale: 0.82 + 0.18 * e, scaleX: null, wipeWidth: null };
     case "spinIn":
-      return { alpha: e, dx: 0, dy: 0, rotation: -(1 - e) * 1.8, scale: 0.7 + 0.3 * e, wipeWidth: null };
+      return { alpha: e, dx: 0, dy: 0, rotation: -(1 - e) * 1.8, scale: 0.7 + 0.3 * e, scaleX: null, wipeWidth: null };
     case "wipe":
-      return { alpha: 1, dx: 0, dy: 0, rotation: 0, scale: 1, wipeWidth: e };
+      return { alpha: 1, dx: 0, dy: 0, rotation: 0, scale: 1, scaleX: null, wipeWidth: e };
     case "typewriter":
-      return { alpha: Math.min(1, p * 3), dx: 0, dy: 0, rotation: 0, scale: 1, wipeWidth: null, progress: p };
+      return { alpha: Math.min(1, p * 3), dx: 0, dy: 0, rotation: 0, scale: 1, scaleX: null, wipeWidth: null, progress: p };
+    case "wobble":
+      // 果冻:摆角 3 次往复衰减,落定归零
+      return { alpha: Math.min(1, p * 3), dx: 0, dy: 0, rotation: Math.sin(e * Math.PI * 3) * (1 - e) * 0.21, scale: 1, scaleX: null, wipeWidth: null };
+    case "bounce":
+      // 弹跳:从上方 160px 弹落触地(轨迹由 bounceOut 驱动)
+      return { alpha: Math.min(1, p * 4), dx: 0, dy: -(1 - bounceOut(p)) * 160, rotation: 0, scale: 1, scaleX: null, wipeWidth: null };
+    case "flip":
+      // 翻面:横向缩放从 -1(背面镜像)经 0(侧立压扁)转到 1(正面)
+      return { alpha: Math.min(1, p * 2), dx: 0, dy: 0, rotation: 0, scale: 1, scaleX: -Math.cos(Math.PI * e), wipeWidth: null };
+    case "swing":
+      // 吊摆:钟摆两次衰减 + 轻微落下
+      return { alpha: e, dx: 0, dy: -(1 - Math.min(1, p * 2)) * 40, rotation: Math.sin(e * Math.PI * 2) * (1 - e) * 0.42, scale: 1, scaleX: null, wipeWidth: null };
   }
+}
+
+// ---------- 悬浮(元素级常驻动效) ----------
+
+export interface FloatOffset {
+  dx: number;
+  dy: number;
+}
+
+const NO_FLOAT: FloatOffset = { dx: 0, dy: 0 };
+
+/** 悬浮求值:入场结束后从静止渐入(0.6s),沿周期做纵向正弦漂浮;swing 时叠加横向椭圆轨迹。
+ *  纯函数,同一 (localT, float, entranceEnd) 恒同结果。 */
+export function floatOffset(localT: number, float: ElementFloat | undefined, entranceEnd: number): FloatOffset {
+  if (!float || localT <= entranceEnd) return NO_FLOAT;
+  const amp = Math.min(40, Math.max(2, float.amp ?? 8));
+  const period = Math.min(10, Math.max(1, float.period ?? 3));
+  const ramp = Math.min(1, (localT - entranceEnd) / 0.6);
+  const phase = ((localT - entranceEnd) * 2 * Math.PI) / period;
+  return {
+    dx: float.swing ? Math.cos(phase) * amp * 0.6 * ramp : 0,
+    dy: Math.sin(phase) * amp * ramp,
+  };
 }
 
 // ---------- 时间轴三段:离场 / 强调 / 补间 ----------
@@ -134,6 +182,8 @@ export interface EmphasisFx {
   flashAlpha: number;
   /** 扩散圈进度 [0,1],null = 无 */
   ringQ: number | null;
+  /** 星芒迸发进度 [0,1],null = 无 */
+  burstQ: number | null;
   /** code/terminal 行区间高亮 */
   highlightLines: { lines: [number, number]; alpha: number } | null;
   /** connector 数据流流速(px/s),null = 无 */
@@ -141,7 +191,7 @@ export interface EmphasisFx {
 }
 
 const NO_FX: EmphasisFx = {
-  scaleMul: 1, dx: 0, dy: 0, glow: 0, flashAlpha: 0, ringQ: null, highlightLines: null, dashFlow: null,
+  scaleMul: 1, dx: 0, dy: 0, glow: 0, flashAlpha: 0, ringQ: null, burstQ: null, highlightLines: null, dashFlow: null,
 };
 
 function resolveEmphasisEasing(ev: EmphasisEvent): EasingFn {
@@ -177,6 +227,9 @@ export function emphasisFx(localT: number, events: readonly EmphasisEvent[] | un
         break;
       case "ring":
         fx.ringQ = e;
+        break;
+      case "burst":
+        fx.burstQ = e;
         break;
       case "highlightLines":
         fx.highlightLines = { lines: ev.lines ?? [1, 1], alpha: Math.sin(Math.PI * e) };
