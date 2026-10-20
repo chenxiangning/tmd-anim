@@ -282,9 +282,47 @@ export interface DevNodeElement extends ElementBase {
   label?: string; // 主名称,缺省取变体中文名
   sub?: string;
   fontSize?: number;
+  /** 渐进点阵 0-1:节点底部画 8 点条,前 progress*8 个点亮(迭代进度叙事) */
+  progress?: number;
 }
 
 export type DevNodeVariant = DevNodeElement["dev"];
+
+/** 流程卡组:编号卡片横排,卡间箭头,active 卡高亮(蓝边浅底+底部进度条),底部一句结论 */
+export interface CardFlowElement extends ElementBase {
+  kind: "cardFlow";
+  items: { num?: string; title: string; tags?: string[]; desc?: string }[];
+  /** 高亮卡索引(缺省 -1 = 无) */
+  active?: number;
+  /** 底部居中结论文字(accent 色) */
+  note?: string;
+  accent?: string;
+  fontSize?: number;
+}
+
+/** 规格行卡:编号芯片 + 标题 + mono 路径 + 右侧徽章药丸(架构文档条目);配 groupPanel 用 */
+export interface SpecRowElement extends ElementBase {
+  kind: "specRow";
+  num?: string;
+  title: string;
+  /** 等宽字体路径,如 systemprompt.md */
+  path?: string;
+  /** 右侧徽章药丸文字,如 every call */
+  badge?: string;
+  accent?: string;
+  fontSize?: number;
+}
+
+/** 文档堆叠:错位叠纸 + 折角,下方标注(K 份样本/执行记录叙事) */
+export interface DocStackElement extends ElementBase {
+  kind: "docStack";
+  /** 张数,画 min(count,5) 张错位 */
+  count?: number;
+  /** 下方标注文字 */
+  label?: string;
+  accent?: string;
+  fontSize?: number;
+}
 
 /** 手机 mock:圆角机身 + 刘海 + 屏幕区(body 底色),后绘制元素可叠加充当界面内容 */
 export interface PhoneElement extends ElementBase {
@@ -314,6 +352,10 @@ export interface BarChartElement extends ElementBase {
   /** 数值上限,缺省按数据最大值取整放大 */
   max?: number;
   fontSize?: number;
+  /** 分组模式:多系列按组对比(benchmark 图);给出时忽略 series/horizontal,只画竖向 */
+  groups?: { label: string; values: number[]; deltas?: (string | null)[] }[];
+  /** 分组模式的系列名(图例),长度须与每组 values 一致 */
+  groupSeries?: string[];
 }
 
 /** 折线图:1-3 条序列,沿路径 draw-on 入场;smooth 贝塞尔平滑,area 填充渐变 */
@@ -329,6 +371,8 @@ export interface LineChartElement extends ElementBase {
   min?: number;
   max?: number;
   fontSize?: number;
+  /** 线尾直接标注系列名(替代顶部图例);开启时隐藏图例,末点加光晕 */
+  endLabels?: boolean;
 }
 
 /** 饼图/环图:扫掠展开入场;donut 中央留白,legend right/bottom */
@@ -481,7 +525,8 @@ export type SceneElement =
   | BarChartElement | LineChartElement | PieChartElement | CursorElement | FolderTreeElement
   | CodeDiffElement | SpotlightElement | GridBgElement | GroupPanelElement | LaneElement
   | QuoteElement | FormulaElement | AvatarElement | PersonElement
-  | MascotElement | ConfettiElement;
+  | MascotElement | ConfettiElement
+  | CardFlowElement | SpecRowElement | DocStackElement;
 
 export interface Scene {
   id: string;

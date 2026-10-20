@@ -10,6 +10,7 @@ import { drawAvatar, drawPerson } from "./actors";
 import { drawConfetti } from "./confetti";
 import { drawMascot } from "./mascot";
 import { drawBarChart, drawLineChart, drawPieChart } from "./charts";
+import { drawCardFlow, drawDocStack, drawSpecRow } from "./flow";
 import { drawCodeDiff, drawCursor, drawFolderTree } from "./guide";
 import { drawConnector, drawImageEl, resolveConnector } from "./misc";
 import { drawGridBg, drawGroupPanel, drawLane, drawSpotlight } from "./stage";
@@ -228,6 +229,15 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
       break;
     case "confetti":
       drawConfetti(ctx, elT, Math.max(0, localT - elT.anim.start));
+      break;
+    case "cardFlow":
+      drawCardFlow(ctx, elT, progress);
+      break;
+    case "specRow":
+      drawSpecRow(ctx, elT);
+      break;
+    case "docStack":
+      drawDocStack(ctx, elT, progress);
       break;
   }
   // 强调后置覆盖(元素本地坐标,与内容同变换空间):白闪 / 扩散圈

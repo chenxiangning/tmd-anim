@@ -1,5 +1,6 @@
 import type { BarChartElement, LineChartElement, PieChartElement } from "../types";
 import { roundRect, sansFont } from "./text";
+import { drawGroupedBar, drawLegendChips } from "./chartsGroup";
 
 /**
  * 图表三件套:柱状 / 折线 / 饼图。数据驱动 + 确定性绘制;
@@ -7,11 +8,11 @@ import { roundRect, sansFont } from "./text";
  */
 
 export const CHART_PALETTE = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899"];
-const INK = "#1F2937";
-const MUTED = "#64748B";
+export const INK = "#1F2937";
+export const MUTED = "#64748B";
 
 /** 数值上限取整放大:36 -> 40,170 -> 200,让柱顶/点不顶格 */
-function niceCeil(v: number): number {
+export function niceCeil(v: number): number {
   if (v <= 0) return 1;
   const mag = Math.pow(10, Math.floor(Math.log10(v)));
   const n = v / mag;
@@ -19,7 +20,7 @@ function niceCeil(v: number): number {
   return nice * mag;
 }
 
-function drawTitle(ctx: CanvasRenderingContext2D, el: { x: number; y: number; w: number; title?: string }, fontSize: number): number {
+export function drawTitle(ctx: CanvasRenderingContext2D, el: { x: number; y: number; w: number; title?: string }, fontSize: number): number {
   if (!el.title) return 0;
   ctx.font = sansFont(fontSize, 700);
   ctx.textAlign = "left";
@@ -30,6 +31,11 @@ function drawTitle(ctx: CanvasRenderingContext2D, el: { x: number; y: number; w:
 }
 
 export function drawBarChart(ctx: CanvasRenderingContext2D, el: BarChartElement, progress?: number): void {
+  // 分组模式(benchmark 图)走专用渲染;缺省单系列走本文件路径
+  if (el.groups?.length) {
+    drawGroupedBar(ctx, el, progress);
+    return;
+  }
   const fontSize = el.fontSize ?? 28;
   const series = el.series ?? [];
   if (series.length === 0) return;
@@ -117,7 +123,7 @@ export function drawLineChart(ctx: CanvasRenderingContext2D, el: LineChartElemen
   const n = Math.max(...series.map((s) => s.points.length));
   ctx.save();
   const titleH = drawTitle(ctx, el, fontSize);
-  const legendH = series.length > 1 ? fontSize * 1.6 : 0;
+  const legendH = series.length > 1 && el.endLabels !== true ? fontSize * 1.6 : 0;
   const area = { x: el.x + pad, y: el.y + titleH + legendH + pad * 0.4, w: el.w - pad * 2, h: el.h - titleH - legendH - pad * 1.6 };
   const X = (i: number) => area.x + (n <= 1 ? area.w / 2 : (i / (n - 1)) * area.w);
   const Y = (v: number) => area.y + area.h - ((v - lo) / (hi - lo)) * area.h;
@@ -199,22 +205,27 @@ export function drawLineChart(ctx: CanvasRenderingContext2D, el: LineChartElemen
         ctx.fill();
       });
     }
-  });
-  // 图例(多序列时):颜色芯片 + 名称,顶部一行
-  if (series.length > 1) {
-    ctx.font = sansFont(fontSize * 0.68, 600);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    let lx = area.x;
-    const ly = el.y + titleH + fontSize * 0.8;
-    series.forEach((s, si) => {
-      ctx.fillStyle = s.color ?? CHART_PALETTE[si % CHART_PALETTE.length];
-      roundRect(ctx, lx, ly - fontSize * 0.22, fontSize * 0.44, fontSize * 0.44, fontSize * 0.12);
+    // 线尾标签 + 末点光晕:draw-on 完成后才出现(期刊风:系列名直接标在线尾,替代图例)
+    if (el.endLabels === true && (progress === undefined || f >= segTotal)) {
+      const last = drawn[drawn.length - 1];
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, fontSize * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = color + "2E";
       ctx.fill();
-      ctx.fillStyle = INK;
-      ctx.fillText(s.label, lx + fontSize * 0.6, ly);
-      lx += fontSize * 0.6 + ctx.measureText(s.label).width + fontSize * 1.1;
-    });
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, fontSize * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.font = sansFont(fontSize * 0.66, 700);
+      ctx.textAlign = "left";
+      ctx.fillStyle = color;
+      // 不限宽:末点贴元素右缘,剩余宽为负会让 fillText 整段不渲染;溢出元素框由画布边界自然裁
+      ctx.fillText(s.label, last.x + fontSize * 0.75, last.y);
+    }
+  });
+  // 图例(多序列时):颜色芯片 + 名称,顶部一行;endLabels 模式由线尾标注替代
+  if (series.length > 1 && el.endLabels !== true) {
+    drawLegendChips(ctx, series.map((s, si) => ({ label: s.label, color: s.color ?? CHART_PALETTE[si % CHART_PALETTE.length] })), area.x, el.y + titleH + fontSize * 0.8, fontSize);
   }
   ctx.restore();
 }

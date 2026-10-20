@@ -65,7 +65,7 @@
 | `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
 | `float` | object \| true | 否 | 悬浮:入场结束后从静止渐入(0.6s)持续轻微漂浮,给画面呼吸感;`true` = 缺省参数。参数 `{ amp?, period?, swing? }`:amp 幅度像素(2-40,缺省 8)、period 周期秒(1-10,缺省 3)、swing = 横向椭圆轨迹(否则仅纵向);false/缺省不浮。`connector` 不支持。编辑器属性面板「悬浮」一键开关 |
 
-## 元素类型(37 种)
+## 元素类型(40 种)
 
 | kind | 专有字段 | 说明 |
 |---|---|---|
@@ -89,9 +89,9 @@
 | `image` | `src`, `radius?(12)` | 图片,contain 适配圆角裁剪;src 为绝对路径或 dataURL |
 | `phone` | `body?`, `frame?` | 手机 mock:圆角深色机身 + 顶部刘海胶囊 + 底部 home 指示条,中间为屏幕区(body 底色);后绘制元素可叠加在屏幕上充当界面内容,与 browser 同模式 |
 | `aiChat` | `title?`, `prompt?`, `reply?`, `fontSize?(26)`, `dark?` | AI 对话卡:紫色四角星徽标 + 标题头部;`prompt` 为右对齐用户气泡,`reply` 为左对齐 AI 回复区(支持高亮芯片,`dark: true` 深色模式);画布双击改 reply |
-| `devNode` | `dev("database"/"redis"/"obs"/"cloud"/"server"/"api"/"queue"/"container"/"gateway"/"loadBalancer"/"cdn"/"auth"/"function"/"git")`, `label?`, `sub?`, `fontSize?(26)` | 开发组件节点:架构图常用资源;左侧按变体程序化绘制的图标色块 + 主名称 + 副标题(规格/说明),主色随变体(数据库蓝/Redis 红/对象存储橙/云/服务器/API/消息队列/容器);画布上双击改名称 |
-| `barChart` | `title?`, `series: {label, value, color?}[]`, `horizontal?`, `showValue?(true)`, `axis?(true)`, `max?`(缺省按数据 niceCeil), `fontSize?(28)` | 柱状图:数据驱动,垂直(缺省)或水平条形;typewriter 入场 = 逐柱生长(柱间窗口均分),其余类型一次性全显 |
-| `lineChart` | `title?`, `series: {label, color?, points: number[]}[]`(≤3 条), `smooth?`, `dot?(true)`, `area?`, `axis?(true)`, `grid?(true)`, `min?/max?`(缺省按数据留边), `fontSize?(26)` | 折线图:沿路径 draw-on 入场(边界段插值);smooth 中点贝塞尔平滑,area 面积填充;多序列自动图例 |
+| `devNode` | `dev("database"/"redis"/"obs"/"cloud"/"server"/"api"/"queue"/"container"/"gateway"/"loadBalancer"/"cdn"/"auth"/"function"/"git")`, `label?`, `sub?`, `fontSize?(26)`, `progress?`(0-1) | 开发组件节点:架构图常用资源;左侧按变体程序化绘制的图标色块 + 主名称 + 副标题(规格/说明),主色随变体(数据库蓝/Redis 红/对象存储橙/云/服务器/API/消息队列/容器);画布上双击改名称。progress>0 时节点内底部画 8 点渐进点阵,前 progress*8 个点亮,表达迭代/完成度叙事 |
+| `barChart` | `title?`, `series: {label, value, color?}[]`, `horizontal?`, `showValue?(true)`, `axis?(true)`, `max?`(缺省按数据 niceCeil), `fontSize?(28)`, `groups?({label, values, deltas?}[])`, `groupSeries?(string[])` | 柱状图:数据驱动,垂直(缺省)或水平条形;typewriter 入场 = 逐柱生长(柱间窗口均分),其余类型一次性全显。分组模式(benchmark 图):groups 每组一组柱(系列色 = 调色板序),groupSeries 为系列名图例(>1 系列自动画),deltas[si] 非空时该柱顶画增益药丸(如 "+7.4");分组时忽略 series/horizontal 只画竖向 |
+| `lineChart` | `title?`, `series: {label, color?, points: number[]}[]`(≤3 条), `smooth?`, `dot?(true)`, `area?`, `axis?(true)`, `grid?(true)`, `min?/max?`(缺省按数据留边), `fontSize?(26)`, `endLabels?` | 折线图:沿路径 draw-on 入场(边界段插值);smooth 中点贝塞尔平滑,area 面积填充;多序列自动图例。endLabels = 期刊风线尾标注:系列名直接画在线尾右侧(替代顶部图例),末点带同色光晕,draw-on 完成后才出现 |
 | `pieChart` | `title?`, `slices: {label, value, color?}[]`, `donut?`, `legend?("right"/"bottom"/"none")`, `startAngle?(-90)`, `fontSize?(26)` | 饼图/环图:扫掠展开入场;donut 中央显示合计;非正值 slice 被过滤 |
 | `cursor` | `points: [x,y][]`(≥2), `clicks?: number[]`(场景秒,涟漪圈), `hold?: [start,end]`(按压区间) | 鼠标光标(mac 箭头):移动发生在入场窗口内(与 anim.start/duration 绑定,与动画类型无关),p=1 后停在末点;建议入场 duration 拉到 2-3s 让轨迹可读 |
 | `folderTree` | `root?("project")`, `items: {name, depth?, icon?:dir/file, comment?}[]`, `fontSize?(26)` | 文件树:mac 圆角卡 + 根目录头;depth 缺省继承上一行(首行 0);typewriter 入场 = 逐行显现 |
@@ -106,6 +106,9 @@
 | `person` | `pose?("stand"/"point"/"think")`, `color?` | 方块人:极简扁平角色,服务「用户/系统/我们」叙事站位;think 姿态带头侧思考泡 |
 | `mascot` | `variant?("doc"/"bot")`, `mood?("happy"/"wink"/"worried")`, `badge?`, `badgeColor?`, `body?`, `label?` | 吉祥物:有脸的拟人生物,拟人化叙事主角。doc = 折角纸片精(胸牌芯片 + 正文灰线 + 四肢,badge 缺省红);bot = 圆角机器人(天线绿灯 + 顶部铭牌条 + 机身内底部白条,badge 缺省黄、body 缺省蓝)。mood 驱动表情:wink 眨眼、worried 扁嘴 + 汗滴 + 双臂上举。label:doc 画在脚下元素外底部(构图预留 ~46px),bot 画在机身内底部白条。variant/mood 未知值回落 doc/happy |
 | `confetti` | `mode?("rain"/"burst")`, `count?(80,钳10-200)`, `seed?(42)`, `colors?`(六色粉彩缺省) | 纸屑:种子确定性粒子,x/y/w/h 为撒布区。rain 全区循环飘落(左右摆动 + 自转,随场景时长持续);burst 自中心一次性迸发(1.6s,带重力抛物线后归于寂静)。同 seed 同帧恒同画面,预览与导出一致;想换一种撒法就换 seed |
+| `cardFlow` | `items({num?, title, tags?, desc?}[])`, `active?`(高亮卡索引,缺省 -1), `note?`, `accent?`, `fontSize?(26)` | 流程卡组:编号卡片横排,卡间箭头;active 卡蓝边浅蓝底 + 底部短进度条;tags 渲染为 accent 药丸芯片(每行放不下自动截断);note 底部居中 accent 结论句。typewriter 入场 = 逐卡揭示(含箭头),其余一次性全显 |
+| `specRow` | `num?`, `title`, `path?`(mono), `badge?`, `accent?`, `fontSize?(24)` | 规格行卡:左侧 accent 编号芯片 + 标题(700)+ 下行等宽路径 + 右侧徽章药丸(accent 14% 底);架构图文档条目,常与 groupPanel 纵向排布组合 |
+| `docStack` | `count?(3,钳1-5)`, `label?`, `accent?`, `fontSize?(24)` | 文档堆叠:min(count,5) 张右上错位叠纸,末张 accent 描边 + 折角 + 文本行示意,label 下方居中;「K 份执行记录/样本」叙事。typewriter 入场 = 逐张出现 |
 
 ## 高亮芯片规则
 

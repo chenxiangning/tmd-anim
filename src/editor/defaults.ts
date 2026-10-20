@@ -46,6 +46,9 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   person: "人物",
   mascot: "吉祥物",
   confetti: "纸屑",
+  cardFlow: "流程卡组",
+  specRow: "规格行",
+  docStack: "文档堆",
 };
 
 export const SHAPE_LABELS: Record<string, string> = {
@@ -98,6 +101,9 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "person",
   "mascot",
   "confetti",
+  "cardFlow",
+  "specRow",
+  "docStack",
 ];
 
 /** 元素主色:元素库图标与时间轴条共用,保持「库-画布-时间轴」三者颜色一致 */
@@ -140,6 +146,9 @@ export function kindColor(kind: SceneElement["kind"]): string {
     person: "#3B82F6",
     mascot: "#EC4899",
     confetti: "#F59E0B",
+    cardFlow: "#3B82F6",
+    specRow: "#6366F1",
+    docStack: "#8B5CF6",
   };
   return map[kind];
 }
@@ -307,6 +316,16 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       return { ...base, kind, w: 260, h: 340, variant: ((variant ?? "doc") as "doc" | "bot"), mood: "happy", badge: "NEW", label: "新朋友" };
     case "confetti":
       return { ...base, kind, w: 1920, h: 1080, x: 0, y: 0, mode: (variant === "burst" ? "burst" : "rain"), count: 80, seed: Math.round(Math.random() * 1e9) };
+    case "cardFlow":
+      return { ...base, kind, w: 1400, h: 360, items: [
+        { num: "01", title: "第一步", desc: "做些什么" },
+        { num: "02", title: "第二步", desc: "再做些什么" },
+        { num: "03", title: "第三步", desc: "收尾" },
+      ], active: 0, note: "一句话结论", accent: "#3B82F6" };
+    case "specRow":
+      return { ...base, kind, w: 640, h: 96, num: "C1", title: "系统提示词", path: "systemprompt.md", badge: "every call", accent: "#3B82F6" };
+    case "docStack":
+      return { ...base, kind, w: 240, h: 280, count: 3, label: "K 份记录", accent: "#8B5CF6" };
   }
 }
 
@@ -390,6 +409,15 @@ export function elementLabel(el: SceneElement): string {
       break;
     case "confetti":
       raw = el.mode === "burst" ? "纸屑迸发" : "纸屑飘落";
+      break;
+    case "cardFlow":
+      raw = el.items?.[0]?.title ?? "流程卡组";
+      break;
+    case "specRow":
+      raw = el.title;
+      break;
+    case "docStack":
+      raw = el.label ?? "文档堆";
       break;
     case "title":
     case "artText":

@@ -262,5 +262,21 @@ export function drawDevNode(ctx: Ctx, el: DevNodeElement): void {
       ctx.fillText(label, tx, y + h / 2 + 1, tw);
     }
   }
+  // 渐进点阵:0-1 映射 8 点,前 n 个点亮(迭代进度叙事);画在节点内底部
+  if (typeof el.progress === "number" && el.progress > 0) {
+    const dots = 8;
+    const lit = Math.min(dots, Math.max(0, Math.round(el.progress * dots)));
+    const dr = Math.max(2.5, h * 0.028);
+    const gapX = dr * 2.6;
+    const totalW = gapX * (dots - 1);
+    const startX = x + w - inset - totalW;
+    const cy = y + h - inset - dr;
+    for (let d = 0; d < dots; d++) {
+      ctx.beginPath();
+      ctx.arc(startX + d * gapX, cy, dr, 0, Math.PI * 2);
+      ctx.fillStyle = d < lit ? meta.color : "#E2E8F0";
+      ctx.fill();
+    }
+  }
   ctx.restore();
 }

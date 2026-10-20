@@ -71,6 +71,35 @@ export const NEW_KIND_SCHEMAS: Partial<Record<SceneElement["kind"], { title: str
       numberField("fontSize", "字号", 32),
     ],
   },
+  cardFlow: {
+    title: "流程卡组属性",
+    fields: [
+      numberField("active", "高亮卡索引(0 起,-1 无)", 0),
+      plain("note", "底部结论", "text", { placeholder: "一句话结论" }),
+      plain("accent", "强调色", "color"),
+      numberField("fontSize", "字号", 26),
+    ],
+  },
+  specRow: {
+    title: "规格行属性",
+    fields: [
+      plain("num", "编号", "text", { placeholder: "C1" }),
+      plain("title", "标题", "text"),
+      plain("path", "路径(mono)", "text", { placeholder: "systemprompt.md" }),
+      plain("badge", "徽章", "text", { placeholder: "every call" }),
+      plain("accent", "强调色", "color"),
+      numberField("fontSize", "字号", 24),
+    ],
+  },
+  docStack: {
+    title: "文档堆属性",
+    fields: [
+      numberField("count", "张数(1-5)", 3),
+      plain("label", "下方标注", "text", { placeholder: "K 份记录" }),
+      plain("accent", "强调色", "color"),
+      numberField("fontSize", "字号", 24),
+    ],
+  },
   terminal: {
     title: "终端属性",
     fields: [

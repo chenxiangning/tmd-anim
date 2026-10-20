@@ -93,6 +93,30 @@ export const ICONS: Record<string, ReactNode> = {
     </>,
     { stroke: true },
   ),
+  cardFlow: icon(
+    <>
+      <rect x="2.5" y="6" width="6.5" height="12" rx="1.6" strokeWidth="1.7" />
+      <rect x="15" y="6" width="6.5" height="12" rx="1.6" strokeWidth="1.7" />
+      <path d="M9.5 12h5m0 0-1.6-1.4M14.5 12l-1.6 1.4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </>,
+    { stroke: true },
+  ),
+  specRow: icon(
+    <>
+      <rect x="3" y="7" width="18" height="10" rx="2" strokeWidth="1.7" />
+      <rect x="5.4" y="9.4" width="3" height="5.2" rx="0.8" />
+      <path d="M10.4 10.5h6M10.4 13.5h4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </>,
+    { stroke: true },
+  ),
+  docStack: icon(
+    <>
+      <path d="M7 8.5h9M7 12h9M7 15.5h6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6.5 5.5h11v14h-11z" strokeWidth="1.7" />
+      <path d="M9 3.5h11v14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>,
+    { stroke: true },
+  ),
   progress: icon(
     <>
       <rect x="3" y="9" width="18" height="6" rx="3" opacity="0.3" />

@@ -74,7 +74,7 @@ const GROUPS: ReadonlyArray<LibraryGroup> = [
     tab1: "基础",
     items: [
       { kind: "badge" }, { kind: "note" }, { kind: "input" }, { kind: "kbd" }, { kind: "browser" },
-      { kind: "list" }, { kind: "stepCard" }, { kind: "progress" }, { kind: "code" }, { kind: "terminal" },
+      { kind: "list" }, { kind: "stepCard" }, { kind: "cardFlow" }, { kind: "specRow" }, { kind: "docStack" }, { kind: "progress" }, { kind: "code" }, { kind: "terminal" },
       { kind: "table" }, { kind: "phone" }, { kind: "aiChat" },
     ],
     tab2: { label: "开发", items: DEV_ITEMS },
