@@ -4,6 +4,31 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
+## [0.1.9] - 2026-10-20
+
+### 新增
+
+- 新元素 9 种(元素协议 35 → 44):胶囊组(实心/浅底/描边/虚线四态 + 左中右对齐 + typewriter 逐枚)、圆环节点(外光晕 + 内虚环,文字按环内宽收敛字号)、编号叠纸列(1…K 叠纸 + 段间竖排省略号)、回环箭头(U 形折返,side 定折返方向、depth 自适应、标签画折返段外侧)、流程卡组(逐卡揭示)、规格行、文档堆、吉祥物(折角纸片精 / 圆角机器人 × 三种情绪)、纸屑;开发节点另加渐进点阵
+- 图表表达力:柱状图分组对比 `groups[{label,values,deltas}]` 与逐组系列名(柱顶差异药丸)、期刊风线尾标注 `endLabels`(替代顶部图例)、三图表副标题 `subtitle`、折线系列级 `dash` 虚线 + 空心点对照
+- 场景与动效:场景旁白条 `caption`、标题副行 `title.sub`、分组面板副标题与 `dash` 虚线候选框、连线 `dash` 弱关系虚线、星芒 `burst` 强调、戏剧化入场四件套(wobble 果冻摆定 / bounce 弹跳落地 / flip 翻面 / swing 吊摆)、入场后持续悬浮 `float`
+- 叙事示例补全:新增 `harness-loop.json`(5 幕 39 元素的学术信息图活例)、`explainer.json`(拟人科普)与 `git-tutorial`/`refactor-diff`/`request-flow`/`bench-chart`/`debug-story`/`web-vitals` 六个叙事 demo;`bench-chart` 补分组柱图与线尾标注两幕
+- AI 协议:叙事配方库增「学术信息图」模板(共 12 个)并重写图表模板(分组对比 / 虚线对照 / 线尾标注 / 副标题);元素选型速查补齐 44 种 kind(补回漏列的 `image`);协议投递新增 `infographic-example.json`
+
+### 修复
+
+- 分组柱图柱底错位:柱顶把高度与基线重复相减,除满高柱外全部下沉并盖住组标签;顺带修正组内柱数不一致时溢出、细柱过窄
+- `barChart.groups` 缺 `values` 时整帧绘制崩溃(归一化守卫 + 渲染层兜底,补几何回归测试)
+- 逐卡揭示与星芒强调用 `=` 覆盖入场 alpha,元素不淡入
+- `smooth` 折线原为中点二次贝塞尔,曲线只穿过相邻点中点、数据点圆点全飘在线外;改 Catmull-Rom 转三次贝塞尔,端点用重复点夹取
+- 连线声明不支持悬浮却仍叠加位移,导致端点脱钩;归一化直接剔除
+- 回环箭头 wipe 入场被元素框裁成一条竖线(按折返段回写包围盒)
+- 标题副行 `title.sub` 定义后未被绘制;圆环节点多字时溢出圆环(按环内宽等比缩字号)
+
+### 变更
+
+- 渲染层拆文件守单文件规模:抽 `chartsCommon.ts` 断开图表与分组柱图的循环依赖,折线图独立为 `chartsLine.ts`
+- 新增 `protocolDocs.test.ts`:文档与实现漂移即测试失败(元素表/种数/标签键集/选型速查/配方计数);README、schema、skill、ai-workflow 对齐 44 种元素与 12 个模板
+
 ## [0.1.8] - 2026-10-19
 
 ### 新增

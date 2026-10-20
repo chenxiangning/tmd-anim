@@ -88,8 +88,8 @@ pnpm tauri:dev  # 桌面壳(项目落盘 ~/.tmd-anim/projects/)
 
 ## 版本与发布
 
-版本号三处同步:`package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`。
-发版流程:在 [`CHANGELOG.md`](CHANGELOG.md) 追加 `## [x.y.z] - 日期` 小节 → 三处改版本号 →
+版本号四处同步:`package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` / `src-tauri/Cargo.lock`。
+发版流程:在 [`CHANGELOG.md`](CHANGELOG.md) 追加 `## [x.y.z] - 日期` 小节 → 四处改版本号 →
 提交后推 tag(`git tag vX.Y.Z && git push --tags`)→ CI 自动构建产物并建 Draft Release,
 正文自动抠取 CHANGELOG 对应小节。
 

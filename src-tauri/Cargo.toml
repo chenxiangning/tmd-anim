@@ -1,6 +1,6 @@
 [package]
 name = "tmd-anim"
-version = "0.1.8"
+version = "0.1.9"
 description = "Technical animation video studio"
 authors = ["Chen Xiangning"]
 license = "MIT"
