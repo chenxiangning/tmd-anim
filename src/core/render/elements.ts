@@ -1,4 +1,5 @@
 import type { ArtTextElement, BadgeElement, InputElement, NoteElement, ShapeElement, TextElement, TitleElement } from "../types";
+import { easingByName } from "./anim";
 import { traceShape } from "./shapeGeo";
 import { drawRichText, roundRect, sansFont } from "./text";
 
@@ -64,13 +65,19 @@ export function drawTitle(ctx: CanvasRenderingContext2D, el: TitleElement, progr
   const fontSize = el.fontSize ?? 64;
   // 有副标题时主标题收进上方 78%,副标题占底部一条(居中小字灰)
   const subH = el.sub ? fontSize * 0.85 : 0;
-  drawRichText(ctx, el.x, el.y, el.w, el.h - subH, el.text, {
-    fontSize,
-    color: el.color ?? "#111827",
-    align: "center",
-    highlights: el.highlight,
-    progress,
-  });
+  const mainH = el.h - subH;
+  // 逐字入场:单行且无高亮芯片时按字符错峰上浮;其余情形回落普通绘制
+  if (el.kinetic && progress != null && !(el.highlight && el.highlight.length > 0) && !el.text.includes("\n")) {
+    drawKineticText(ctx, el, mainH, progress);
+  } else {
+    drawRichText(ctx, el.x, el.y, el.w, mainH, el.text, {
+      fontSize,
+      color: el.color ?? "#111827",
+      align: "center",
+      highlights: el.highlight,
+      progress,
+    });
+  }
   if (el.sub) {
     drawRichText(ctx, el.x, el.y + el.h - subH, el.w, subH, el.sub, {
       fontSize: Math.max(14, fontSize * 0.36),
@@ -79,6 +86,33 @@ export function drawTitle(ctx: CanvasRenderingContext2D, el: TitleElement, progr
       progress,
     });
   }
+}
+
+/** 逐字入场:按字符错峰上浮浮现(spring 缓动),字符宽实测排布,居中与 drawRichText 对齐 */
+function drawKineticText(ctx: CanvasRenderingContext2D, el: TitleElement, mainH: number, progress: number): void {
+  const fontSize = el.fontSize ?? 64;
+  const chars = Array.from(el.text);
+  ctx.save();
+  ctx.font = sansFont(fontSize, 600);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = el.color ?? "#111827";
+  const widths = chars.map((c) => ctx.measureText(c).width);
+  const total = widths.reduce((a, b) => a + b, 0);
+  const ly = el.y + mainH / 2 + 1;
+  let lx = el.x + (el.w - total) / 2;
+  const n = chars.length;
+  const step = n > 1 ? Math.min(0.06, 0.5 / (n - 1)) : 0;
+  const span = 1 - step * (n - 1);
+  const spring = easingByName("spring");
+  for (let i = 0; i < n; i++) {
+    const ci = Math.min(1, Math.max(0, (progress - i * step) / span));
+    const e = spring(ci);
+    ctx.globalAlpha = Math.min(1, ci * 3);
+    ctx.fillText(chars[i] as string, lx, ly + (1 - e) * fontSize * 0.38);
+    lx += widths[i] as number;
+  }
+  ctx.restore();
 }
 
 export function drawArtText(ctx: CanvasRenderingContext2D, el: ArtTextElement, progress?: number): void {

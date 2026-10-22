@@ -35,15 +35,16 @@ function selectionCheatSheet(): string[] {
     "- 流程节点=shape(9 变体;sketch:true 手绘抖动;节点文字写 shape.text)",
     "- 架构资源=devNode(dev:database/redis/obs/cloud/server/api/queue/container/gateway/loadBalancer/cdn/auth/function/git,label 主名 + sub 规格);数据可视化=barChart/lineChart/pieChart(数据驱动,配 typewriter 逐段生长)",
     "- 设备与界面=phone 手机/browser 浏览器窗口(内容区可叠其他元素)/image 图片(src 为绝对路径或 dataURL,radius 圆角,contain 不裁切);AI 对话=aiChat(prompt 用户问/reply AI 答);UI 演示三件套=cursor(路径+点击+拖拽)/folderTree(逐行展开)/codeDiff(行级增删改)",
+    "- 背景氛围=aurora 极光背景(2-3 色柔光慢漂,elements[0] 垫底,可与 gridBg 叠用)/gridBg 坐标纸",
     "- 步骤与要点=stepCard 步骤卡/list 要点;结构容器=groupPanel 分组卡/lane 泳道(gridBg 坐标纸垫底,spotlight 暗角聚焦);角色=avatar 头像/person 方块人",
     "- 拟人角色=mascot 吉祥物(variant:doc 文档精/bot 机器人;happy/wink/worried 表情,badge 胸牌,label 名牌),配 shape:speechBubble 对话框做「角色说话」;庆祝=confetti 纸屑(mode:rain 飘落循环/burst 一次迸发,种子确定性)",
     "- 数据=table 表格/arrayCells 色块数组(支持 activeIndex 高亮格游移);终端=terminal,代码=code(emphasis.highlightLines 可扫行高亮);状态=progress 进度/kbd 按键/badge 徽章/note 便签/input 输入框",
     "- 信息图小件=cardFlow 流程卡组(编号横排+卡间箭头+active 高亮)/specRow 规格行(编号+标题+mono 路径+徽章)/docStack 文档堆/cardFlow 与 specRow 常嵌在 groupPanel 里;胶囊组=chipRow(一排彩色胶囊 style:solid/tint/outline/dashed,表达 DOM/INV/候选这类变体);抽象角色=ringNode 圆环节点(模型/内核);样本量=stackList 编号叠纸(1 … K,段间省略号)",
     "- 分组柱图=barChart.groups([{label, values, deltas}])+groupSeries(系列图例),deltas 出柱顶增益药丸;折线对照=lineChart series[].dash 虚线(空心点)+endLabels 线尾直接标名;三类图都支持 subtitle 副标题",
     "- 连线=connector:fromEl/toEl 绑元素自动跟随,route:elbow 直角避让,dash:true 虚线表次要关系;emphasis.dashFlow 让虚线流动表数据流;跨面板的反馈回环用 loopArrow(side:bottom 向下折返 + label),它强制绕一圈,比 connector 更能表达「回到开头」",
-    "- 场景级:scene.caption 一句旁白(固定画在画布底部白条,拟人科普叙事每幕一句);转场幕=整屏 shape 矩形垫底 + 大字 title",
+    "- 场景级:scene.caption 一句旁白(固定画在画布底部白条,拟人科普叙事每幕一句);scene.transition 入幕转场(dissolve/fadeBlack/pushLeft/pushRight/wipe/zoom,幕与幕之间别再硬切);scene.camera 场景相机(from→to 连续推拉摇,给关键幕加 Ken Burns 运镜);转场幕=整屏 shape 矩形垫底 + 大字 title",
     "- 时间轴三段(元素级可选字段):exit 离场动画(fadeOut/四向滑出/zoomOut/wipeOut);emphasis[] 强调(pulse/shake/glow/flash/ring/burst 星芒迸发/highlightLines/dashFlow);tweens[] 属性补间(progress.percent 进度走值/arrayCells.activeIndex 高亮格游移)",
-    "- 入场特效差异化:同一幕的关键元素别全用 pop——主角 flip 翻面/bounce 弹跳/配角 wobble 果冻/人物 swing 吊摆;元素加 float: true 入场后持续悬浮(呼吸感,amp/period 可调),吉祥物与徽章物件都建议开",
+    "- 入场特效差异化:同一幕的关键元素别全用 pop——主角 flip 翻面/bounce 弹跳/配角 wobble 果冻/人物 swing 吊摆;标题 kinetic: true 逐字上浮(配 easing:\"spring\" 弹簧缓动);元素加 float: true 入场后持续悬浮(呼吸感,amp/period 可调),吉祥物与徽章物件都建议开",
   ];
 }
 

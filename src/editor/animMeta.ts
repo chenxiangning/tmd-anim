@@ -44,6 +44,7 @@ export const EASING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "easeOut", label: "缓出" },
   { value: "easeInOut", label: "缓入缓出" },
   { value: "back", label: "回弹" },
+  { value: "spring", label: "弹簧" },
   { value: "linear", label: "线性" },
 ];
 

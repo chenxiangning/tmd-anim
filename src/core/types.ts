@@ -21,7 +21,7 @@ export type AnimType =
   | "draw";
 
 /** 缓动:缺省(auto)时按动画类型取默认(pop/spinIn/dropDown 回弹,typewriter 线性,其余缓出) */
-export type EasingKind = "linear" | "easeOut" | "easeInOut" | "back";
+export type EasingKind = "linear" | "easeOut" | "easeInOut" | "back" | "spring";
 
 export interface Anim {
   type: AnimType;
@@ -110,6 +110,8 @@ export interface TitleElement extends ElementBase {
   highlight?: string[];
   fontSize?: number;
   color?: string;
+  /** 逐字入场:主标题按字符错峰浮现(入度 progress 驱动,配合 spring 缓动最佳);副标题不受影响 */
+  kinetic?: boolean;
 }
 
 export interface ArtTextElement extends ElementBase {
@@ -601,7 +603,21 @@ export type SceneElement =
   | QuoteElement | FormulaElement | AvatarElement | PersonElement
   | MascotElement | ConfettiElement
   | CardFlowElement | SpecRowElement | DocStackElement
-  | ChipRowElement | RingNodeElement | LoopArrowElement | StackListElement;
+  | ChipRowElement | RingNodeElement | LoopArrowElement | StackListElement
+  | AuroraBgElement;
+
+/** 动态极光背景:2-3 团柔光大色斑按 seed 相位慢漂;全屏垫底,与 gridBg 同层使用 */
+export interface AuroraBgElement extends ElementBase {
+  kind: "aurora";
+  /** 色斑颜色 2-3 个,缺省靛/青/玫的柔和组 */
+  colors?: string[];
+  /** 整体不透明度 0-1(缺省 0.22) */
+  opacity?: number;
+  /** 漂移速度倍率 0.1-3(缺省 1) */
+  speed?: number;
+  /** 相位种子:同种子恒同画面(导出确定性) */
+  seed?: number;
+}
 
 export interface Scene {
   id: string;
@@ -614,6 +630,19 @@ export interface Scene {
    *  >1 压缩 / <1 拉伸,变速不变调);duration 为探测的原始时长(秒,编辑器自动回填)。
    *  配音有效时长(duration/rate)超过画面时场景自动延长,保证播完再切幕。 */
   audio?: { src: string; volume?: number; rate?: number; duration?: number };
+  /** 入幕转场:本幕开头 duration(缺省 0.6s)内从上一幕末帧过渡;dissolve 溶解 /
+   *  fadeBlack 压黑 / pushLeft|pushRight 推镜 / wipe 擦除 / zoom 推近。首幕无效果 */
+  transition?: { type: TransitionType; duration?: number };
+  /** 场景相机:整幕连续运镜(from→to 按缓动插值),zoom ≥1 画布中心放大,x/y 像素平移 */
+  camera?: { from?: CameraPose; to?: CameraPose; easing?: EasingKind };
+}
+
+export type TransitionType = "dissolve" | "fadeBlack" | "pushLeft" | "pushRight" | "wipe" | "zoom";
+
+export interface CameraPose {
+  zoom?: number;
+  x?: number;
+  y?: number;
 }
 
 export interface Project {

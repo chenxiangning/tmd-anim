@@ -1,4 +1,4 @@
-import type { GridBgElement, GroupPanelElement, LaneElement, SpotlightElement } from "../types";
+import type { AuroraBgElement, GridBgElement, GroupPanelElement, LaneElement, SpotlightElement } from "../types";
 import { roundRect, sansFont } from "./text";
 
 /**
@@ -9,6 +9,39 @@ import { roundRect, sansFont } from "./text";
 
 const MUTED = "#64748B";
 const LANE_COLORS = ["#F8FAFC", "#F1F5F9", "#EEF2FF", "#ECFEFF"];
+const AURORA_DEFAULT = ["#818CF8", "#67E8F9", "#F9A8D4"];
+
+/** hex -> rgba;非 hex 输入原样返回(渐变端直接用) */
+function withAlpha(color: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return color;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+/** 动态极光背景:每色一团径向柔光,围绕画布中心按 seed 相位慢漂;(el.x/y/w/h, localT) 纯函数 */
+export function drawAurora(ctx: CanvasRenderingContext2D, el: AuroraBgElement, localT: number): void {
+  const w = el.w;
+  const h = el.h;
+  const colors = el.colors && el.colors.length >= 2 ? el.colors : AURORA_DEFAULT;
+  const opacity = el.opacity ?? 0.22;
+  const speed = el.speed ?? 1;
+  const seed = el.seed ?? 0;
+  const r = Math.max(w, h) * 0.62;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  for (let i = 0; i < colors.length; i++) {
+    const phase = seed * 7.3 + i * 2.1;
+    const cx = el.x + w / 2 + Math.cos(localT * 0.3 * speed + phase) * w * 0.27;
+    const cy = el.y + h / 2 + Math.sin(localT * 0.23 * speed + phase * 1.7) * h * 0.25;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, withAlpha(colors[i] as string, 1));
+    g.addColorStop(1, withAlpha(colors[i] as string, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(el.x, el.y, w, h);
+  }
+  ctx.restore();
+}
 
 /** 聚光灯:全屏暗角,只亮本元素几何区;孔 = 内切椭圆或圆角矩形(r=24) */
 export function drawSpotlight(ctx: CanvasRenderingContext2D, el: SpotlightElement): void {

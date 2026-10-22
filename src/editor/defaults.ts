@@ -38,6 +38,7 @@ export const KIND_LABELS: Record<SceneElement["kind"], string> = {
   codeDiff: "代码对比",
   spotlight: "聚光灯",
   gridBg: "网格背景",
+  aurora: "极光背景",
   groupPanel: "分组面板",
   lane: "泳道",
   quote: "引用",
@@ -98,6 +99,7 @@ export const KIND_ORDER: ReadonlyArray<SceneElement["kind"]> = [
   "groupPanel",
   "lane",
   "gridBg",
+  "aurora",
   "spotlight",
   "quote",
   "formula",
@@ -146,6 +148,7 @@ export function kindColor(kind: SceneElement["kind"]): string {
     codeDiff: "#16A34A",
     spotlight: "#F59E0B",
     gridBg: "#94A3B8",
+    aurora: "#818CF8",
     groupPanel: "#64748B",
     lane: "#0EA5E9",
     quote: "#8B5CF6",
@@ -312,6 +315,8 @@ export function createElement(kind: SceneElement["kind"], x: number, y: number, 
       return { ...base, kind, x: x - 280, y: y - 160, w: 560, h: 320, shape: "rect", strength: 0.65, anim: { type: "fade", start: 0, duration: 0.4 } };
     case "gridBg":
       return { ...base, kind, x: 0, y: 0, w: 1920, h: 1080, step: 40, anim: { type: "fade", start: 0, duration: 0.3 } };
+    case "aurora":
+      return { ...base, kind, x: 0, y: 0, w: 1920, h: 1080, anim: { type: "fade", start: 0, duration: 0.6 } };
     case "groupPanel":
       return { ...base, kind, w: 560, h: 360, title: "核心服务", accent: "#3B82F6", anim: { type: "fade", start: 0, duration: 0.4 } };
     case "lane":
@@ -408,6 +413,9 @@ export function elementLabel(el: SceneElement): string {
       break;
     case "gridBg":
       raw = "网格背景";
+      break;
+    case "aurora":
+      raw = "极光背景";
       break;
     case "groupPanel":
       raw = el.title ?? "分组面板";

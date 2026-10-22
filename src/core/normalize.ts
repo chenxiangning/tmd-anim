@@ -1,4 +1,4 @@
-import type { Anim, EmphasisEvent, ExitAnim, Project, Scene, SceneElement, Tween } from "./types";
+import type { Anim, CameraPose, EasingKind, EmphasisEvent, ExitAnim, Project, Scene, SceneElement, TransitionType, Tween } from "./types";
 
 /**
  * 宽容归一化:agent 产出的 JSON 允许缺字段/类型跑偏,这里补默认值、钳边界,
@@ -24,7 +24,7 @@ const ANIM_TYPES: Record<string, true> = {
   flip: true,
   swing: true,
 };
-const EASINGS = new Set<string>(["linear", "easeOut", "easeInOut", "back"]);
+const EASINGS: Record<string, true> = { linear: true, easeOut: true, easeInOut: true, back: true, spring: true };
 /** 全部合法元素 kind 表:归一化据此跳过未知类型;CLI lint 也用它报「会被静默吞掉」的 kind */
 export const ELEMENT_KINDS: Record<string, true> = {
   title: true,
@@ -56,6 +56,7 @@ export const ELEMENT_KINDS: Record<string, true> = {
   codeDiff: true,
   spotlight: true,
   gridBg: true,
+  aurora: true,
   groupPanel: true,
   lane: true,
   mascot: true,
@@ -152,6 +153,41 @@ function normalizeScene(raw: Record<string, unknown>, index: number): Scene {
     }),
     caption: typeof raw.caption === "string" && raw.caption.trim().length > 0 ? raw.caption.trim() : undefined,
     audio: normalizeSceneAudio(raw.audio),
+    transition: normalizeTransition(raw.transition),
+    camera: normalizeCamera(raw.camera),
+  };
+}
+
+/** 转场宽容归一:类型不在白名单丢弃;duration 钳 0.2-2 */
+function normalizeTransition(raw: unknown): Scene["transition"] {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const r = raw as Record<string, unknown>;
+  const types: Record<string, true> = { dissolve: true, fadeBlack: true, pushLeft: true, pushRight: true, wipe: true, zoom: true };
+  if (typeof r.type !== "string" || types[r.type] !== true) return undefined;
+  return { type: r.type as TransitionType, duration: Math.min(2, Math.max(0.2, num(r.duration, 0.6))) };
+}
+
+/** 相机宽容归一:pose 只收有限数,zoom 钳 1-3;x/y 钳 ±画布对角(渲染侧再按画布钳) */
+function normalizeCamera(raw: unknown): Scene["camera"] {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const r = raw as Record<string, unknown>;
+  const pose = (v: unknown): CameraPose | undefined => {
+    if (typeof v !== "object" || v === null) return undefined;
+    const p = v as Record<string, unknown>;
+    const out: CameraPose = {};
+    if (Number.isFinite(Number(p.zoom))) out.zoom = Math.min(3, Math.max(1, Number(p.zoom)));
+    if (Number.isFinite(Number(p.x))) out.x = Math.min(2000, Math.max(-2000, Number(p.x)));
+    if (Number.isFinite(Number(p.y))) out.y = Math.min(2000, Math.max(-2000, Number(p.y)));
+    return Object.keys(out).length > 0 ? out : undefined;
+  };
+  const from = pose(r.from);
+  const to = pose(r.to);
+  if (!from && !to) return undefined;
+  const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : undefined;
+  return {
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+    ...(easing ? { easing: easing as EasingKind } : {}),
   };
 }
 
@@ -171,7 +207,7 @@ function normalizeSceneAudio(raw: unknown): { src: string; volume: number; rate:
 
 function normalizeAnim(raw: Record<string, unknown>): Anim {
   const type = typeof raw.type === "string" && ANIM_TYPES[raw.type] === true ? raw.type : "fade";
-  const easing = typeof raw.easing === "string" && EASINGS.has(raw.easing) ? raw.easing : undefined;
+  const easing = typeof raw.easing === "string" && EASINGS[raw.easing] === true ? raw.easing : undefined;
   return {
     type: type as Anim["type"],
     start: Math.max(0, num(raw.start, 0)),
@@ -185,7 +221,7 @@ function normalizeExit(raw: unknown, entranceEnd: number): ExitAnim | undefined 
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
   const r = raw as Record<string, unknown>;
   if (typeof r.type !== "string" || EXIT_TYPES[r.type] !== true) return undefined;
-  const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : undefined;
+  const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : undefined;
   return {
     type: r.type as ExitAnim["type"],
     start: Math.max(entranceEnd, num(r.start, entranceEnd)),
@@ -205,7 +241,7 @@ function normalizeEmphasis(raw: unknown, exitStart: number | undefined): Emphasi
     const start = num(r.start, 0);
     if (start < 0) continue;
     if (exitStart !== undefined && start >= exitStart) continue;
-    const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : undefined;
+    const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : undefined;
     const strength = num(r.strength, 1);
     const ev: EmphasisEvent = {
       type: r.type as EmphasisEvent["type"],
@@ -236,7 +272,7 @@ function normalizeTweens(raw: unknown, kind: string): Tween[] {
     const r = item as Record<string, unknown>;
     if (typeof r.field !== "string" || TWEEN_FIELDS[r.field] !== true || TWEEN_FIELD_KIND[r.field] !== kind) continue;
     if (!Number.isFinite(Number(r.to))) continue;
-    const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : undefined;
+    const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : undefined;
     const tw: Tween = {
       field: r.field as Tween["field"],
       to: Number(r.to),
@@ -281,6 +317,19 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     if (connector.sketch !== undefined && typeof connector.sketch !== "boolean") delete connector.sketch;
     if (connector.sketchSeed !== undefined && (typeof connector.sketchSeed !== "number" || !Number.isFinite(connector.sketchSeed))) delete connector.sketchSeed;
     if (connector.shadow !== undefined && typeof connector.shadow !== "boolean") delete connector.shadow;
+  }
+  // 标题逐字入场:非布尔丢弃
+  if (el.kind === "title" && connector.kinetic !== undefined && typeof connector.kinetic !== "boolean") delete connector.kinetic;
+  // 极光背景:colors 只收 2-3 个字符串色,opacity 钳 0-1,speed 钳 0.1-3,seed 非有限数丢弃
+  if (el.kind === "aurora") {
+    if (connector.colors !== undefined) {
+      const ok = Array.isArray(connector.colors) && connector.colors.length >= 2 && connector.colors.length <= 3
+        && connector.colors.every((c: unknown) => typeof c === "string" && c.length > 0);
+      if (!ok) delete connector.colors;
+    }
+    if (connector.opacity !== undefined) connector.opacity = Math.min(1, Math.max(0, num(connector.opacity, 0.22)));
+    if (connector.speed !== undefined) connector.speed = Math.min(3, Math.max(0.1, num(connector.speed, 1)));
+    if (connector.seed !== undefined && (typeof connector.seed !== "number" || !Number.isFinite(connector.seed))) delete connector.seed;
   }
   // AI 对话卡:title/prompt/reply 非字符串丢弃
   if (el.kind === "aiChat") {

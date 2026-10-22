@@ -88,7 +88,7 @@ export function CanvasStage({ project, t, selIds, previewing, onSelectIds, onLiv
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cw, ch);
       ctx.setTransform(dpr * next.scale, 0, 0, dpr * next.scale, dpr * next.ox, dpr * next.oy);
-      drawFrame(ctx, project, t);
+      drawFrame(ctx, project, t, previewing ? undefined : { ignoreCamera: true });
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!previewing && scene) {
         if (hoverId) {

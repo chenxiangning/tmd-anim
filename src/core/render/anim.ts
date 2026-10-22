@@ -24,7 +24,14 @@ const EASING_FNS: Record<string, EasingFn> = {
   easeOut: easeOutCubic,
   easeInOut: easeInOutCubic,
   back: easeOutBack,
+  // 弹簧:衰减振荡,一次过冲后回稳(近似阻尼谐振子),终点收敛到 1
+  spring: (p) => 1 - Math.exp(-6 * p) * Math.cos(9 * p),
 };
+
+/** 按名取缓动:未知/缺省回落缓出(相机与补间等非 Anim 场景共用) */
+export function easingByName(name: string | undefined): EasingFn {
+  return EASING_FNS[name ?? ""] ?? easeOutCubic;
+}
 
 /** 标准弹跳缓出: bounce 公式自含多次触地,作 bounce 入场的驱动曲线 */
 function bounceOut(p: number): number {

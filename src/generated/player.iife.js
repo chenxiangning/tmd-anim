@@ -185,12 +185,13 @@
 		flip: true,
 		swing: true
 	};
-	var EASINGS = /* @__PURE__ */ new Set([
-		"linear",
-		"easeOut",
-		"easeInOut",
-		"back"
-	]);
+	var EASINGS = {
+		linear: true,
+		easeOut: true,
+		easeInOut: true,
+		back: true,
+		spring: true
+	};
 	/** 全部合法元素 kind 表:归一化据此跳过未知类型;CLI lint 也用它报「会被静默吞掉」的 kind */
 	var ELEMENT_KINDS = {
 		title: true,
@@ -222,6 +223,7 @@
 		codeDiff: true,
 		spotlight: true,
 		gridBg: true,
+		aurora: true,
 		groupPanel: true,
 		lane: true,
 		mascot: true,
@@ -331,7 +333,49 @@
 				return el ? [el] : [];
 			}),
 			caption: typeof raw.caption === "string" && raw.caption.trim().length > 0 ? raw.caption.trim() : void 0,
-			audio: normalizeSceneAudio(raw.audio)
+			audio: normalizeSceneAudio(raw.audio),
+			transition: normalizeTransition(raw.transition),
+			camera: normalizeCamera(raw.camera)
+		};
+	}
+	/** 转场宽容归一:类型不在白名单丢弃;duration 钳 0.2-2 */
+	function normalizeTransition(raw) {
+		if (typeof raw !== "object" || raw === null) return void 0;
+		const r = raw;
+		if (typeof r.type !== "string" || {
+			dissolve: true,
+			fadeBlack: true,
+			pushLeft: true,
+			pushRight: true,
+			wipe: true,
+			zoom: true
+		}[r.type] !== true) return void 0;
+		return {
+			type: r.type,
+			duration: Math.min(2, Math.max(.2, num(r.duration, .6)))
+		};
+	}
+	/** 相机宽容归一:pose 只收有限数,zoom 钳 1-3;x/y 钳 ±画布对角(渲染侧再按画布钳) */
+	function normalizeCamera(raw) {
+		if (typeof raw !== "object" || raw === null) return void 0;
+		const r = raw;
+		const pose = (v) => {
+			if (typeof v !== "object" || v === null) return void 0;
+			const p = v;
+			const out = {};
+			if (Number.isFinite(Number(p.zoom))) out.zoom = Math.min(3, Math.max(1, Number(p.zoom)));
+			if (Number.isFinite(Number(p.x))) out.x = Math.min(2e3, Math.max(-2e3, Number(p.x)));
+			if (Number.isFinite(Number(p.y))) out.y = Math.min(2e3, Math.max(-2e3, Number(p.y)));
+			return Object.keys(out).length > 0 ? out : void 0;
+		};
+		const from = pose(r.from);
+		const to = pose(r.to);
+		if (!from && !to) return void 0;
+		const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : void 0;
+		return {
+			...from ? { from } : {},
+			...to ? { to } : {},
+			...easing ? { easing } : {}
 		};
 	}
 	/** 配音宽容归一:src 非字符串视为无配音;volume 钳 0-2;rate 钳 0.25-4;duration 仅收正数 */
@@ -349,7 +393,7 @@
 	}
 	function normalizeAnim(raw) {
 		const type = typeof raw.type === "string" && ANIM_TYPES[raw.type] === true ? raw.type : "fade";
-		const easing = typeof raw.easing === "string" && EASINGS.has(raw.easing) ? raw.easing : void 0;
+		const easing = typeof raw.easing === "string" && EASINGS[raw.easing] === true ? raw.easing : void 0;
 		return {
 			type,
 			start: Math.max(0, num(raw.start, 0)),
@@ -362,7 +406,7 @@
 		if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return void 0;
 		const r = raw;
 		if (typeof r.type !== "string" || EXIT_TYPES[r.type] !== true) return void 0;
-		const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : void 0;
+		const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : void 0;
 		return {
 			type: r.type,
 			start: Math.max(entranceEnd, num(r.start, entranceEnd)),
@@ -381,7 +425,7 @@
 			const start = num(r.start, 0);
 			if (start < 0) continue;
 			if (exitStart !== void 0 && start >= exitStart) continue;
-			const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : void 0;
+			const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : void 0;
 			const strength = num(r.strength, 1);
 			const ev = {
 				type: r.type,
@@ -410,7 +454,7 @@
 			const r = item;
 			if (typeof r.field !== "string" || TWEEN_FIELDS[r.field] !== true || TWEEN_FIELD_KIND[r.field] !== kind) continue;
 			if (!Number.isFinite(Number(r.to))) continue;
-			const easing = typeof r.easing === "string" && EASINGS.has(r.easing) ? r.easing : void 0;
+			const easing = typeof r.easing === "string" && EASINGS[r.easing] === true ? r.easing : void 0;
 			const tw = {
 				field: r.field,
 				to: Number(r.to),
@@ -450,6 +494,15 @@
 			if (connector.sketch !== void 0 && typeof connector.sketch !== "boolean") delete connector.sketch;
 			if (connector.sketchSeed !== void 0 && (typeof connector.sketchSeed !== "number" || !Number.isFinite(connector.sketchSeed))) delete connector.sketchSeed;
 			if (connector.shadow !== void 0 && typeof connector.shadow !== "boolean") delete connector.shadow;
+		}
+		if (el.kind === "title" && connector.kinetic !== void 0 && typeof connector.kinetic !== "boolean") delete connector.kinetic;
+		if (el.kind === "aurora") {
+			if (connector.colors !== void 0) {
+				if (!(Array.isArray(connector.colors) && connector.colors.length >= 2 && connector.colors.length <= 3 && connector.colors.every((c) => typeof c === "string" && c.length > 0))) delete connector.colors;
+			}
+			if (connector.opacity !== void 0) connector.opacity = Math.min(1, Math.max(0, num(connector.opacity, .22)));
+			if (connector.speed !== void 0) connector.speed = Math.min(3, Math.max(.1, num(connector.speed, 1)));
+			if (connector.seed !== void 0 && (typeof connector.seed !== "number" || !Number.isFinite(connector.seed))) delete connector.seed;
 		}
 		if (el.kind === "aiChat") {
 			for (const key of [
@@ -789,8 +842,13 @@
 		linear: (p) => p,
 		easeOut: easeOutCubic,
 		easeInOut: easeInOutCubic,
-		back: easeOutBack
+		back: easeOutBack,
+		spring: (p) => 1 - Math.exp(-6 * p) * Math.cos(9 * p)
 	};
+	/** 按名取缓动:未知/缺省回落缓出(相机与补间等非 Anim 场景共用) */
+	function easingByName(name) {
+		return EASING_FNS[name ?? ""] ?? easeOutCubic;
+	}
 	/** 标准弹跳缓出: bounce 公式自含多次触地,作 bounce 入场的驱动曲线 */
 	function bounceOut(p) {
 		const n1 = 7.5625;
@@ -1978,7 +2036,9 @@
 	function drawTitle$1(ctx, el, progress) {
 		const fontSize = el.fontSize ?? 64;
 		const subH = el.sub ? fontSize * .85 : 0;
-		drawRichText(ctx, el.x, el.y, el.w, el.h - subH, el.text, {
+		const mainH = el.h - subH;
+		if (el.kinetic && progress != null && !(el.highlight && el.highlight.length > 0) && !el.text.includes("\n")) drawKineticText(ctx, el, mainH, progress);
+		else drawRichText(ctx, el.x, el.y, el.w, mainH, el.text, {
 			fontSize,
 			color: el.color ?? "#111827",
 			align: "center",
@@ -1991,6 +2051,32 @@
 			align: "center",
 			progress
 		});
+	}
+	/** 逐字入场:按字符错峰上浮浮现(spring 缓动),字符宽实测排布,居中与 drawRichText 对齐 */
+	function drawKineticText(ctx, el, mainH, progress) {
+		const fontSize = el.fontSize ?? 64;
+		const chars = Array.from(el.text);
+		ctx.save();
+		ctx.font = sansFont(fontSize, 600);
+		ctx.textAlign = "left";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = el.color ?? "#111827";
+		const widths = chars.map((c) => ctx.measureText(c).width);
+		const total = widths.reduce((a, b) => a + b, 0);
+		const ly = el.y + mainH / 2 + 1;
+		let lx = el.x + (el.w - total) / 2;
+		const n = chars.length;
+		const step = n > 1 ? Math.min(.06, .5 / (n - 1)) : 0;
+		const span = 1 - step * (n - 1);
+		const spring = easingByName("spring");
+		for (let i = 0; i < n; i++) {
+			const ci = Math.min(1, Math.max(0, (progress - i * step) / span));
+			const e = spring(ci);
+			ctx.globalAlpha = Math.min(1, ci * 3);
+			ctx.fillText(chars[i], lx, ly + (1 - e) * fontSize * .38);
+			lx += widths[i];
+		}
+		ctx.restore();
 	}
 	function drawArtText(ctx, el, progress) {
 		const fontSize = el.fontSize ?? 96;
@@ -3645,7 +3731,7 @@
 	* 颜色工具:把 #RRGGBB / #RGB 追加 alpha 后缀。
 	* 非 hex(命名色 / rgb() / 变量)原样返回——拼错后缀会产出非法颜色,Canvas 会静默沿用上一色。
 	*/
-	function withAlpha(color, alphaHex) {
+	function withAlpha$1(color, alphaHex) {
 		const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(color.trim());
 		if (!m) return color;
 		const h = m[1];
@@ -3702,7 +3788,7 @@
 				ctx.setLineDash([]);
 				ctx.fillStyle = color;
 			} else {
-				ctx.fillStyle = withAlpha(color, "1F");
+				ctx.fillStyle = withAlpha$1(color, "1F");
 				ctx.fill();
 				ctx.fillStyle = color;
 			}
@@ -3724,7 +3810,7 @@
 		ctx.save();
 		ctx.beginPath();
 		ctx.arc(cx, cy, R, 0, Math.PI * 2);
-		ctx.fillStyle = withAlpha(accent, "12");
+		ctx.fillStyle = withAlpha$1(accent, "12");
 		ctx.fill();
 		ctx.beginPath();
 		ctx.arc(cx, cy, R - ringW * 1.6, 0, Math.PI * 2);
@@ -3735,7 +3821,7 @@
 		ctx.stroke();
 		ctx.beginPath();
 		ctx.arc(cx, cy, (R - ringW * 1.6) * .74, 0, Math.PI * 2);
-		ctx.strokeStyle = withAlpha(accent, "3D");
+		ctx.strokeStyle = withAlpha$1(accent, "3D");
 		ctx.lineWidth = Math.max(1.5, ringW * .35);
 		ctx.setLineDash([6, 6]);
 		ctx.stroke();
@@ -3778,9 +3864,9 @@
 		ctx.lineTo(x + w, y + fold);
 		ctx.lineTo(x + w - fold, y + fold);
 		ctx.closePath();
-		ctx.fillStyle = withAlpha(accent, "26");
+		ctx.fillStyle = withAlpha$1(accent, "26");
 		ctx.fill();
-		ctx.fillStyle = withAlpha(accent, "59");
+		ctx.fillStyle = withAlpha$1(accent, "59");
 		for (let l = 0; l < 3; l++) {
 			roundRect(ctx, x + w * .16, y + h * (.32 + l * .17), w * (.62 - l * .13), Math.max(2, h * .045), 2);
 			ctx.fill();
@@ -4584,6 +4670,41 @@
 		"#EEF2FF",
 		"#ECFEFF"
 	];
+	var AURORA_DEFAULT = [
+		"#818CF8",
+		"#67E8F9",
+		"#F9A8D4"
+	];
+	/** hex -> rgba;非 hex 输入原样返回(渐变端直接用) */
+	function withAlpha(color, alpha) {
+		const m = /^#([0-9a-f]{6})$/i.exec(color);
+		if (!m) return color;
+		const n = parseInt(m[1], 16);
+		return `rgba(${n >> 16 & 255}, ${n >> 8 & 255}, ${n & 255}, ${alpha})`;
+	}
+	/** 动态极光背景:每色一团径向柔光,围绕画布中心按 seed 相位慢漂;(el.x/y/w/h, localT) 纯函数 */
+	function drawAurora(ctx, el, localT) {
+		const w = el.w;
+		const h = el.h;
+		const colors = el.colors && el.colors.length >= 2 ? el.colors : AURORA_DEFAULT;
+		const opacity = el.opacity ?? .22;
+		const speed = el.speed ?? 1;
+		const seed = el.seed ?? 0;
+		const r = Math.max(w, h) * .62;
+		ctx.save();
+		ctx.globalAlpha = opacity;
+		for (let i = 0; i < colors.length; i++) {
+			const phase = seed * 7.3 + i * 2.1;
+			const cx = el.x + w / 2 + Math.cos(localT * .3 * speed + phase) * w * .27;
+			const cy = el.y + h / 2 + Math.sin(localT * .23 * speed + phase * 1.7) * h * .25;
+			const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+			g.addColorStop(0, withAlpha(colors[i], 1));
+			g.addColorStop(1, withAlpha(colors[i], 0));
+			ctx.fillStyle = g;
+			ctx.fillRect(el.x, el.y, w, h);
+		}
+		ctx.restore();
+	}
 	/** 聚光灯:全屏暗角,只亮本元素几何区;孔 = 内切椭圆或圆角矩形(r=24) */
 	function drawSpotlight(ctx, el) {
 		const strength = el.strength ?? .65;
@@ -5227,25 +5348,8 @@
 		ctx.restore();
 	}
 	//#endregion
-	//#region src/core/render/index.ts
-	/**
-	* 帧渲染入口:drawFrame(ctx, project, t) 是纯函数式的一帧绘制。
-	* 预览(rAF 循环)与将来的逐帧导出走这同一个函数,这是「预览即导出」的唯一保证点。
-	*/
-	function drawFrame(ctx, project, t) {
-		const w = project.canvas?.width ?? 1920;
-		const h = project.canvas?.height ?? 1080;
-		ctx.save();
-		ctx.fillStyle = project.canvas?.bg ?? "#F4F4F1";
-		ctx.fillRect(0, 0, w, h);
-		const { index, localT } = locate(project, t);
-		const scene = project.scenes[index];
-		if (scene) {
-			for (const el of scene.elements) drawElement(ctx, el, localT, scene.elements);
-			if (scene.caption) drawCaption(ctx, scene.caption, w, h);
-		}
-		ctx.restore();
-	}
+	//#region src/core/render/elementDraw.ts
+	/** 单元素绘制:补间 -> 入场/离场/强调/悬浮四段求值 -> 变换复合 -> kind 分发;旁白字幕条。 */
 	/** 旁白字幕条:白底圆角 + 深描边 + 居中文字,固定在画布底部 */
 	function drawCaption(ctx, text, w, h) {
 		const barH = 84;
@@ -5406,6 +5510,9 @@
 			case "gridBg":
 				drawGridBg(ctx, elT);
 				break;
+			case "aurora":
+				drawAurora(ctx, elT, localT);
+				break;
 			case "groupPanel":
 				drawGroupPanel(ctx, elT);
 				break;
@@ -5483,6 +5590,146 @@
 				ctx.fill();
 			}
 		}
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/sceneFrame.ts
+	/** 画一幕:元素在相机变换内,旁白字幕固定画布坐标(不随运镜)。 */
+	function drawScene(ctx, project, index, localT, w, h, opts) {
+		const scene = project.scenes[index];
+		if (!scene) return;
+		ctx.save();
+		if (!opts.ignoreCamera && scene.camera) applyCamera(ctx, cameraAt(scene, localT, sceneDuration(scene)), w, h);
+		for (const el of scene.elements) drawElement(ctx, el, localT, scene.elements);
+		ctx.restore();
+		if (scene.caption) drawCaption(ctx, scene.caption, w, h);
+	}
+	/** 转场:q 为 [0,1] 进度;当前幕按真实 localT 继续自己的入场动画,上一幕恒取其末帧。 */
+	function drawTransition(ctx, project, index, localT, q, type, w, h, opts) {
+		const e = easeInOutCubic(q);
+		const prevEnd = sceneDuration(project.scenes[index - 1]);
+		const cur = () => drawScene(ctx, project, index, localT, w, h, opts);
+		const prev = () => drawScene(ctx, project, index - 1, prevEnd, w, h, opts);
+		switch (type) {
+			case "dissolve":
+				prev();
+				ctx.save();
+				ctx.globalAlpha = e;
+				cur();
+				ctx.restore();
+				break;
+			case "fadeBlack":
+				if (e < .5) {
+					prev();
+					ctx.fillStyle = "#000000";
+					ctx.globalAlpha = e * 2;
+					ctx.fillRect(0, 0, w, h);
+					ctx.globalAlpha = 1;
+				} else {
+					cur();
+					ctx.fillStyle = "#000000";
+					ctx.globalAlpha = (1 - e) * 2;
+					ctx.fillRect(0, 0, w, h);
+					ctx.globalAlpha = 1;
+				}
+				break;
+			case "pushLeft":
+			case "pushRight": {
+				const dir = type === "pushLeft" ? 1 : -1;
+				ctx.save();
+				ctx.translate(-dir * w * e, 0);
+				prev();
+				ctx.restore();
+				ctx.save();
+				ctx.translate(dir * w * (1 - e), 0);
+				cur();
+				ctx.restore();
+				break;
+			}
+			case "wipe":
+				prev();
+				ctx.save();
+				ctx.beginPath();
+				ctx.rect(0, 0, w * e, h);
+				ctx.clip();
+				cur();
+				ctx.restore();
+				break;
+			case "zoom":
+				prev();
+				ctx.save();
+				ctx.globalAlpha = 1 - e;
+				zoomAround(ctx, 1 + .12 * e, w, h);
+				cur();
+				ctx.restore();
+				ctx.save();
+				ctx.globalAlpha = e;
+				zoomAround(ctx, 1.12 - .12 * e, w, h);
+				cur();
+				ctx.restore();
+		}
+	}
+	/** 绕画布中心缩放的临时变换(转场用) */
+	function zoomAround(ctx, zoom, w, h) {
+		ctx.translate(w / 2, h / 2);
+		ctx.scale(zoom, zoom);
+		ctx.translate(-w / 2, -h / 2);
+	}
+	/** 相机求值:from→to 随场景进度插值(缺省端 = zoom1/原点);纯函数。 */
+	function cameraAt(scene, localT, duration) {
+		const from = scene.camera?.from;
+		const to = scene.camera?.to;
+		const f = {
+			zoom: from?.zoom ?? 1,
+			x: from?.x ?? 0,
+			y: from?.y ?? 0
+		};
+		const o = {
+			zoom: to?.zoom ?? f.zoom,
+			x: to?.x ?? f.x,
+			y: to?.y ?? f.y
+		};
+		const q = duration > 0 ? Math.min(1, Math.max(0, localT / duration)) : 1;
+		const e = easingByName(scene.camera?.easing ?? "easeInOut")(q);
+		return {
+			zoom: f.zoom + (o.zoom - f.zoom) * e,
+			x: f.x + (o.x - f.x) * e,
+			y: f.y + (o.y - f.y) * e
+		};
+	}
+	/** 应用相机:画布中心放大 + 平移(平移随 zoom 同缩放,先加后缩)。 */
+	function applyCamera(ctx, cam, w, h) {
+		if (cam.zoom === 1 && cam.x === 0 && cam.y === 0) return;
+		ctx.translate(w / 2 + cam.x, h / 2 + cam.y);
+		ctx.scale(cam.zoom, cam.zoom);
+		ctx.translate(-w / 2, -h / 2);
+	}
+	//#endregion
+	//#region src/core/render/index.ts
+	/**
+	* 帧渲染入口:drawFrame(ctx, project, t) 是纯函数式的一帧绘制。
+	* 预览(rAF 循环)与将来的逐帧导出走这同一个函数,这是「预览即导出」的唯一保证点。
+	* 幕级装配(相机/转场)在 sceneFrame,单元素分发在 elementDraw。
+	*/
+	function drawFrame(ctx, project, t, opts = {}) {
+		const w = project.canvas?.width ?? 1920;
+		const h = project.canvas?.height ?? 1080;
+		ctx.save();
+		ctx.fillStyle = project.canvas?.bg ?? "#F4F4F1";
+		ctx.fillRect(0, 0, w, h);
+		const { index, localT } = locate(project, t);
+		const scene = project.scenes[index];
+		if (!scene) {
+			ctx.restore();
+			return;
+		}
+		const td = scene.transition?.duration ?? .6;
+		if (scene.transition && index > 0 && localT < td) {
+			drawTransition(ctx, project, index, localT, localT / td, scene.transition.type, w, h, opts);
+			ctx.restore();
+			return;
+		}
+		drawScene(ctx, project, index, localT, w, h, opts);
 		ctx.restore();
 	}
 	//#endregion

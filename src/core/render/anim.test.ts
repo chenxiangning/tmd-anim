@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { animVisual, applyTweens, emphasisFx, exitState, exitVisual, floatOffset } from "./anim";
+import { animVisual, applyTweens, easingByName, emphasisFx, exitState, exitVisual, floatOffset } from "./anim";
 import type { Anim, ArrayCellsElement, ProgressElement } from "../types";
 
 const anim = (over: Partial<Anim>): Anim => ({ type: "fade", start: 0, duration: 1, ...over });
@@ -47,6 +47,16 @@ describe("animVisual", () => {
     const end = animVisual(anim({ type: "draw" }), 1);
     expect(end.progress).toBe(1);
     expect(end.alpha).toBe(1);
+  });
+
+  it("spring 弹簧:起点 0、一次过冲后收敛到 1", () => {
+    const spring = easingByName("spring");
+    expect(spring(0)).toBeCloseTo(0);
+    expect(spring(1)).toBeCloseTo(1, 2);
+    const peak = Math.max(...Array.from({ length: 101 }, (_, i) => spring(i / 100)));
+    expect(peak).toBeGreaterThan(1.05);
+    expect(peak).toBeLessThan(1.25);
+    expect(spring(0.5)).toBeGreaterThan(1);
   });
 });
 

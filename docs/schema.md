@@ -28,6 +28,8 @@
 | `dwell` | number | 否 | 末元素结束后的停留秒数,默认 1.5,负值归 0 |
 | `elements` | Element[] | 是 | 元素列表,数组顺序即绘制顺序(后者在上) |
 | `caption` | string | 否 | 场景旁白字幕:固定画在画布底部居中的白底描边条(高 84px,距底 42px),每幕一句、跨幕同位,是拟人科普叙事的旁白位;空/缺省不画 |
+| `transition` | object | 否 | 入幕转场 `{ type, duration? }`:本幕开头 duration(缺省 0.6s,钳 0.2-2)内从上一幕末帧过渡;type = `dissolve` 溶解 / `fadeBlack` 压黑 / `pushLeft` / `pushRight` 推镜 / `wipe` 左向右擦除 / `zoom` 推近(上一幕放大淡出,本幕从 1.12 缩回)。首幕无转场;非法 type 丢弃 |
+| `camera` | object | 否 | 场景相机 `{ from?, to?, easing? }`:整幕连续运镜,pose 为 `{ zoom?, x?, y? }`(zoom ≥1 绕画布中心放大,钳 1-3;x/y 像素平移);按场景进度在 from→to 间插值,缓动缺省 easeInOut。播放/预览/导出生效,编辑器静态编辑视图不套相机(选择框坐标系不破) |
 | `audio` | object | 否 | 场景配音 `{ src, volume?, rate?, duration? }`:src 为 dataURL 或本地音频路径,volume 0-2 默认 1;rate 播放速率 0.25-4 默认 1(>1 压缩 / <1 拉伸,变速不变调);duration 为原始媒体时长(秒,编辑器探测后自动回填,可省)。编辑器播放、导出 HTML 与导出 MP4 均随场景起点对齐;配音有效时长(duration/rate)超过元素+dwell 时场景自动延长到配音结束,不会中途截断;src 非字符串视为无配音 |
 
 时间模型:`场景时长 = max(max(元素 anim.start + anim.duration) + dwell, 配音有效时长 duration/rate)`(空场景保底 0.1s,无配音或未探测 duration 时退化为前者);
@@ -40,7 +42,7 @@
 | `start` | number | 否 | 场景内开始时刻(秒),默认 0,负值归 0 |
 | `duration` | number | 否 | 动画时长(秒),默认 0.5,下限 0.05 |
 | `type` | string | 否 | `pop` 弹出 / `fade` 淡入 / `riseUp` 上浮 / `dropDown` 顶部落入 / `slideLeft` 左侧滑入 / `slideRight` 右侧滑入 / `zoomIn` 缩放入场 / `spinIn` 旋转入场 / `wipe` 左向右擦除 / `typewriter` 打字机(仅文本类元素生效,其余元素回落快速淡入);戏剧化四件套:`wobble` 果冻摆动落定 / `bounce` 弹跳落地(多次触地)/ `flip` 翻面入场(经侧立压扁转到正面)/ `swing` 吊摆进人(钟摆衰减) / `draw` 连线生长(仅 `connector` 生效:线沿路径从起点长到终点,箭头与标签在末段浮现;其余元素回落快速淡入) |
-| `easing` | string | 否 | `linear` 线性 / `easeOut` 缓出 / `easeInOut` 缓入缓出 / `back` 回弹;缺省时按类型取默认(pop/spinIn/dropDown 回弹,typewriter/bounce 线性,其余缓出),非法值丢弃 |
+| `easing` | string | 否 | `linear` 线性 / `easeOut` 缓出 / `easeInOut` 缓入缓出 / `back` 回弹 / `spring` 弹簧(衰减振荡,一次过冲后回稳);缺省时按类型取默认(pop/spinIn/dropDown 回弹,typewriter/bounce 线性,其余缓出),非法值丢弃 |
 
 `typewriter` 也是分段显现开关:列表(list)/表格(table)/柱状图(barChart)/折线图(lineChart)/饼图(pieChart)/文件树(folderTree)/代码对比(codeDiff) 在其入场窗口内逐行/逐段/逐柱显现;其余动画类型这些元素一次性全显。
 
@@ -65,11 +67,11 @@
 | `rotate` | number | 否 | 绕元素中心旋转角度(度,顺时针),0.1 度精度;缺省 0,`note` 保留历史缺省 -2。命中测试与编辑器手柄随旋转生效。`connector` 不支持(绑定端点由元素决定,旋转无意义) |
 | `float` | object \| true | 否 | 悬浮:入场结束后从静止渐入(0.6s)持续轻微漂浮,给画面呼吸感;`true` = 缺省参数。参数 `{ amp?, period?, swing? }`:amp 幅度像素(2-40,缺省 8)、period 周期秒(1-10,缺省 3)、swing = 横向椭圆轨迹(否则仅纵向);false/缺省不浮。`connector` 不支持。编辑器属性面板「悬浮」一键开关 |
 
-## 元素类型(44 种)
+## 元素类型(45 种)
 
 | kind | 专有字段 | 说明 |
 |---|---|---|
-| `title` | `text`, `sub?`, `highlight?`, `fontSize?(64)`, `color?` | 标题,默认水平居中;`sub` 为副标题(居中小字灰,占元素底部一条,主标题相应收进上方);highlight 命中短语渲染为黑底白字圆角芯片 |
+| `title` | `text`, `sub?`, `highlight?`, `fontSize?(64)`, `color?`, `kinetic?` | 标题,默认水平居中;`sub` 为副标题(居中小字灰,占元素底部一条,主标题相应收进上方);highlight 命中短语渲染为黑底白字圆角芯片;`kinetic: true` 主标题逐字错峰上浮入场(单行且无 highlight 时生效,配合 `easing:"spring"` 最佳) |
 | `artText` | `text`, `fontSize?(120)`, `color?`(填充), `stroke?`(描边) | 艺术字:描边大字,水平居中,无高亮芯片 |
 | `text` | `text`, `highlight?`, `fontSize?(40)`, `color?`, `align?("left")` | 正文段落,自动折行 |
 | `input` | `text`, `fontSize?(34)` | 输入框视觉:白底描边圆角矩形 + 静态光标(不闪烁,保证导出确定性) |
@@ -98,6 +100,7 @@
 | `codeDiff` | `filename?`, `hunks: {ctx?, lines: {tag:" "/"+"/"-", text}[]}[]`, `fontSize?(24)`, `dark?(true)` | 代码 diff:+绿/-红 行底与前缀,ctx 行灰色;typewriter 入场 = 逐行显现 |
 | `spotlight` | `shape?("rect"/"ellipse")`, `strength?(0.65)` | 聚光灯:全屏暗角、只亮本元素几何区(圆角矩形/椭圆孔);约定放在 elements 数组末尾(其后的元素暗角盖不住,lint 强制校验) |
 | `gridBg` | `step?(40)`, `color?`, `dot?(false)`, `axis?` | 网格/点阵背景,为流程图垫底;约定放在 elements[0](lint 校验) |
+| `aurora` | `colors?`(2-3 色), `opacity?(0.22)`, `speed?(1)`, `seed?` | 动态极光背景:每色一团径向柔光围绕画布中心按 seed 相位慢漂,全屏垫底;与 gridBg 同层叠用(先 aurora 后网格);seed 换一个画面就换一份漂移 |
 | `groupPanel` | `title?`, `subtitle?`, `accent?`, `fill?`, `stroke?`, `radius?(24)`, `dash?(false)` | 分组面板:圆角卡片 + 骑跨上边框的标题芯片;给出 `subtitle` 时标题改画在面板内左上(主标题 accent + 副标题灰小字,内容需自行留出 ~64px 顶边距);`dash: true` 虚线边表「候选/待定」弱分组;纯视觉归拢,子元素仍绝对坐标置内;lint 警告面板内无元素的孤儿 |
 | `lane` | `direction?("h"/"v")`, `count?(2-4)`, `labels?: string[]`, `gutter?(6)` | 泳道:平行色带 + 标签(按角色/阶段分栏),元素置带内绝对坐标 |
 | `quote` | `text`, `author?`, `accent?`, `fontSize?(36)` | 引用块:左侧竖条 + 引文,可署名 |
