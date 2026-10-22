@@ -5,7 +5,7 @@ import { newProjectId, type ProjectRepo } from "../../store/projects";
 import { ProjectCard, type Entry } from "./ProjectCard";
 import { GearButton } from "../GearButton";
 import { SampleMenu } from "./SampleMenu";
-import { TIME_GROUPS, timeGroupOf, type TimeGroup } from "./timeGroups";
+import { dayLabelOf } from "./timeGroups";
 
 interface HomeViewProps {
   repo: ProjectRepo;
@@ -13,21 +13,22 @@ interface HomeViewProps {
   onOpenSettings(): void;
 }
 
-/** 按更新时间倒序 + 名称过滤,再折叠成时间线分组(组内保持倒序)。 */
+/** 按更新时间倒序 + 名称过滤,再按天折叠成分组(今天/昨天/具体日期;组内保持倒序)。 */
 function useTimeline(entries: Entry[] | null, query: string) {
   return useMemo(() => {
     const q = query.trim().toLowerCase();
     const matched = (entries ?? []).filter((e) => !q || e.project.name.toLowerCase().includes(q));
     matched.sort((a, b) => b.meta.updatedAt - a.meta.updatedAt);
-    const buckets = new Map<TimeGroup, Entry[]>();
+    // 倒序遍历使同一天的条目连续,Map 插入序即分组展示序(未知时间戳自然沉底)
+    const buckets = new Map<string, Entry[]>();
     for (const e of matched) {
-      const g = timeGroupOf(e.meta.updatedAt);
+      const g = dayLabelOf(e.meta.updatedAt);
       const list = buckets.get(g);
       if (list) list.push(e);
       else buckets.set(g, [e]);
     }
     return {
-      groups: TIME_GROUPS.filter((g) => buckets.has(g)).map((g) => ({ label: g, items: buckets.get(g)! })),
+      groups: [...buckets].map(([label, items]) => ({ label, items })),
       total: matched.length,
     };
   }, [entries, query]);

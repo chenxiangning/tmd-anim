@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Project } from "../../core/types";
 import type { ProjectMeta, ProjectRepo } from "../../store/projects";
-import { fmtTime } from "./timeGroups";
+import { fmtStamp } from "./timeGroups";
 import { renderCover } from "./cover";
 
 export interface Entry {
@@ -46,7 +46,7 @@ export function ProjectCard({
       <div className="px-2.5 py-2">
         <div className="truncate text-[13px] font-medium text-neutral-900">{entry.project.name}</div>
         <div className="mt-0.5 text-[11px] text-neutral-400">
-          {entry.meta.sceneCount} 个场景 · {entry.meta.duration.toFixed(1)}s · {fmtTime(entry.meta.updatedAt)}
+          {entry.meta.sceneCount} 个场景 · {entry.meta.duration.toFixed(1)}s · 生成 {fmtStamp(entry.meta.createdAt)}
         </div>
         <div className="mt-2 flex items-center gap-1">
           <button className="btn btn-primary flex-1" onClick={() => onOpen(entry.meta.id)}>

@@ -30,8 +30,9 @@ export async function createTauriRepo(): Promise<ProjectRepo> {
         const id = entry.name.slice(0, -".json".length);
         try {
           const raw = await fs.readTextFile(await join(dir, entry.name));
-          const modifiedAt = (entry as { modifiedAt?: Date | null }).modifiedAt;
-          metas.push(metaOf(id, JSON.parse(raw) as Project, modifiedAt?.getTime() ?? 0));
+          // readDir 的 DirEntry 不带时间,须逐文件 stat:mtime 排序/分组,birthtime 作生成时间
+          const info = await fs.stat(await join(dir, entry.name));
+          metas.push(metaOf(id, JSON.parse(raw) as Project, info.mtime?.getTime() ?? 0, info.birthtime?.getTime() ?? undefined));
         } catch {
           // 坏文件跳过
         }

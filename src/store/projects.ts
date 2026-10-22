@@ -13,6 +13,8 @@ export interface ProjectMeta {
   id: string;
   name: string;
   updatedAt: number;
+  /** 生成(创建)时间;文件系统无 birthtime 时回落 updatedAt */
+  createdAt: number;
   sceneCount: number;
   duration: number;
 }
@@ -40,13 +42,14 @@ export function newProjectId(): string {
   return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export function metaOf(id: string, project: Project, updatedAt: number): ProjectMeta {
+export function metaOf(id: string, project: Project, updatedAt: number, createdAt?: number): ProjectMeta {
   // 列表元信息直接读原始文件:必须先归一化,否则缺省字段(如 anim.start)会算出 NaN 时长
   const p = normalizeProject(project);
   return {
     id,
     name: p.name,
     updatedAt,
+    createdAt: createdAt || updatedAt,
     sceneCount: p.scenes.length,
     duration: projectDuration(p),
   };

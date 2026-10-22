@@ -33,6 +33,10 @@
       "allow": [{ "path": "$HOME/.tmd-anim/projects" }]
     },
     {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "$HOME/.tmd-anim/**" }]
+    },
+    {
       "identifier": "fs:allow-remove",
       "allow": [{ "path": "$HOME/.tmd-anim/projects/**" }]
     }
