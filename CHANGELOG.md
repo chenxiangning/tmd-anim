@@ -4,6 +4,19 @@
 版本号与 Git tag(`vX.Y.Z`)及 [GitHub Releases](https://github.com/chenxiangning/tmd-anim/releases) 一一对应;
 发版时在此追加小节,推送 tag 后 CI 自动构建并挂产物到 Release(正文自动抠取对应小节)。
 
+## [0.2.0] - 2026-10-22
+
+### 新增
+
+- 动效品质层(对标 Fotor Agent 的 code-to-video 品质维度):`spring` 弹簧缓动(衰减振荡,入场/离场/补间/相机全局可用)、场景入幕转场 `scene.transition` 六型(dissolve/fadeBlack/pushLeft/pushRight/wipe/zoom,不占场景时长)、场景相机 `scene.camera`(from→to 连续推拉摇,编辑态自动旁路保选择框坐标系)、极光动态背景 `kind: "aurora"`(2-3 色柔光 seed 漂移,可垫在网格下)、标题逐字入场 `title.kinetic`
+- 首页项目列表:按天分组(今天/昨天/M月D日,跨年带年份)并展示每项目生成时间;修复 Tauri `readDir` 无时间戳导致的「—」与「更早」错桶(改逐文件 `stat` 取 mtime/birthtime,补 `fs:allow-stat` 权限)
+- 连线生长入场 `anim.type: "draw"`(沿路径从起点长到终点,箭头与标签末段浮现)与形状投影 `shape.shadow`(只随首次上色投一次,手绘复线不重影)
+
+### 变更
+
+- AI 协议随动效层升级:叙事配方库新增「动效品质层」模板(共 13 个),`showcase.json` 活例演示转场/相机/极光/逐字标题,元素协议 44 → 45 种;lint 放行 aurora 垫底
+- 渲染分层:`index.ts`(drawFrame 入口)/ `sceneFrame.ts`(幕装配 + 转场 + 相机)/ `elementDraw.ts`(元素分发 + 旁白条),连线绘制拆至 `connectorDraw.ts`
+
 ## [0.1.9] - 2026-10-20
 
 ### 新增
