@@ -16,7 +16,7 @@ export function buildAiPrompt(projectPath: string | null, protocol: ProtocolPath
     ...(requirement?.trim() ? [`本次需求:${requirement.trim()}`] : []),
     `若你的技能列表里已有 tmd-anim 技能(tmd-anim 桌面版「AI 调整」安装),按该技能指引进 ${protocol.dir} 即可,与下列路径一致。`,
     `先读协议文档 ${protocol.schemaMd}(字段权威定义),再参考活例 ${protocol.httpExample};用新元素(图表/光标/文件树/代码对比/聚光灯/泳道/角色/公式/信息图小件/回环箭头)时参考 ${protocol.showcaseExample}(新元素全家福)与 ${protocol.infographicExample}(学术信息图:分组柱图+deltas / 胶囊组 / 叠纸 K / 圆环节点 / 虚线候选面板)。`,
-    `不知道元素怎么摆/场景怎么编排时,查叙事配方库 ${protocol.recipesMd}(12 个构图模板:开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾/拟人科普/学术信息图)。`,
+    `不知道元素怎么摆/场景怎么编排时,查叙事配方库 ${protocol.recipesMd}(13 个构图模板:开场/三步教程/diff/架构数据流/图表/UI 演示/三分图解/排错/公式/收尾/拟人科普/学术信息图/动效品质层)。`,
     ...selectionCheatSheet(),
     ...(digest?.trim() ? ["", "当前项目体检(改前必读):", digest.trim()] : []),
     `需要小黑插画风格(手绘怪诞正文配图)时,先读 ${protocol.xiaoheiStyleMd}(画法配方与编排规则),参考 ${protocol.xiaoheiExample}。`,

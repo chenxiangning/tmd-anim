@@ -102,10 +102,10 @@ export function lintProject(raw: unknown): LintIssue[] {
         });
       }
     }
-    // gridBg 首位:网格/点阵应垫底绘制
+    // gridBg 首位:网格/点阵应垫底绘制;其前只允许同为垫底层的 aurora(极光在网格下)
     const gridIdx = elements.findIndex((e) => e?.kind === "gridBg");
-    if (gridIdx > 0) {
-      issues.push({ scene: si, element: typeof elements[gridIdx]?.id === "string" ? (elements[gridIdx]!.id as string) : "?", message: "网格背景不在数组首位:先画的元素会被网格线压盖,移到 elements[0]" });
+    if (gridIdx > 0 && elements.slice(0, gridIdx).some((e) => e?.kind !== "aurora")) {
+      issues.push({ scene: si, element: typeof elements[gridIdx]?.id === "string" ? (elements[gridIdx]!.id as string) : "?", message: "网格背景不在数组首位:先画的元素会被网格线压盖,移到 elements[0](其前仅允许 aurora 垫底)" });
     }
     // 孤儿分组面板:无其他元素中心落在面板内
     elements.forEach((e, ei) => {

@@ -13,6 +13,26 @@
       "dwell": 1.4,
       "elements": [
         {
+          "id": "aur",
+          "kind": "aurora",
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080,
+          "colors": [
+            "#818CF8",
+            "#67E8F9",
+            "#F9A8D4"
+          ],
+          "opacity": 0.16,
+          "seed": 7,
+          "anim": {
+            "type": "fade",
+            "start": 0,
+            "duration": 0.6
+          }
+        },
+        {
           "id": "el-t1",
           "kind": "title",
           "x": 360,
@@ -25,10 +45,12 @@
           ],
           "fontSize": 58,
           "anim": {
-            "type": "pop",
+            "type": "fade",
             "start": 0,
-            "duration": 0.6
-          }
+            "duration": 1.2,
+            "easing": "spring"
+          },
+          "kinetic": true
         },
         {
           "id": "el-b1",
@@ -159,7 +181,15 @@
             "duration": 0.5
           }
         }
-      ]
+      ],
+      "camera": {
+        "from": {
+          "zoom": 1.02
+        },
+        "to": {
+          "zoom": 1.08
+        }
+      }
     },
     {
       "id": "sc-2",
@@ -339,7 +369,19 @@
             "duration": 3.0
           }
         }
-      ]
+      ],
+      "transition": {
+        "type": "pushLeft",
+        "duration": 0.7
+      },
+      "camera": {
+        "from": {
+          "zoom": 1.06
+        },
+        "to": {
+          "zoom": 1.0
+        }
+      }
     },
     {
       "id": "sc-3",
@@ -490,7 +532,7 @@
             }
           ],
           "anim": {
-            "type": "fade",
+            "type": "draw",
             "start": 1.7,
             "duration": 0.4
           }
@@ -524,7 +566,7 @@
             }
           ],
           "anim": {
-            "type": "fade",
+            "type": "draw",
             "start": 1.8,
             "duration": 0.4
           }
@@ -768,7 +810,11 @@
             "duration": 1.2
           }
         }
-      ]
+      ],
+      "transition": {
+        "type": "fadeBlack",
+        "duration": 0.7
+      }
     }
   ]
 }

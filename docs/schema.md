@@ -99,7 +99,7 @@
 | `folderTree` | `root?("project")`, `items: {name, depth?, icon?:dir/file, comment?}[]`, `fontSize?(26)` | 文件树:mac 圆角卡 + 根目录头;depth 缺省继承上一行(首行 0);typewriter 入场 = 逐行显现 |
 | `codeDiff` | `filename?`, `hunks: {ctx?, lines: {tag:" "/"+"/"-", text}[]}[]`, `fontSize?(24)`, `dark?(true)` | 代码 diff:+绿/-红 行底与前缀,ctx 行灰色;typewriter 入场 = 逐行显现 |
 | `spotlight` | `shape?("rect"/"ellipse")`, `strength?(0.65)` | 聚光灯:全屏暗角、只亮本元素几何区(圆角矩形/椭圆孔);约定放在 elements 数组末尾(其后的元素暗角盖不住,lint 强制校验) |
-| `gridBg` | `step?(40)`, `color?`, `dot?(false)`, `axis?` | 网格/点阵背景,为流程图垫底;约定放在 elements[0](lint 校验) |
+| `gridBg` | `step?(40)`, `color?`, `dot?(false)`, `axis?` | 网格/点阵背景,为流程图垫底;约定放在 elements[0](lint 校验,其前仅允许同为垫底层的 `aurora`) |
 | `aurora` | `colors?`(2-3 色), `opacity?(0.22)`, `speed?(1)`, `seed?` | 动态极光背景:每色一团径向柔光围绕画布中心按 seed 相位慢漂,全屏垫底;与 gridBg 同层叠用(先 aurora 后网格);seed 换一个画面就换一份漂移 |
 | `groupPanel` | `title?`, `subtitle?`, `accent?`, `fill?`, `stroke?`, `radius?(24)`, `dash?(false)` | 分组面板:圆角卡片 + 骑跨上边框的标题芯片;给出 `subtitle` 时标题改画在面板内左上(主标题 accent + 副标题灰小字,内容需自行留出 ~64px 顶边距);`dash: true` 虚线边表「候选/待定」弱分组;纯视觉归拢,子元素仍绝对坐标置内;lint 警告面板内无元素的孤儿 |
 | `lane` | `direction?("h"/"v")`, `count?(2-4)`, `labels?: string[]`, `gutter?(6)` | 泳道:平行色带 + 标签(按角色/阶段分栏),元素置带内绝对坐标 |
