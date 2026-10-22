@@ -17,7 +17,8 @@ export type ShapeVariant =
 export type AnimType =
   | "pop" | "fade" | "riseUp" | "slideLeft" | "slideRight" | "dropDown"
   | "wipe" | "typewriter" | "zoomIn" | "spinIn"
-  | "wobble" | "bounce" | "flip" | "swing";
+  | "wobble" | "bounce" | "flip" | "swing"
+  | "draw";
 
 /** 缓动:缺省(auto)时按动画类型取默认(pop/spinIn/dropDown 回弹,typewriter 线性,其余缓出) */
 export type EasingKind = "linear" | "easeOut" | "easeInOut" | "back";
@@ -143,6 +144,8 @@ export interface ShapeElement extends ElementBase {
   /** 手绘描边:轮廓按 sketchSeed(缺省按 id)种子确定性抖动并叠复线,渲染仍是 (project,t) 纯函数 */
   sketch?: boolean;
   sketchSeed?: number; // 点击生成时的随机种子;重开关手绘/粘贴会换种子
+  /** 柔和投影:把形状从底色上抬起一层,只随第一次上色(填充优先,否则描边)投一次 */
+  shadow?: boolean;
 }
 
 export interface InputElement extends ElementBase {

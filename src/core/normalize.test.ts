@@ -263,6 +263,21 @@ describe("normalizeProject", () => {
     expect("sketchSeed" in els[1]).toBe(false);
   });
 
+  it("draw 入场类型保留,shape shadow 非布尔丢弃", () => {
+    const p = normalizeProject({
+      version: 1,
+      scenes: [{ elements: [
+        { kind: "connector", from: [0, 0], to: [100, 0], anim: { type: "draw" } },
+        { kind: "shape", shape: "rect", shadow: true },
+        { kind: "shape", shape: "rect", shadow: "yes" },
+      ] }],
+    });
+    const els = p.scenes[0].elements as Array<{ anim?: { type: string }; shadow?: unknown }>;
+    expect(els[0].anim?.type).toBe("draw");
+    expect(els[1].shadow).toBe(true);
+    expect("shadow" in els[2]).toBe(false);
+  });
+
   it("phone 与 aiChat 合法透传,aiChat 文本字段非字符串丢弃", () => {
     const p = normalizeProject({
       version: 1,

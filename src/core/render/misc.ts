@@ -1,8 +1,7 @@
 import type { ConnectorElement, ImageElement, SceneElement } from "../types";
-import { connectorRoute, strokeRoundedPolyline } from "./connectorRoute";
-import { roundRect, sansFont } from "./text";
+import { roundRect } from "./text";
 
-/** 连线(smooth 自适应三次 / elbow 直角正交 / straight 直线 + 切线箭头 + 曲上标签胶囊)与图片(圆角裁剪 + contain 适配)。 */
+/** 连线绑定端点解析(元素包围盒 + focus/中心射线)与图片(圆角裁剪 + contain 适配);连线绘制见 connectorDraw。 */
 
 export interface ConnectorGeometry {
   /** true = 自适应平滑曲线(三次贝塞尔,curve 为 0/缺省);false = 手动弓量(二次,curve 非 0) */
@@ -159,66 +158,6 @@ export function resolveConnector(el: ConnectorElement, elements: SceneElement[])
   const from = bFrom ? anchor(bFrom, el.fromFocus, el.to[0], el.to[1]) : { x: el.from[0], y: el.from[1] };
   const to = bTo ? anchor(bTo, el.toFocus, from.x, from.y) : { x: el.to[0], y: el.to[1] };
   return { ...el, from: [from.x, from.y], to: [to.x, to.y] };
-}
-
-export function drawConnector(ctx: CanvasRenderingContext2D, el: ConnectorElement, elements: SceneElement[] = [], dashOffset?: number): void {
-  const [x1, y1] = el.from;
-  const [x2, y2] = el.to;
-  const color = el.color ?? "#475569";
-  const lineW = el.width ?? 5;
-  const route = connectorRoute(el, elements);
-  const mid = route.mid;
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineW;
-  ctx.lineCap = "round";
-  // 强调数据流(emphasis.dashFlow):虚线滚动,速度由 dashOffset 变化率决定;静态虚线走 el.dash
-  if (dashOffset !== undefined) {
-    ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
-    ctx.lineDashOffset = dashOffset;
-  } else if (el.dash === true) {
-    ctx.setLineDash([lineW * 2.4, lineW * 1.8]);
-  }
-  ctx.beginPath();
-  if (route.mode === "segments") {
-    strokeRoundedPolyline(ctx, route.points, { x: x2, y: y2 });
-  } else if (route.mode === "cubic") {
-    ctx.moveTo(x1, y1);
-    ctx.bezierCurveTo(route.geo!.c1.x, route.geo!.c1.y, route.geo!.c2.x, route.geo!.c2.y, x2, y2);
-  } else {
-    ctx.moveTo(x1, y1);
-    ctx.quadraticCurveTo(route.geo!.control.x, route.geo!.control.y, x2, y2);
-  }
-  ctx.stroke();
-  ctx.setLineDash([]);
-  // arrow 缺省 true;false = 纯直线/曲线(直线库入口)
-  if (el.arrow !== false) {
-    const ang = route.endAngle;
-    const size = lineW * 3.2;
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - size * Math.cos(ang - 0.45), y2 - size * Math.sin(ang - 0.45));
-    ctx.lineTo(x2 - size * Math.cos(ang + 0.45), y2 - size * Math.sin(ang + 0.45));
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-  }
-  if (el.label) {
-    const fontSize = 26;
-    ctx.font = sansFont(fontSize, 600);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    const tw = ctx.measureText(el.label).width;
-    roundRect(ctx, mid.x - tw / 2 - 14, mid.y - 24, tw + 28, 48, 24);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fill();
-    ctx.strokeStyle = "#CBD5E1";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = "#334155";
-    ctx.fillText(el.label, mid.x - tw / 2, mid.y + 1);
-  }
-  ctx.restore();
 }
 
 /** 图片缓存条目:主线程预览放 HTMLImageElement,Worker 导出放预解码好的 ImageBitmap */

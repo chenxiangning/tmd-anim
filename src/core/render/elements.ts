@@ -16,18 +16,33 @@ export function readableOn(fill: string | undefined): string {
 export function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void {
   traceShape(ctx, el);
   const hasStroke = Boolean(el.stroke) && (el.strokeWidth ?? 0) > 0;
+  // 柔和投影:只随第一次上色(填充优先,无填充时随描边)投一次,复线与内嵌文字不重复投影
+  if (el.shadow === true) {
+    ctx.shadowColor = "rgba(15,23,42,0.16)";
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 7;
+  }
   if (el.fill) {
     ctx.fillStyle = el.fill;
     ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
   } else if (!hasStroke) {
     // 既无填充也无描边时给浅灰底,避免画布上不可见
     ctx.fillStyle = "rgba(100,116,139,0.18)";
     ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
   }
   if (hasStroke) {
     ctx.strokeStyle = el.stroke as string;
     ctx.lineWidth = el.strokeWidth ?? 0;
     ctx.stroke();
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
     if (el.sketch) {
       // 手绘感:同路径叠一道更细更淡的复线,像起稿描边
       ctx.globalAlpha = 0.55;

@@ -14,7 +14,8 @@ import { drawCardFlow, drawDocStack, drawSpecRow } from "./flow";
 import { drawChipRow, drawRingNode, drawStackList } from "./infra";
 import { drawLoopArrow } from "./arrows";
 import { drawCodeDiff, drawCursor, drawFolderTree } from "./guide";
-import { drawConnector, drawImageEl, resolveConnector } from "./misc";
+import { drawConnector } from "./connectorDraw";
+import { drawImageEl, resolveConnector } from "./misc";
 import { drawGridBg, drawGroupPanel, drawLane, drawSpotlight } from "./stage";
 import { drawQuote, drawFormula } from "./rich";
 import { drawTable } from "./table";
@@ -152,7 +153,7 @@ function drawElement(ctx: CanvasRenderingContext2D, el: SceneElement, localT: nu
       drawArrayCells(ctx, elT);
       break;
     case "connector":
-      drawConnector(ctx, resolveConnector(elT, sceneElements), sceneElements, fx.dashFlow !== null ? -localT * fx.dashFlow : undefined);
+      drawConnector(ctx, resolveConnector(elT, sceneElements), sceneElements, fx.dashFlow !== null ? -localT * fx.dashFlow : undefined, visual.progress);
       break;
     case "image":
       drawImageEl(ctx, elT);

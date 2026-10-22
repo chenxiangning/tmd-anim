@@ -169,6 +169,7 @@
 	* file-size-exempt:归一化入口集中所有 kind 的字段钳制,拆分会让同类守卫散落多处。
 	*/
 	var ANIM_TYPES = {
+		draw: true,
 		pop: true,
 		fade: true,
 		riseUp: true,
@@ -448,6 +449,7 @@
 			if (connector.text !== void 0 && typeof connector.text !== "string") delete connector.text;
 			if (connector.sketch !== void 0 && typeof connector.sketch !== "boolean") delete connector.sketch;
 			if (connector.sketchSeed !== void 0 && (typeof connector.sketchSeed !== "number" || !Number.isFinite(connector.sketchSeed))) delete connector.sketchSeed;
+			if (connector.shadow !== void 0 && typeof connector.shadow !== "boolean") delete connector.shadow;
 		}
 		if (el.kind === "aiChat") {
 			for (const key of [
@@ -942,6 +944,16 @@
 				scale: 1,
 				scaleX: null,
 				wipeWidth: null
+			};
+			case "draw": return {
+				alpha: Math.min(1, p * 3),
+				dx: 0,
+				dy: 0,
+				rotation: 0,
+				scale: 1,
+				scaleX: null,
+				wipeWidth: null,
+				progress: p
 			};
 		}
 	}
@@ -1925,17 +1937,31 @@
 	function drawShape(ctx, el) {
 		traceShape(ctx, el);
 		const hasStroke = Boolean(el.stroke) && (el.strokeWidth ?? 0) > 0;
+		if (el.shadow === true) {
+			ctx.shadowColor = "rgba(15,23,42,0.16)";
+			ctx.shadowBlur = 20;
+			ctx.shadowOffsetY = 7;
+		}
 		if (el.fill) {
 			ctx.fillStyle = el.fill;
 			ctx.fill();
+			ctx.shadowColor = "transparent";
+			ctx.shadowBlur = 0;
+			ctx.shadowOffsetY = 0;
 		} else if (!hasStroke) {
 			ctx.fillStyle = "rgba(100,116,139,0.18)";
 			ctx.fill();
+			ctx.shadowColor = "transparent";
+			ctx.shadowBlur = 0;
+			ctx.shadowOffsetY = 0;
 		}
 		if (hasStroke) {
 			ctx.strokeStyle = el.stroke;
 			ctx.lineWidth = el.strokeWidth ?? 0;
 			ctx.stroke();
+			ctx.shadowColor = "transparent";
+			ctx.shadowBlur = 0;
+			ctx.shadowOffsetY = 0;
 			if (el.sketch) {
 				ctx.globalAlpha = .55;
 				ctx.lineWidth = (el.strokeWidth ?? 0) * .55;
@@ -2341,323 +2367,6 @@
 		ctx.restore();
 	}
 	//#endregion
-	//#region src/core/render/connectorRoute.ts
-	/** 位移主轴的正交方向(Excalidraw vectorToHeading) */
-	function vectorToHeading(vx, vy) {
-		const absX = Math.abs(vx);
-		const absY = Math.abs(vy);
-		if (vx > absY) return [1, 0];
-		if (vx <= -absY) return [-1, 0];
-		if (vy > absX) return [0, 1];
-		return [0, -1];
-	}
-	/** 绑定元素出口方向:元素中心四象限主轴判定(Excalidraw headingForPointFromElement 的搜索锥等价于中心射线分象限,对任意距离成立) */
-	function headingForPointFromElement(rect, p) {
-		return vectorToHeading(p.x - (rect.x + rect.w / 2), p.y - (rect.y + rect.h / 2));
-	}
-	function connectorHeadings(el, elements) {
-		const boundsOf = (id) => {
-			if (!id) return null;
-			const target = elements.find((e) => e.id === id);
-			return target ? elementBounds(target) : null;
-		};
-		const [x1, y1] = el.from;
-		const [x2, y2] = el.to;
-		const bFrom = boundsOf(el.fromEl);
-		const bTo = boundsOf(el.toEl);
-		return [bFrom ? headingForPointFromElement(bFrom, {
-			x: x2,
-			y: y2
-		}) : vectorToHeading(x2 - x1, y2 - y1), bTo ? headingForPointFromElement(bTo, {
-			x: x1,
-			y: y1
-		}) : vectorToHeading(x1 - x2, y1 - y2)];
-	}
-	var add = (p, h, d) => ({
-		x: p.x + h[0] * d,
-		y: p.y + h[1] * d
-	});
-	/** 无障碍情形的正交路由:出口段 → 连接段 → 入口段(语义对齐 Excalidraw elbow 常规输出) */
-	function routeElbow(from, to, h1, h2, stub = 40) {
-		const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
-		const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
-		const d1 = Math.min(stub, Math.max(0, proj1));
-		const d2 = Math.min(stub, Math.max(0, proj2));
-		const a = add(from, h1, d1);
-		const b = add(to, h2, d2);
-		const mids = [];
-		if (h1[0] !== 0 && h2[1] !== 0) mids.push({
-			x: b.x,
-			y: a.y
-		});
-		else if (h1[1] !== 0 && h2[0] !== 0) mids.push({
-			x: a.x,
-			y: b.y
-		});
-		else if (h1[0] !== 0 && h2[0] !== 0) {
-			const mx = (a.x + b.x) / 2;
-			mids.push({
-				x: mx,
-				y: a.y
-			}, {
-				x: mx,
-				y: b.y
-			});
-		} else {
-			const my = (a.y + b.y) / 2;
-			mids.push({
-				x: a.x,
-				y: my
-			}, {
-				x: b.x,
-				y: my
-			});
-		}
-		const raw = [
-			from,
-			a,
-			...mids,
-			b,
-			to
-		];
-		const out = [];
-		for (const p of raw) {
-			const last = out[out.length - 1];
-			if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) out.push(p);
-		}
-		return out.filter((p, i) => {
-			if (i === 0 || i === out.length - 1) return true;
-			const prev = out[i - 1];
-			const next = out[i + 1];
-			return !(prev.x === p.x && p.x === next.x || prev.y === p.y && p.y === next.y);
-		});
-	}
-	/** 折线路径(直角拐角圆滑:corner = min(radius, 半段长),语义对齐 generateElbowArrowShape);scale 供画布→屏幕换算 */
-	function strokeRoundedPolyline(ctx, pts, to, scale = 1, radius = 16) {
-		ctx.moveTo(pts[0].x * scale, pts[0].y * scale);
-		for (let i = 1; i < pts.length - 1; i++) {
-			const prev = pts[i - 1];
-			const cur = pts[i];
-			const next = pts[i + 1];
-			const r = Math.min(radius, Math.hypot(cur.x - prev.x, cur.y - prev.y) / 2, Math.hypot(next.x - cur.x, next.y - cur.y) / 2) * scale;
-			ctx.arcTo(cur.x * scale, cur.y * scale, next.x * scale, next.y * scale, r);
-		}
-		ctx.lineTo(to.x * scale, to.y * scale);
-	}
-	/** 障碍 = 除两端绑定元素外的全部非连线元素包围盒,外扩 pad(线至少离元素 pad 像素) */
-	function obstacleRects(el, elements, pad) {
-		const out = [];
-		for (const e of elements) {
-			if (e.id === el.fromEl || e.id === el.toEl || e.kind === "connector") continue;
-			const b = elementBounds(e);
-			if (b) out.push({
-				x: b.x - pad,
-				y: b.y - pad,
-				w: b.w + pad * 2,
-				h: b.h + pad * 2
-			});
-		}
-		return out;
-	}
-	/** 点是否严格落在(已外扩的)障碍内;贴边不算,保证线离真实元素 ≥ pad */
-	function inObstacle(r, px, py) {
-		return px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h;
-	}
-	/** 折线是否穿过任何障碍(逐段按 4px 步长采样) */
-	function pathClear(pts, obstacles) {
-		for (let i = 1; i < pts.length; i++) {
-			const a = pts[i - 1];
-			const b = pts[i];
-			const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
-			for (let s = 0; s <= steps; s++) {
-				const x = a.x + (b.x - a.x) * s / steps;
-				const y = a.y + (b.y - a.y) * s / steps;
-				for (const r of obstacles) if (inObstacle(r, x, y)) return false;
-			}
-		}
-		return true;
-	}
-	function dedupePolyline(pts) {
-		const out = [];
-		for (const p of pts) {
-			const last = out[out.length - 1];
-			if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) out.push(p);
-		}
-		return out.filter((p, i) => {
-			if (i === 0 || i === out.length - 1) return true;
-			const prev = out[i - 1];
-			const next = out[i + 1];
-			return !(prev.x === p.x && p.x === next.x || prev.y === p.y && p.y === next.y);
-		});
-	}
-	var polylineLen = (pts) => {
-		let len = 0;
-		for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-		return len;
-	};
-	/**
-	* 障碍感知的直角路由:先走无障碍 elbow;被挡则枚举中段重排方案——
-	* 两种 L 拐角 + 以障碍边缘/中点为 lane 的 Z 折线,取第一条不穿障的最短路径;
-	* 全部被挡时回落原 elbow(极端密布局不硬绕)。
-	*/
-	function routeElbowAvoid(from, to, h1, h2, obstacles, stub = 40) {
-		const base = routeElbow(from, to, h1, h2, stub);
-		if (!obstacles.length || pathClear(base, obstacles)) return base;
-		const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
-		const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
-		const a = add(from, h1, Math.min(stub, Math.max(0, proj1)));
-		const b = add(to, h2, Math.min(stub, Math.max(0, proj2)));
-		const mids = [];
-		if (a.x !== b.x && a.y !== b.y) mids.push([
-			a,
-			{
-				x: b.x,
-				y: a.y
-			},
-			b
-		], [
-			a,
-			{
-				x: a.x,
-				y: b.y
-			},
-			b
-		]);
-		else mids.push([a, b]);
-		const lanes = /* @__PURE__ */ new Set();
-		for (const r of obstacles) lanes.add(r.x - 1).add(r.x + r.w + 1).add(r.y - 1).add(r.y + r.h + 1);
-		for (const lane of lanes) {
-			if (a.x !== b.x) mids.push([
-				a,
-				{
-					x: lane,
-					y: a.y
-				},
-				{
-					x: lane,
-					y: b.y
-				},
-				b
-			]);
-			if (a.y !== b.y) mids.push([
-				a,
-				{
-					x: a.x,
-					y: lane
-				},
-				{
-					x: b.x,
-					y: lane
-				},
-				b
-			]);
-		}
-		let best = null;
-		let bestLen = Infinity;
-		for (const mid of mids) {
-			const pts = dedupePolyline([
-				from,
-				...mid,
-				to
-			]);
-			if (!pathClear(pts, obstacles)) continue;
-			const len = polylineLen(pts);
-			if (len < bestLen) {
-				best = pts;
-				bestLen = len;
-			}
-		}
-		return best ?? base;
-	}
-	function polylineRoute(points) {
-		let total = 0;
-		const segs = [];
-		for (let i = 1; i < points.length; i++) {
-			const d = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
-			segs.push([
-				points[i - 1],
-				points[i],
-				d
-			]);
-			total += d;
-		}
-		const at = (t) => {
-			let remain = total * t;
-			for (const [a, b, d] of segs) {
-				if (remain <= d || d === 0) {
-					const r = d === 0 ? 0 : remain / d;
-					return {
-						x: a.x + (b.x - a.x) * r,
-						y: a.y + (b.y - a.y) * r
-					};
-				}
-				remain -= d;
-			}
-			return points[points.length - 1];
-		};
-		const last = segs[segs.length - 1];
-		return {
-			mode: "segments",
-			points,
-			mid: at(.5),
-			endAngle: Math.atan2(last[1].y - last[0].y, last[1].x - last[0].x),
-			sample: (step = 8) => {
-				const count = Math.max(8, Math.ceil(total / step));
-				return Array.from({ length: count + 1 }, (_, i) => at(i / count));
-			}
-		};
-	}
-	function curveRoute(el) {
-		const geo = connectorGeometry(el);
-		const dist = Math.hypot(el.to[0] - el.from[0], el.to[1] - el.from[1]);
-		return {
-			mode: geo.auto ? "cubic" : "quad",
-			points: [],
-			geo,
-			mid: geo.pointAt(.5),
-			endAngle: geo.endAngle(),
-			sample: (step = 8) => {
-				const count = Math.max(8, Math.ceil(dist / step));
-				return Array.from({ length: count + 1 }, (_, i) => geo.pointAt(i / count));
-			}
-		};
-	}
-	/** 连线路由解析:route 缺省 = smooth(自适应三次,被其他元素遮挡时自动改走直角避让重排);elbow = 直角正交(始终避让);straight = 直线(不避让,保持语义) */
-	function connectorRoute(el, elements, pad = 6) {
-		if (el.route === "straight") return polylineRoute([{
-			x: el.from[0],
-			y: el.from[1]
-		}, {
-			x: el.to[0],
-			y: el.to[1]
-		}]);
-		const obstacles = obstacleRects(el, elements, pad);
-		if (el.route === "elbow") {
-			const [h1, h2] = connectorHeadings(el, elements);
-			return polylineRoute(routeElbowAvoid({
-				x: el.from[0],
-				y: el.from[1]
-			}, {
-				x: el.to[0],
-				y: el.to[1]
-			}, h1, h2, obstacles));
-		}
-		const curve = curveRoute(el);
-		if (obstacles.length) {
-			for (const p of curve.sample(12)) if (obstacles.some((r) => inObstacle(r, p.x, p.y))) {
-				const [h1, h2] = connectorHeadings(el, elements);
-				return polylineRoute(routeElbowAvoid({
-					x: el.from[0],
-					y: el.from[1]
-				}, {
-					x: el.to[0],
-					y: el.to[1]
-				}, h1, h2, obstacles));
-			}
-		}
-		return curve;
-	}
-	//#endregion
 	//#region src/core/render/misc.ts
 	function connectorGeometry(el) {
 		const [x1, y1] = el.from;
@@ -2802,62 +2511,6 @@
 			from: [from.x, from.y],
 			to: [to.x, to.y]
 		};
-	}
-	function drawConnector(ctx, el, elements = [], dashOffset) {
-		const [x1, y1] = el.from;
-		const [x2, y2] = el.to;
-		const color = el.color ?? "#475569";
-		const lineW = el.width ?? 5;
-		const route = connectorRoute(el, elements);
-		const mid = route.mid;
-		ctx.save();
-		ctx.strokeStyle = color;
-		ctx.lineWidth = lineW;
-		ctx.lineCap = "round";
-		if (dashOffset !== void 0) {
-			ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
-			ctx.lineDashOffset = dashOffset;
-		} else if (el.dash === true) ctx.setLineDash([lineW * 2.4, lineW * 1.8]);
-		ctx.beginPath();
-		if (route.mode === "segments") strokeRoundedPolyline(ctx, route.points, {
-			x: x2,
-			y: y2
-		});
-		else if (route.mode === "cubic") {
-			ctx.moveTo(x1, y1);
-			ctx.bezierCurveTo(route.geo.c1.x, route.geo.c1.y, route.geo.c2.x, route.geo.c2.y, x2, y2);
-		} else {
-			ctx.moveTo(x1, y1);
-			ctx.quadraticCurveTo(route.geo.control.x, route.geo.control.y, x2, y2);
-		}
-		ctx.stroke();
-		ctx.setLineDash([]);
-		if (el.arrow !== false) {
-			const ang = route.endAngle;
-			const size = lineW * 3.2;
-			ctx.beginPath();
-			ctx.moveTo(x2, y2);
-			ctx.lineTo(x2 - size * Math.cos(ang - .45), y2 - size * Math.sin(ang - .45));
-			ctx.lineTo(x2 - size * Math.cos(ang + .45), y2 - size * Math.sin(ang + .45));
-			ctx.closePath();
-			ctx.fillStyle = color;
-			ctx.fill();
-		}
-		if (el.label) {
-			ctx.font = sansFont(26, 600);
-			ctx.textAlign = "left";
-			ctx.textBaseline = "middle";
-			const tw = ctx.measureText(el.label).width;
-			roundRect(ctx, mid.x - tw / 2 - 14, mid.y - 24, tw + 28, 48, 24);
-			ctx.fillStyle = "#FFFFFF";
-			ctx.fill();
-			ctx.strokeStyle = "#CBD5E1";
-			ctx.lineWidth = 2;
-			ctx.stroke();
-			ctx.fillStyle = "#334155";
-			ctx.fillText(el.label, mid.x - tw / 2, mid.y + 1);
-		}
-		ctx.restore();
 	}
 	var imgCache = /* @__PURE__ */ new Map();
 	/** 取已就绪的图片;未加载完返回 null(下一帧重画时会自动就绪),不阻塞绘制循环 */
@@ -4185,6 +3838,323 @@
 		ctx.restore();
 	}
 	//#endregion
+	//#region src/core/render/connectorRoute.ts
+	/** 位移主轴的正交方向(Excalidraw vectorToHeading) */
+	function vectorToHeading(vx, vy) {
+		const absX = Math.abs(vx);
+		const absY = Math.abs(vy);
+		if (vx > absY) return [1, 0];
+		if (vx <= -absY) return [-1, 0];
+		if (vy > absX) return [0, 1];
+		return [0, -1];
+	}
+	/** 绑定元素出口方向:元素中心四象限主轴判定(Excalidraw headingForPointFromElement 的搜索锥等价于中心射线分象限,对任意距离成立) */
+	function headingForPointFromElement(rect, p) {
+		return vectorToHeading(p.x - (rect.x + rect.w / 2), p.y - (rect.y + rect.h / 2));
+	}
+	function connectorHeadings(el, elements) {
+		const boundsOf = (id) => {
+			if (!id) return null;
+			const target = elements.find((e) => e.id === id);
+			return target ? elementBounds(target) : null;
+		};
+		const [x1, y1] = el.from;
+		const [x2, y2] = el.to;
+		const bFrom = boundsOf(el.fromEl);
+		const bTo = boundsOf(el.toEl);
+		return [bFrom ? headingForPointFromElement(bFrom, {
+			x: x2,
+			y: y2
+		}) : vectorToHeading(x2 - x1, y2 - y1), bTo ? headingForPointFromElement(bTo, {
+			x: x1,
+			y: y1
+		}) : vectorToHeading(x1 - x2, y1 - y2)];
+	}
+	var add = (p, h, d) => ({
+		x: p.x + h[0] * d,
+		y: p.y + h[1] * d
+	});
+	/** 无障碍情形的正交路由:出口段 → 连接段 → 入口段(语义对齐 Excalidraw elbow 常规输出) */
+	function routeElbow(from, to, h1, h2, stub = 40) {
+		const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
+		const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
+		const d1 = Math.min(stub, Math.max(0, proj1));
+		const d2 = Math.min(stub, Math.max(0, proj2));
+		const a = add(from, h1, d1);
+		const b = add(to, h2, d2);
+		const mids = [];
+		if (h1[0] !== 0 && h2[1] !== 0) mids.push({
+			x: b.x,
+			y: a.y
+		});
+		else if (h1[1] !== 0 && h2[0] !== 0) mids.push({
+			x: a.x,
+			y: b.y
+		});
+		else if (h1[0] !== 0 && h2[0] !== 0) {
+			const mx = (a.x + b.x) / 2;
+			mids.push({
+				x: mx,
+				y: a.y
+			}, {
+				x: mx,
+				y: b.y
+			});
+		} else {
+			const my = (a.y + b.y) / 2;
+			mids.push({
+				x: a.x,
+				y: my
+			}, {
+				x: b.x,
+				y: my
+			});
+		}
+		const raw = [
+			from,
+			a,
+			...mids,
+			b,
+			to
+		];
+		const out = [];
+		for (const p of raw) {
+			const last = out[out.length - 1];
+			if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) out.push(p);
+		}
+		return out.filter((p, i) => {
+			if (i === 0 || i === out.length - 1) return true;
+			const prev = out[i - 1];
+			const next = out[i + 1];
+			return !(prev.x === p.x && p.x === next.x || prev.y === p.y && p.y === next.y);
+		});
+	}
+	/** 折线路径(直角拐角圆滑:corner = min(radius, 半段长),语义对齐 generateElbowArrowShape);scale 供画布→屏幕换算 */
+	function strokeRoundedPolyline(ctx, pts, to, scale = 1, radius = 16) {
+		ctx.moveTo(pts[0].x * scale, pts[0].y * scale);
+		for (let i = 1; i < pts.length - 1; i++) {
+			const prev = pts[i - 1];
+			const cur = pts[i];
+			const next = pts[i + 1];
+			const r = Math.min(radius, Math.hypot(cur.x - prev.x, cur.y - prev.y) / 2, Math.hypot(next.x - cur.x, next.y - cur.y) / 2) * scale;
+			ctx.arcTo(cur.x * scale, cur.y * scale, next.x * scale, next.y * scale, r);
+		}
+		ctx.lineTo(to.x * scale, to.y * scale);
+	}
+	/** 障碍 = 除两端绑定元素外的全部非连线元素包围盒,外扩 pad(线至少离元素 pad 像素) */
+	function obstacleRects(el, elements, pad) {
+		const out = [];
+		for (const e of elements) {
+			if (e.id === el.fromEl || e.id === el.toEl || e.kind === "connector") continue;
+			const b = elementBounds(e);
+			if (b) out.push({
+				x: b.x - pad,
+				y: b.y - pad,
+				w: b.w + pad * 2,
+				h: b.h + pad * 2
+			});
+		}
+		return out;
+	}
+	/** 点是否严格落在(已外扩的)障碍内;贴边不算,保证线离真实元素 ≥ pad */
+	function inObstacle(r, px, py) {
+		return px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h;
+	}
+	/** 折线是否穿过任何障碍(逐段按 4px 步长采样) */
+	function pathClear(pts, obstacles) {
+		for (let i = 1; i < pts.length; i++) {
+			const a = pts[i - 1];
+			const b = pts[i];
+			const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+			for (let s = 0; s <= steps; s++) {
+				const x = a.x + (b.x - a.x) * s / steps;
+				const y = a.y + (b.y - a.y) * s / steps;
+				for (const r of obstacles) if (inObstacle(r, x, y)) return false;
+			}
+		}
+		return true;
+	}
+	function dedupePolyline(pts) {
+		const out = [];
+		for (const p of pts) {
+			const last = out[out.length - 1];
+			if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1) out.push(p);
+		}
+		return out.filter((p, i) => {
+			if (i === 0 || i === out.length - 1) return true;
+			const prev = out[i - 1];
+			const next = out[i + 1];
+			return !(prev.x === p.x && p.x === next.x || prev.y === p.y && p.y === next.y);
+		});
+	}
+	var polylineLen = (pts) => {
+		let len = 0;
+		for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+		return len;
+	};
+	/**
+	* 障碍感知的直角路由:先走无障碍 elbow;被挡则枚举中段重排方案——
+	* 两种 L 拐角 + 以障碍边缘/中点为 lane 的 Z 折线,取第一条不穿障的最短路径;
+	* 全部被挡时回落原 elbow(极端密布局不硬绕)。
+	*/
+	function routeElbowAvoid(from, to, h1, h2, obstacles, stub = 40) {
+		const base = routeElbow(from, to, h1, h2, stub);
+		if (!obstacles.length || pathClear(base, obstacles)) return base;
+		const proj1 = (to.x - from.x) * h1[0] + (to.y - from.y) * h1[1];
+		const proj2 = (from.x - to.x) * h2[0] + (from.y - to.y) * h2[1];
+		const a = add(from, h1, Math.min(stub, Math.max(0, proj1)));
+		const b = add(to, h2, Math.min(stub, Math.max(0, proj2)));
+		const mids = [];
+		if (a.x !== b.x && a.y !== b.y) mids.push([
+			a,
+			{
+				x: b.x,
+				y: a.y
+			},
+			b
+		], [
+			a,
+			{
+				x: a.x,
+				y: b.y
+			},
+			b
+		]);
+		else mids.push([a, b]);
+		const lanes = /* @__PURE__ */ new Set();
+		for (const r of obstacles) lanes.add(r.x - 1).add(r.x + r.w + 1).add(r.y - 1).add(r.y + r.h + 1);
+		for (const lane of lanes) {
+			if (a.x !== b.x) mids.push([
+				a,
+				{
+					x: lane,
+					y: a.y
+				},
+				{
+					x: lane,
+					y: b.y
+				},
+				b
+			]);
+			if (a.y !== b.y) mids.push([
+				a,
+				{
+					x: a.x,
+					y: lane
+				},
+				{
+					x: b.x,
+					y: lane
+				},
+				b
+			]);
+		}
+		let best = null;
+		let bestLen = Infinity;
+		for (const mid of mids) {
+			const pts = dedupePolyline([
+				from,
+				...mid,
+				to
+			]);
+			if (!pathClear(pts, obstacles)) continue;
+			const len = polylineLen(pts);
+			if (len < bestLen) {
+				best = pts;
+				bestLen = len;
+			}
+		}
+		return best ?? base;
+	}
+	function polylineRoute(points) {
+		let total = 0;
+		const segs = [];
+		for (let i = 1; i < points.length; i++) {
+			const d = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+			segs.push([
+				points[i - 1],
+				points[i],
+				d
+			]);
+			total += d;
+		}
+		const at = (t) => {
+			let remain = total * t;
+			for (const [a, b, d] of segs) {
+				if (remain <= d || d === 0) {
+					const r = d === 0 ? 0 : remain / d;
+					return {
+						x: a.x + (b.x - a.x) * r,
+						y: a.y + (b.y - a.y) * r
+					};
+				}
+				remain -= d;
+			}
+			return points[points.length - 1];
+		};
+		const last = segs[segs.length - 1];
+		return {
+			mode: "segments",
+			points,
+			mid: at(.5),
+			endAngle: Math.atan2(last[1].y - last[0].y, last[1].x - last[0].x),
+			sample: (step = 8) => {
+				const count = Math.max(8, Math.ceil(total / step));
+				return Array.from({ length: count + 1 }, (_, i) => at(i / count));
+			}
+		};
+	}
+	function curveRoute(el) {
+		const geo = connectorGeometry(el);
+		const dist = Math.hypot(el.to[0] - el.from[0], el.to[1] - el.from[1]);
+		return {
+			mode: geo.auto ? "cubic" : "quad",
+			points: [],
+			geo,
+			mid: geo.pointAt(.5),
+			endAngle: geo.endAngle(),
+			sample: (step = 8) => {
+				const count = Math.max(8, Math.ceil(dist / step));
+				return Array.from({ length: count + 1 }, (_, i) => geo.pointAt(i / count));
+			}
+		};
+	}
+	/** 连线路由解析:route 缺省 = smooth(自适应三次,被其他元素遮挡时自动改走直角避让重排);elbow = 直角正交(始终避让);straight = 直线(不避让,保持语义) */
+	function connectorRoute(el, elements, pad = 6) {
+		if (el.route === "straight") return polylineRoute([{
+			x: el.from[0],
+			y: el.from[1]
+		}, {
+			x: el.to[0],
+			y: el.to[1]
+		}]);
+		const obstacles = obstacleRects(el, elements, pad);
+		if (el.route === "elbow") {
+			const [h1, h2] = connectorHeadings(el, elements);
+			return polylineRoute(routeElbowAvoid({
+				x: el.from[0],
+				y: el.from[1]
+			}, {
+				x: el.to[0],
+				y: el.to[1]
+			}, h1, h2, obstacles));
+		}
+		const curve = curveRoute(el);
+		if (obstacles.length) {
+			for (const p of curve.sample(12)) if (obstacles.some((r) => inObstacle(r, p.x, p.y))) {
+				const [h1, h2] = connectorHeadings(el, elements);
+				return polylineRoute(routeElbowAvoid({
+					x: el.from[0],
+					y: el.from[1]
+				}, {
+					x: el.to[0],
+					y: el.to[1]
+				}, h1, h2, obstacles));
+			}
+		}
+		return curve;
+	}
+	//#endregion
 	//#region src/core/render/arrows.ts
 	/**
 	* 回环箭头:U 形折返箭头(反馈 / 下一轮 / 复盘回写)。
@@ -4498,6 +4468,106 @@
 			ctx.restore();
 			ly += lineH;
 		});
+		ctx.restore();
+	}
+	//#endregion
+	//#region src/core/render/connectorDraw.ts
+	/** 连线绘制:draw 入场沿路径生长(dash 技巧),箭头与曲上标签胶囊在末端浮现;emphasis 数据流虚线滚动。 */
+	/** 路径近似总长:直角段按折线累加,三次/二次按采样累加;draw 生长的 dash 只需近似,p>=1 时无 dash 兜底补全 */
+	function routeLength(route, x1, y1, x2, y2) {
+		let pts;
+		if (route.mode === "segments") pts = route.points;
+		else if (route.mode === "cubic") {
+			pts = [];
+			const c1 = route.geo.c1;
+			const c2 = route.geo.c2;
+			for (let i = 0; i <= 24; i++) {
+				const t = i / 24;
+				const u = 1 - t;
+				pts.push({
+					x: u * u * u * x1 + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * x2,
+					y: u * u * u * y1 + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * y2
+				});
+			}
+		} else {
+			pts = [];
+			const c = route.geo.control;
+			for (let i = 0; i <= 16; i++) {
+				const t = i / 16;
+				const u = 1 - t;
+				pts.push({
+					x: u * u * x1 + 2 * u * t * c.x + t * t * x2,
+					y: u * u * y1 + 2 * u * t * c.y + t * t * y2
+				});
+			}
+		}
+		let len = 0;
+		for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+		return len;
+	}
+	function drawConnector(ctx, el, elements = [], dashOffset, progress) {
+		const [x1, y1] = el.from;
+		const [x2, y2] = el.to;
+		const color = el.color ?? "#475569";
+		const lineW = el.width ?? 5;
+		const route = connectorRoute(el, elements);
+		const mid = route.mid;
+		const p = progress == null ? 1 : Math.min(1, Math.max(0, progress));
+		const baseAlpha = ctx.globalAlpha;
+		ctx.save();
+		ctx.strokeStyle = color;
+		ctx.lineWidth = lineW;
+		ctx.lineCap = "round";
+		if (dashOffset !== void 0) {
+			ctx.setLineDash([lineW * 2.6, lineW * 1.9]);
+			ctx.lineDashOffset = dashOffset;
+		} else if (p < 1) {
+			ctx.setLineDash([Math.max(routeLength(route, x1, y1, x2, y2) * p, .01), 1e6]);
+			ctx.lineDashOffset = 0;
+		} else if (el.dash === true) ctx.setLineDash([lineW * 2.4, lineW * 1.8]);
+		ctx.beginPath();
+		if (route.mode === "segments") strokeRoundedPolyline(ctx, route.points, {
+			x: x2,
+			y: y2
+		});
+		else if (route.mode === "cubic") {
+			ctx.moveTo(x1, y1);
+			ctx.bezierCurveTo(route.geo.c1.x, route.geo.c1.y, route.geo.c2.x, route.geo.c2.y, x2, y2);
+		} else {
+			ctx.moveTo(x1, y1);
+			ctx.quadraticCurveTo(route.geo.control.x, route.geo.control.y, x2, y2);
+		}
+		ctx.stroke();
+		ctx.setLineDash([]);
+		if (el.arrow !== false) {
+			const ang = route.endAngle;
+			const size = lineW * 3.2;
+			ctx.globalAlpha = baseAlpha * (p < 1 ? Math.min(1, Math.max(0, (p - .82) / .18)) : 1);
+			ctx.beginPath();
+			ctx.moveTo(x2, y2);
+			ctx.lineTo(x2 - size * Math.cos(ang - .45), y2 - size * Math.sin(ang - .45));
+			ctx.lineTo(x2 - size * Math.cos(ang + .45), y2 - size * Math.sin(ang + .45));
+			ctx.closePath();
+			ctx.fillStyle = color;
+			ctx.fill();
+			ctx.globalAlpha = baseAlpha;
+		}
+		if (el.label) {
+			ctx.globalAlpha = baseAlpha * (p < 1 ? Math.min(1, Math.max(0, (p - .88) / .12)) : 1);
+			ctx.font = sansFont(26, 600);
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			const tw = ctx.measureText(el.label).width;
+			roundRect(ctx, mid.x - tw / 2 - 14, mid.y - 24, tw + 28, 48, 24);
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fill();
+			ctx.strokeStyle = "#CBD5E1";
+			ctx.lineWidth = 2;
+			ctx.stroke();
+			ctx.fillStyle = "#334155";
+			ctx.fillText(el.label, mid.x - tw / 2, mid.y + 1);
+			ctx.globalAlpha = baseAlpha;
+		}
 		ctx.restore();
 	}
 	//#endregion
@@ -5280,7 +5350,7 @@
 				drawArrayCells(ctx, elT);
 				break;
 			case "connector":
-				drawConnector(ctx, resolveConnector(elT, sceneElements), sceneElements, fx.dashFlow !== null ? -localT * fx.dashFlow : void 0);
+				drawConnector(ctx, resolveConnector(elT, sceneElements), sceneElements, fx.dashFlow !== null ? -localT * fx.dashFlow : void 0, visual.progress);
 				break;
 			case "image":
 				drawImageEl(ctx, elT);

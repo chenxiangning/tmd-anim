@@ -40,6 +40,14 @@ describe("animVisual", () => {
     expect(animVisual(anim({ type: "wipe" }), 0.3).alpha).toBe(1);
     expect(animVisual(anim({ type: "wipe" }), 1).wipeWidth).toBe(1);
   });
+
+  it("draw 暴露生长进度,前段快速淡入兜底,终点进度归一", () => {
+    expect(animVisual(anim({ type: "draw" }), 0.5).progress).toBeCloseTo(0.5);
+    expect(animVisual(anim({ type: "draw" }), 0.2).alpha).toBeCloseTo(0.6);
+    const end = animVisual(anim({ type: "draw" }), 1);
+    expect(end.progress).toBe(1);
+    expect(end.alpha).toBe(1);
+  });
 });
 
 describe("时间轴三段:离场/强调/补间", () => {

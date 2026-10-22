@@ -105,6 +105,9 @@ export function animVisual(anim: Anim, p: number): AnimVisual {
     case "swing":
       // 吊摆:钟摆两次衰减 + 轻微落下
       return { alpha: e, dx: 0, dy: -(1 - Math.min(1, p * 2)) * 40, rotation: Math.sin(e * Math.PI * 2) * (1 - e) * 0.42, scale: 1, scaleX: null, wipeWidth: null };
+    case "draw":
+      // 连线专用:沿路径生长(progress 由 drawConnector 消费,箭头与标签末段浮现);非连线回落快速淡入
+      return { alpha: Math.min(1, p * 3), dx: 0, dy: 0, rotation: 0, scale: 1, scaleX: null, wipeWidth: null, progress: p };
   }
 }
 

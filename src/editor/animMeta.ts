@@ -17,6 +17,7 @@ export const ANIM_TYPE_OPTIONS: ReadonlyArray<{ value: Anim["type"]; label: stri
   { value: "bounce", label: "弹跳落地" },
   { value: "flip", label: "翻面入场" },
   { value: "swing", label: "吊摆进人" },
+  { value: "draw", label: "连线生长" },
 ];
 
 /** 离场动画选项:属性面板「离场动画」与时间轴共用 */

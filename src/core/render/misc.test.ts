@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ConnectorElement, SceneElement } from "../types";
 import { connectorGeometry, elementBounds, resolveConnector } from "./misc";
+import { drawConnector } from "./connectorDraw";
 
 const anim = { type: "fade" as const, start: 0, duration: 0.1 };
 
@@ -163,5 +164,57 @@ describe("connectorGeometry 自适应平滑曲线", () => {
     // 法线方向偏移的中点控制点
     expect(geo.control.x).toBeCloseTo(450 - (270 / Math.hypot(100, 270)) * 120, 3);
     expect(geo.control.y).toBeCloseTo(265 + (100 / Math.hypot(100, 270)) * 120, 3);
+  });
+});
+
+/** 记录 setLineDash 与箭头上色时刻 globalAlpha 的 mock 2D 上下文 */
+function recCtx() {
+  const dashes: unknown[][] = [];
+  const arrowAlpha: number[] = [];
+  const ctx = {
+    globalAlpha: 1,
+    save: () => {},
+    restore: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    closePath: () => {},
+    bezierCurveTo: () => {},
+    quadraticCurveTo: () => {},
+    stroke: () => {},
+    fill: () => {
+      arrowAlpha.push(ctx.globalAlpha);
+    },
+    setLineDash: (seg: unknown[]) => {
+      dashes.push(seg);
+    },
+    measureText: () => ({ width: 10 }),
+    fillText: () => {},
+  };
+  return {
+    ctx,
+    dashes,
+    arrowAlpha,
+  } as unknown as { ctx: CanvasRenderingContext2D; dashes: unknown[][]; arrowAlpha: number[] };
+}
+
+describe("drawConnector draw 入场", () => {
+  it("生长中:dash 只露前段,箭头未现", () => {
+    const { ctx, dashes, arrowAlpha } = recCtx();
+    drawConnector(ctx, line({}), [], undefined, 0.5);
+    const grow = dashes.find((d) => d[1] === 1e6) as number[] | undefined;
+    expect(grow).toBeDefined();
+    expect(grow![0]).toBeGreaterThan(50);
+    expect(grow![0]).toBeLessThan(400);
+    expect(arrowAlpha).toEqual([0]);
+  });
+
+  it("完成后:无生长 dash,箭头全显;p=1 与缺省一致", () => {
+    for (const progress of [1, undefined]) {
+      const { ctx, dashes, arrowAlpha } = recCtx();
+      drawConnector(ctx, line({}), [], undefined, progress);
+      expect(dashes.some((d) => d[1] === 1e6)).toBe(false);
+      expect(arrowAlpha).toEqual([1]);
+    }
   });
 });

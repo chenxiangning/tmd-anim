@@ -8,6 +8,7 @@ import type { Anim, EmphasisEvent, ExitAnim, Project, Scene, SceneElement, Tween
  */
 
 const ANIM_TYPES: Record<string, true> = {
+  draw: true,
   pop: true,
   fade: true,
   riseUp: true,
@@ -274,11 +275,12 @@ function normalizeElement(raw: Record<string, unknown>, index: number): SceneEle
     if (!ok) delete connector[key];
     else connector[key] = [Math.min(1, Math.max(0, f[0] as number)), Math.min(1, Math.max(0, f[1] as number))];
   }
-  // 形状内嵌文本:text 非字符串丢弃,sketch 非布尔丢弃,sketchSeed 非有限数丢弃;fontSize/color 由绘制层容错
+  // 形状内嵌文本:text 非字符串丢弃,sketch 非布尔丢弃,sketchSeed 非有限数丢弃,shadow 非布尔丢弃;fontSize/color 由绘制层容错
   if (el.kind === "shape") {
     if (connector.text !== undefined && typeof connector.text !== "string") delete connector.text;
     if (connector.sketch !== undefined && typeof connector.sketch !== "boolean") delete connector.sketch;
     if (connector.sketchSeed !== undefined && (typeof connector.sketchSeed !== "number" || !Number.isFinite(connector.sketchSeed))) delete connector.sketchSeed;
+    if (connector.shadow !== undefined && typeof connector.shadow !== "boolean") delete connector.shadow;
   }
   // AI 对话卡:title/prompt/reply 非字符串丢弃
   if (el.kind === "aiChat") {
