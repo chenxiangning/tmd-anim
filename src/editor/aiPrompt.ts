@@ -59,6 +59,7 @@ function ttsLines(): string[] {
   return [
     "需要配音时给场景加 audio 字段(src=音频文件 dataURL);音频一律本机生成,不要联网下载:",
     "macOS 用 `say -o /tmp/tmd-tts.aiff \"台词\"` 合成语音,`afconvert -f m4af -d aac` 转成 m4a(aiff 浏览器不解码),",
+    "台词写口语短句、句末用句号;想加长句间停顿用 say 内嵌命令,如 \"第一句。[[slnc 400]]第二句\"(应用内 TTS 已自动在标点处补停顿),",
     "提示音/简单旋律用 python3 合成 WAV;最后把文件 base64 拼成 dataURL 写入。",
   ];
 }

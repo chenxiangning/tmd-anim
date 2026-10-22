@@ -64,6 +64,50 @@ pub fn tts_voices() -> Result<Vec<TtsVoice>, String> {
     Ok(voices)
 }
 
+/// 台词断句预处理:全角标点后插 say 内嵌静音命令(句末 400ms / 句中 180ms),
+/// 换行补 300ms。文本自带 [[ 内嵌命令时原样返回(尊重手工编排);只动全角标点,
+/// ASCII 句点/逗号不插,天然避开小数(3.14)与英文缩写(e.g.)。
+pub(crate) fn with_pauses(text: &str) -> String {
+    if text.contains("[[") {
+        return text.to_string();
+    }
+    const SENTENCE: [char; 5] = ['。', '！', '？', '…', '；'];
+    const CLAUSE: [char; 3] = ['，', '、', '：'];
+    let mut out = String::with_capacity(text.len() + 32);
+    let mut chars = text.chars().peekable();
+    let mut last_was_pause = false;
+    while let Some(c) = chars.next() {
+        if c == '\n' {
+            if !last_was_pause {
+                out.push_str("[[slnc 300]]");
+                last_was_pause = true;
+            }
+            continue;
+        }
+        out.push(c);
+        last_was_pause = false;
+        let sentence = SENTENCE.contains(&c);
+        let clause = CLAUSE.contains(&c);
+        if sentence || clause {
+            /* 连续标点(如「?!」「……」)吃完整串,只在最后一个之后插一次 */
+            while let Some(&n) = chars.peek() {
+                if SENTENCE.contains(&n) || CLAUSE.contains(&n) {
+                    out.push(n);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if chars.peek().is_some() {
+                let ms = if sentence { 400 } else { 180 };
+                out.push_str(&format!("[[slnc {ms}]]"));
+                last_was_pause = true;
+            }
+        }
+    }
+    out
+}
+
 /// 合成语音并返回 WAV 字节(ipc 原始 payload,前端 invoke 得到 ArrayBuffer)
 #[tauri::command]
 pub fn tts_speak(text: String, voice: Option<String>, rate: Option<u32>) -> Result<Response, String> {
@@ -92,7 +136,7 @@ pub fn tts_speak(text: String, voice: Option<String>, rate: Option<u32>) -> Resu
     }
     cmd.arg("-r")
         .arg(rate.unwrap_or(190).clamp(*RATE_RANGE.start(), *RATE_RANGE.end()).to_string());
-    cmd.arg(text);
+    cmd.arg(with_pauses(text));
     let out = cmd
         .output()
         .map_err(|e| format!("无法运行 say 命令:{e}"))?;
@@ -164,5 +208,35 @@ mod tests {
     #[test]
     fn speak_空文本被拒绝() {
         assert!(tts_speak("   ".into(), None, None).is_err());
+    }
+
+    #[test]
+    fn 断句_句末长停_句中短停() {
+        assert_eq!(
+            with_pauses("今天讲网关。第一部分，路由。"),
+            "今天讲网关。[[slnc 400]]第一部分，[[slnc 180]]路由。"
+        );
+    }
+
+    #[test]
+    fn 断句_连续标点只插一次_末尾不插() {
+        /* 全角？！(U+FF1F U+FF01)连续标点:转义书写,防半角混入 */
+        assert_eq!(with_pauses("真的？！"), "真的？！");
+        assert_eq!(with_pauses("真的？！后面"), "真的？！[[slnc 400]]后面");
+        assert_eq!(with_pauses("等等……好"), "等等……[[slnc 400]]好");
+    }
+
+    #[test]
+    fn 断句_自带内嵌命令时原样返回() {
+        let raw = "手动。[[slnc 800]]编排，文本";
+        assert_eq!(with_pauses(raw), raw);
+    }
+
+    #[test]
+    fn 断句_ascii标点与小数不插_换行补停() {
+        assert_eq!(with_pauses("值是 3.14,别动 e.g."), "值是 3.14,别动 e.g.");
+        assert_eq!(with_pauses("第一行\n第二行"), "第一行[[slnc 300]]第二行");
+        /* 句末标点后紧跟换行:按句末 400 停一次,换行不叠加 */
+        assert_eq!(with_pauses("结束。\n新段"), "结束。[[slnc 400]]新段");
     }
 }
